@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isUserWithRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).role == role;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && request.auth.uid == userId 
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == "student"
+        && request.resource.data.subscription == "free"
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() <= 100;
+
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId 
+          && request.resource.data.role == resource.data.role 
+          && request.resource.data.subscription == resource.data.subscription
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+          && request.resource.data.email == resource.data.email)
+        || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Documents collection
+    match /documents/{docId} {
+      allow get: if isValidId(docId) && (
+        resource.data.status == "approved" 
+        || (isSignedIn() && (resource.data.uploadedBy == request.auth.uid || isAdmin()))
+      );
+
+      allow list: if isSignedIn() && (
+        resource.data.status == "approved"
+        || resource.data.uploadedBy == request.auth.uid
+        || isAdmin()
+      );
+
+      allow create: if isSignedIn() && (isUserWithRole("author") || isUserWithRole("admin")) && isValidId(docId)
+        && request.resource.data.id == docId
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.views == 0
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+        && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 100
+        && request.resource.data.fileId is string && request.resource.data.fileId.size() > 0
+        && request.resource.data.driveUrl is string && request.resource.data.driveUrl.size() > 0
+        && request.resource.data.uploadedByName is string && request.resource.data.uploadedByName.size() > 0;
+
+      allow update: if isSignedIn() && isValidId(docId) && (
+        isAdmin() 
+        || (resource.data.uploadedBy == request.auth.uid 
+            && request.resource.data.uploadedBy == resource.data.uploadedBy
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.views == resource.data.views
+            && request.resource.data.fileId == resource.data.fileId
+            && request.resource.data.driveUrl == resource.data.driveUrl
+            && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
+            && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+            && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 100)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']))
+      );
+
+      allow delete: if isSignedIn() && isValidId(docId) && (
+        isAdmin() || resource.data.uploadedBy == request.auth.uid
+      );
+    }
+
+    // Notifications collection
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all");
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all") && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+  }
+}

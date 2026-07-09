@@ -1,0 +1,582 @@
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut,
+  User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  addDoc,
+  deleteDoc,
+  increment,
+  orderBy,
+  onSnapshot
+} from 'firebase/firestore';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification } from './types';
+import firebaseConfig from '../firebase-applet-config.json';
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// Configure Google Auth Provider
+export const googleProvider = new GoogleAuthProvider();
+// Request drive scope to view and upload files
+googleProvider.addScope('https://www.googleapis.com/auth/drive');
+
+// In-memory token cache
+let cachedAccessToken: string | null = null;
+let isSigningIn = false;
+
+/**
+ * Custom sign in with Google that returns the user and OAuth access token
+ */
+export const signInWithGoogle = async (): Promise<{ user: User; accessToken: string } | null> => {
+  try {
+    isSigningIn = true;
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken;
+    if (!token) {
+      throw new Error('Failed to retrieve Google Drive OAuth Access Token.');
+    }
+    cachedAccessToken = token;
+    
+    // Auto-create or fetch user profile
+    await ensureUserProfile(result.user, result.user.displayName || 'Google User');
+    
+    return { user: result.user, accessToken: token };
+  } catch (err) {
+    console.error('Google Sign In Error:', err);
+    throw err;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+/**
+ * Sign out of Firebase and clear cached token
+ */
+export const logoutUser = async () => {
+  await signOut(auth);
+  cachedAccessToken = null;
+};
+
+/**
+ * Retrieve the current cached access token (or prompt re-login if expired/missing)
+ */
+export const getAccessToken = (): string | null => {
+  return cachedAccessToken;
+};
+
+/**
+ * Setup access token manually (for debugging or direct updates)
+ */
+export const setAccessToken = (token: string | null) => {
+  cachedAccessToken = token;
+};
+
+/**
+ * Helper to ensure a profile exists in Firestore for the authenticated user
+ */
+export const ensureUserProfile = async (user: User, displayName: string): Promise<UserProfile> => {
+  const profile: UserProfile = {
+    uid: user.uid,
+    name: displayName,
+    email: user.email || '',
+    role: 'student',
+    subscription: 'free',
+    createdAt: Date.now()
+  };
+
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    const snap = await getDoc(userRef);
+    
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
+    }
+    
+    await setDoc(userRef, profile);
+  } catch (err: any) {
+    console.warn('ensureUserProfile offline/network fallback triggered:', err.message || err);
+  }
+  
+  return profile;
+};
+
+/**
+ * Update user's profile metadata in Firestore
+ */
+export const updateUserProfile = async (uid: string, updates: Partial<UserProfile>): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, updates);
+  } catch (err: any) {
+    console.warn('updateUserProfile failed (likely offline):', err.message || err);
+  }
+};
+
+/**
+ * Fetch a user's profile from Firestore
+ */
+export const fetchUserProfile = async (uid: string): Promise<UserProfile | null> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    return snap.exists() ? (snap.data() as UserProfile) : null;
+  } catch (err: any) {
+    console.warn('fetchUserProfile offline/network fallback triggered:', err.message || err);
+    return null;
+  }
+};
+
+/**
+ * Get all users (Admin only)
+ */
+export const fetchAllUsers = async (): Promise<UserProfile[]> => {
+  const colRef = collection(db, 'users');
+  const snap = await getDocs(colRef);
+  return snap.docs.map(d => d.data() as UserProfile);
+};
+
+/**
+ * Upload a document record to Firestore
+ */
+export const saveDocumentMetadata = async (docData: Omit<DocumentMetadata, 'id' | 'createdAt' | 'views' | 'status'>): Promise<string> => {
+  const docRef = doc(collection(db, 'documents'));
+  const fullDoc: DocumentMetadata = {
+    ...docData,
+    id: docRef.id,
+    createdAt: Date.now(),
+    views: 0,
+    status: 'pending', // Requires admin approval by default
+    rating: 5,
+    downloadsCount: 0
+  };
+  await setDoc(docRef, fullDoc);
+  return docRef.id;
+};
+
+/**
+ * Get a specific document by its Firestore ID
+ */
+export const fetchDocumentById = async (id: string): Promise<DocumentMetadata | null> => {
+  try {
+    const docRef = doc(db, 'documents', id);
+    const snap = await getDoc(docRef);
+    return snap.exists() ? (snap.data() as DocumentMetadata) : null;
+  } catch (err: any) {
+    console.warn(`fetchDocumentById error for ${id} (likely offline):`, err.message || err);
+    return null;
+  }
+};
+
+/**
+ * Increment views on a document
+ */
+export const incrementDocumentViews = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'documents', id);
+    await updateDoc(docRef, { views: increment(1) });
+  } catch (err: any) {
+    console.warn(`incrementDocumentViews error for ${id} (likely offline):`, err.message || err);
+  }
+};
+
+/**
+ * Increment downloads on a document
+ */
+export const incrementDocumentDownloads = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'documents', id);
+    await updateDoc(docRef, { downloadsCount: increment(1) });
+  } catch (err: any) {
+    console.warn(`incrementDocumentDownloads error for ${id} (likely offline):`, err.message || err);
+  }
+};
+
+/**
+ * Update document status or info
+ */
+export const updateDocument = async (id: string, updates: Partial<DocumentMetadata>): Promise<void> => {
+  try {
+    const docRef = doc(db, 'documents', id);
+    await updateDoc(docRef, updates);
+  } catch (err: any) {
+    console.warn(`updateDocument error for ${id} (likely offline):`, err.message || err);
+  }
+};
+
+/**
+ * Delete a document from Firestore
+ */
+export const deleteDocumentMetadata = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'documents', id);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn(`deleteDocumentMetadata error for ${id} (likely offline):`, err.message || err);
+  }
+};
+
+/**
+ * Fetch list of documents with filters
+ */
+export const fetchDocuments = async (filters?: {
+  category?: string;
+  uploadedBy?: string;
+  status?: DocumentStatus;
+}): Promise<DocumentMetadata[]> => {
+  try {
+    const colRef = collection(db, 'documents');
+    let q = query(colRef);
+    
+    if (filters?.category) {
+      q = query(q, where('category', '==', filters.category));
+    }
+    if (filters?.uploadedBy) {
+      q = query(q, where('uploadedBy', '==', filters.uploadedBy));
+    }
+    if (filters?.status) {
+      q = query(q, where('status', '==', filters.status));
+    }
+    
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data() as DocumentMetadata);
+  } catch (err) {
+    console.error('fetchDocuments error:', err);
+    return [];
+  }
+};
+
+/**
+ * Fetch and post comments/reviews for a document
+ */
+export const fetchComments = async (documentId: string): Promise<Comment[]> => {
+  const colRef = collection(db, 'comments');
+  try {
+    const q = query(colRef, where('documentId', '==', documentId), orderBy('createdAt', 'desc'));
+    try {
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
+    } catch (e) {
+      // If indexing is building or missing order by index, fallback to sorting in memory
+      const simpleQ = query(colRef, where('documentId', '==', documentId));
+      const simpleSnap = await getDocs(simpleQ);
+      return simpleSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Comment))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
+  } catch (err: any) {
+    console.warn('fetchComments offline/network error:', err.message || err);
+    return [];
+  }
+};
+
+export const addComment = async (documentId: string, userId: string, userName: string, text: string): Promise<Comment> => {
+  const commentData = {
+    documentId,
+    userId,
+    userName,
+    text,
+    createdAt: Date.now()
+  };
+  try {
+    const colRef = collection(db, 'comments');
+    const docRef = await addDoc(colRef, commentData);
+    return {
+      id: docRef.id,
+      ...commentData
+    };
+  } catch (err: any) {
+    console.warn('addComment error (offline):', err.message || err);
+    return {
+      id: 'local_temp_' + Date.now(),
+      ...commentData
+    };
+  }
+};
+
+/**
+ * Lupanulla Announcements (Matangazo)
+ */
+export const fetchAnnouncements = async (): Promise<Announcement[]> => {
+  try {
+    const colRef = collection(db, 'matangazo');
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
+  } catch (error) {
+    console.error('fetchAnnouncements error:', error);
+    return [];
+  }
+};
+
+export const saveAnnouncement = async (annData: Omit<Announcement, 'id' | 'createdAt'>): Promise<string> => {
+  try {
+    const colRef = collection(db, 'matangazo');
+    const payload = {
+      ...annData,
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, payload);
+    
+    // Broadcast notification to ALL users
+    await addNotification({
+      userId: 'all',
+      title: 'Tangazo Jipya! 📢',
+      message: `${annData.title} - ${annData.desc.substring(0, 80)}${annData.desc.length > 80 ? '...' : ''}`,
+      type: 'update',
+      link: 'matangazo'
+    });
+    
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('saveAnnouncement error:', err.message || err);
+    return 'offline_' + Date.now();
+  }
+};
+
+export const updateAnnouncement = async (id: string, updates: Partial<Announcement>): Promise<void> => {
+  try {
+    const docRef = doc(db, 'matangazo', id);
+    await updateDoc(docRef, updates);
+  } catch (err: any) {
+    console.warn('updateAnnouncement error:', err.message || err);
+  }
+};
+
+export const deleteAnnouncement = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'matangazo', id);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn('deleteAnnouncement error:', err.message || err);
+  }
+};
+
+/**
+ * Lupanulla Products (Duka)
+ */
+export const fetchProducts = async (): Promise<Product[]> => {
+  try {
+    const colRef = collection(db, 'products');
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+  } catch (error) {
+    console.error('fetchProducts error:', error);
+    return [];
+  }
+};
+
+export const saveProduct = async (prodData: Omit<Product, 'id'>): Promise<string> => {
+  try {
+    const colRef = collection(db, 'products');
+    const docRef = await addDoc(colRef, prodData);
+    
+    // Broadcast notification to ALL users
+    await addNotification({
+      userId: 'all',
+      title: 'Bidhaa Mpya Dukani! 🛒',
+      message: `Tumeongeza "${prodData.name}" kwenye duka letu la Lupanulla Elimu Hub. Bonyeza hapa kuagiza sasa!`,
+      type: 'update',
+      link: 'duka'
+    });
+    
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('saveProduct error:', err.message || err);
+    return 'offline_' + Date.now();
+  }
+};
+
+export const updateProduct = async (id: string, updates: Partial<Product>): Promise<void> => {
+  try {
+    const docRef = doc(db, 'products', id);
+    await updateDoc(docRef, updates);
+  } catch (err: any) {
+    console.warn('updateProduct error:', err.message || err);
+  }
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'products', id);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn('deleteProduct error:', err.message || err);
+  }
+};
+
+/**
+ * Lupanulla Videos (Lupa+ Video Class)
+ */
+export const fetchVideos = async (): Promise<Video[]> => {
+  try {
+    const colRef = collection(db, 'videos');
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Video));
+  } catch (error) {
+    console.error('fetchVideos error:', error);
+    return [];
+  }
+};
+
+export const saveVideo = async (vidData: Omit<Video, 'id'>): Promise<string> => {
+  try {
+    const colRef = collection(db, 'videos');
+    const payload = {
+      ...vidData,
+      views: 0,
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, payload);
+    
+    // Broadcast notification to ALL users
+    await addNotification({
+      userId: 'all',
+      title: 'Darasani Video Mpya! 🎥',
+      message: `Darasa jipya la video "${vidData.title}" limeongezwa chini ya somo la ${vidData.subject || 'Lupanulla'}. Jifunze sasa hapa!`,
+      type: 'update',
+      link: 'videos'
+    });
+    
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('saveVideo error:', err.message || err);
+    return 'offline_' + Date.now();
+  }
+};
+
+export const updateVideo = async (id: string, updates: Partial<Video>): Promise<void> => {
+  try {
+    const docRef = doc(db, 'videos', id);
+    await updateDoc(docRef, updates);
+  } catch (err: any) {
+    console.warn('updateVideo error:', err.message || err);
+  }
+};
+
+export const deleteVideo = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'videos', id);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn('deleteVideo error:', err.message || err);
+  }
+};
+
+/**
+ * Lupanulla Orders (Agiza Checkout)
+ */
+export const saveOrder = async (orderData: Order): Promise<string> => {
+  try {
+    const colRef = collection(db, 'orders');
+    const payload = {
+      ...orderData,
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, payload);
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('saveOrder error:', err.message || err);
+    return 'offline_' + Date.now();
+  }
+};
+
+export const fetchOrders = async (): Promise<Order[]> => {
+  try {
+    const colRef = collection(db, 'orders');
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
+  } catch (error) {
+    console.error('fetchOrders error:', error);
+    return [];
+  }
+};
+
+/**
+ * Lupanulla Notifications system using Firestore Subscriptions
+ */
+export const addNotification = async (notifData: Omit<AppNotification, 'id' | 'createdAt' | 'read'>): Promise<string> => {
+  try {
+    const colRef = collection(db, 'notifications');
+    const payload = {
+      ...notifData,
+      read: false,
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, payload);
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('addNotification error (likely offline):', err.message || err);
+    return 'offline_' + Date.now();
+  }
+};
+
+export const subscribeNotifications = (
+  userId: string,
+  callback: (notifications: AppNotification[]) => void
+): (() => void) => {
+  try {
+    const colRef = collection(db, 'notifications');
+    // Query notifications for this user or for 'all' (system wide)
+    const q = query(colRef, where('userId', 'in', [userId, 'all']));
+    
+    return onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as AppNotification));
+      
+      // Sort in memory by createdAt desc to avoid missing index errors
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      callback(list);
+    }, (error) => {
+      console.warn('subscribeNotifications error (likely offline or rules):', error);
+      callback([]);
+    });
+  } catch (err) {
+    console.warn('subscribeNotifications setup failed:', err);
+    callback([]);
+    return () => {};
+  }
+};
+
+export const markNotificationAsRead = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'notifications', id);
+    await updateDoc(docRef, { read: true });
+  } catch (err: any) {
+    console.warn(`markNotificationAsRead error for ${id}:`, err.message || err);
+  }
+};
+
+export const markAllNotificationsAsRead = async (userId: string, notifications: AppNotification[]): Promise<void> => {
+  try {
+    for (const notif of notifications) {
+      if (!notif.read && (notif.userId === userId || notif.userId === 'all')) {
+        const docRef = doc(db, 'notifications', notif.id);
+        await updateDoc(docRef, { read: true });
+      }
+    }
+  } catch (err: any) {
+    console.warn('markAllNotificationsAsRead error:', err.message || err);
+  }
+};
+

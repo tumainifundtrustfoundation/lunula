@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about a user including their role and subscription level.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier of the user matching request.auth.uid"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "author", "admin"],
+          "description": "The system role of the user."
+        },
+        "subscription": {
+          "type": "string",
+          "enum": ["free", "premium"],
+          "description": "Subscription tier of the user."
+        }
+      },
+      "required": ["uid", "name", "email", "role", "subscription"]
+    },
+    "Document": {
+      "title": "Document Share",
+      "description": "Metadata for shared documents stored on Google Drive.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the document entry in Firestore."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the document."
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the document contents."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category folder structure (e.g. Science, Mathematics, History)."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Array of tags associated with the document."
+        },
+        "fileId": {
+          "type": "string",
+          "description": "The Google Drive File ID."
+        },
+        "driveUrl": {
+          "type": "string",
+          "description": "The shareable view URL for the Google Drive viewer."
+        },
+        "uploadedBy": {
+          "type": "string",
+          "description": "User UID who uploaded the file."
+        },
+        "uploadedByName": {
+          "type": "string",
+          "description": "Display name of the user who uploaded the file."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Timestamp when the document entry was created."
+        },
+        "views": {
+          "type": "integer",
+          "description": "Number of views the document has received."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Moderation status of the document."
+        }
+      },
+      "required": ["id", "title", "description", "category", "tags", "fileId", "driveUrl", "uploadedBy", "uploadedByName", "createdAt", "views", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "A user's profile configuration and preferences."
+    },
+    "/documents/{documentId}": {
+      "schema": {
+        "$ref": "#/entities/Document"
+      },
+      "description": "A catalog of shareable documents stored in Google Drive and searchable in Firestore."
+    }
+  }
+}
