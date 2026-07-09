@@ -20,6 +20,8 @@ import {
   BookOpen
 } from 'lucide-react';
 
+import { Analytics } from '@vercel/analytics/react';
+
 import { UserProfile } from './types';
 import { 
   auth, 
@@ -557,6 +559,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
 
     </div>
   );
