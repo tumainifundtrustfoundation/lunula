@@ -17,7 +17,8 @@ import {
   CheckCircle,
   HelpCircle,
   ShieldCheck,
-  Compass
+  Compass,
+  Globe
 } from 'lucide-react';
 import { fetchDocuments } from '../firebase';
 import { DocumentMetadata } from '../types';
@@ -253,6 +254,25 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
         {/* Right Sidebar Column: Results checker, leaderboards */}
         <div className="space-y-8">
           
+          {/* Hub ya Vyanzo vya Elimu Quick Callout Card */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white rounded-3xl p-6 shadow-md border border-cyan-500/20 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                <Globe size={18} />
+              </div>
+              <h3 className="font-display font-bold text-base uppercase">Vyanzo vya Elimu</h3>
+            </div>
+            <p className="text-cyan-100/80 text-xs leading-relaxed font-medium">
+              Gundua na ufikie tovuti rasmi zilizothibitishwa za serikali, bodi za mitihani ya kitaifa (NECTA), vyuo vikuu, na maktaba huru nchini na kimataifa.
+            </p>
+            <button
+              onClick={() => onNavigate('resources')}
+              className="w-full py-2.5 text-xs text-center font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+            >
+              Fungua Hub &rarr;
+            </button>
+          </div>
+
           {/* NECTA Results Checker Form */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2">

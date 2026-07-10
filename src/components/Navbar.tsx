@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   FileText, 
   Upload, 
@@ -24,9 +25,13 @@ import {
   LayoutDashboard,
   Bell,
   MessageSquare,
-  Library
+  Library,
+  Palette,
+  Video,
+  Award,
+  Globe
 } from 'lucide-react';
-import { UserProfile, AppNotification } from '../types';
+import { UserProfile, AppNotification, AppTheme } from '../types';
 import { subscribeNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../firebase';
 
 interface NavbarProps {
@@ -37,6 +42,10 @@ interface NavbarProps {
   onSignOut: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  theme: AppTheme;
+  onChangeTheme: (theme: AppTheme) => void;
+  language: 'sw' | 'en';
+  onChangeLanguage: (lang: 'sw' | 'en') => void;
 }
 
 export default function Navbar({
@@ -46,13 +55,18 @@ export default function Navbar({
   onSignInClick,
   onSignOut,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  theme,
+  onChangeTheme,
+  language,
+  onChangeLanguage
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [extraToolsOpen, setExtraToolsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!userProfile?.uid) {
@@ -102,13 +116,31 @@ export default function Navbar({
   ];
 
   const toolsMenuItems = [
+    { id: 'resources', label: 'Hub ya Vyanzo vya Elimu', icon: Globe },
+    { id: 'forum', label: 'Jukwaa la Jamii', icon: MessageSquare },
+    { id: 'live', label: 'Kipindi cha Video', icon: Video },
+    { id: 'certificates', label: 'Vyeti Vyangu', icon: Award },
+    { id: 'leaderboard', label: 'Viwango vya Tuzo', icon: Trophy },
     { id: 'calculator', label: 'GPA Calculator', icon: Calculator },
     { id: 'kamusi', label: 'Kamusi', icon: BookOpen },
-    { id: 'mikoa', label: 'Standings kitaifa', icon: Trophy },
+    { id: 'mikoa', label: 'Viwango vya NECTA', icon: Trophy },
     { id: 'ajira', label: 'Ajira za Walimu', icon: Briefcase },
     { id: 'matangazo', label: 'Habari & Kuhusu', icon: Megaphone },
     { id: 'feedback', label: 'Toa Maoni', icon: MessageSquare },
   ];
+
+  const getThemeLabel = (themeId: AppTheme) => {
+    switch (themeId) {
+      case 'theme-tanzania-forest':
+        return '🌲 Tanzania Forest';
+      case 'theme-night-mode':
+        return '🌙 Night Mode';
+      case 'theme-high-contrast':
+        return '👁️ High Contrast';
+      default:
+        return '🌲 Tanzania Forest';
+    }
+  };
 
   return (
     <nav id="app-navbar" className="bg-slate-950 text-white sticky top-0 z-50 shadow-md border-b border-cyan-500/10 font-sans">
@@ -189,6 +221,71 @@ export default function Navbar({
 
           {/* User profile action buttons */}
           <div className="hidden md:flex items-center gap-4">
+            {/* Language Switcher */}
+            <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
+              <button
+                onClick={() => onChangeLanguage('sw')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide uppercase transition-all ${
+                  language === 'sw'
+                    ? 'bg-cyan-500 text-slate-950 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Soma kwa Kiswahili"
+              >
+                🇹🇿 SW
+              </button>
+              <button
+                onClick={() => onChangeLanguage('en')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide uppercase transition-all ${
+                  language === 'en'
+                    ? 'bg-cyan-500 text-slate-950 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Read in English"
+              >
+                🇬🇧 EN
+              </button>
+            </div>
+
+            {/* Theme Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
+                className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 rounded-xl flex items-center gap-1.5 transition-all text-xs font-bold uppercase"
+                title="Badili Mada (Themes)"
+              >
+                <Palette className="w-4 h-4 text-cyan-400" />
+                <span className="hidden xl:inline">{getThemeLabel(theme)}</span>
+              </button>
+
+              {themeDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-white">
+                  <div className="px-3 py-1 border-b border-slate-800 mb-1 text-[9px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    Badili Mada / Theme
+                  </div>
+                  {[
+                    { id: 'theme-tanzania-forest', label: 'Tanzania Forest 🌲', desc: 'Teal/Green asili' },
+                    { id: 'theme-night-mode', label: 'Night Mode 🌙', desc: 'Mwangaza hafifu' },
+                    { id: 'theme-high-contrast', label: 'High Contrast 👁️', desc: 'Uso safi kwa uoni' }
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onChangeTheme(t.id as any);
+                        setThemeDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-slate-800 flex flex-col ${
+                        theme === t.id ? 'text-cyan-400' : 'text-slate-300'
+                      }`}
+                    >
+                      <span>{t.label}</span>
+                      <span className="text-[9px] text-slate-500 font-normal">{t.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Notification Bell */}
             {userProfile && (
               <div className="relative">
@@ -209,71 +306,82 @@ export default function Navbar({
                   )}
                 </button>
 
-                {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-3 z-50 text-white animate-fade-in max-h-[480px] flex flex-col">
-                    <div className="px-4 pb-2 border-b border-slate-800 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Arifa za Lupanulla</h3>
-                        {unreadCount > 0 && <p className="text-[10px] text-slate-400">{unreadCount} mpya hazijasomwa</p>}
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={() => markAllNotificationsAsRead(userProfile.uid, notifications)}
-                          className="text-[10px] text-cyan-400 hover:text-cyan-300 font-extrabold uppercase border border-cyan-500/20 px-2 py-1 rounded-lg bg-cyan-500/5 transition-all"
-                        >
-                          Soma Zote
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="overflow-y-auto flex-1 divide-y divide-slate-850 max-h-[350px]">
-                      {notifications.length === 0 ? (
-                        <div className="py-8 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
-                          <Bell className="w-8 h-8 text-slate-600 stroke-[1.5]" />
-                          <p className="text-xs font-semibold">Hakuna taarifa mpya kwa sasa</p>
+                <AnimatePresence>
+                  {notifDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-3 z-50 text-white max-h-[480px] flex flex-col"
+                    >
+                      <div className="px-4 pb-2 border-b border-slate-800 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Arifa za Lupanulla</h3>
+                          {unreadCount > 0 && <p className="text-[10px] text-slate-400">{unreadCount} mpya hazijasomwa</p>}
                         </div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={async () => {
-                              await markNotificationAsRead(notif.id);
-                              if (notif.link) {
-                                handleNavClick(notif.link);
-                              }
-                              setNotifDropdownOpen(false);
-                            }}
-                            className={`p-3.5 hover:bg-slate-850 cursor-pointer transition-all flex gap-3 relative ${
-                              !notif.read ? 'bg-cyan-950/10 hover:bg-cyan-950/20' : ''
-                            }`}
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={() => markAllNotificationsAsRead(userProfile.uid, notifications)}
+                            className="text-[10px] text-cyan-400 hover:text-cyan-300 font-extrabold uppercase border border-cyan-500/20 px-2 py-1 rounded-lg bg-cyan-500/5 transition-all"
                           >
-                            {!notif.read && (
-                              <span className="absolute top-4 right-4 w-2 h-2 bg-cyan-500 rounded-full animate-ping" />
-                            )}
-                            
-                            <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-slate-850 border border-slate-800 text-sm">
-                              {notif.type === 'approval' ? '🎉' : notif.type === 'ai_response' ? '🤖' : '📢'}
-                            </div>
-                            
-                            <div className="flex-1 space-y-0.5 pr-2">
-                              <div className="flex items-center justify-between">
-                                <h4 className={`text-xs font-bold leading-tight ${!notif.read ? 'text-white' : 'text-slate-300'}`}>
-                                  {notif.title}
-                                </h4>
-                              </div>
-                              <p className="text-[11px] text-slate-400 leading-snug line-clamp-2">
-                                {notif.message}
-                              </p>
-                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider pt-0.5">
-                                {getRelativeTime(notif.createdAt)}
-                              </p>
-                            </div>
+                            Soma Zote
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="overflow-y-auto flex-1 divide-y divide-slate-850 max-h-[350px]">
+                        {notifications.length === 0 ? (
+                          <div className="py-8 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+                            <Bell className="w-8 h-8 text-slate-600 stroke-[1.5]" />
+                            <p className="text-xs font-semibold">Hakuna taarifa mpya kwa sasa</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                        ) : (
+                          notifications.map((notif, index) => (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.04 }}
+                              key={notif.id}
+                              onClick={async () => {
+                                await markNotificationAsRead(notif.id);
+                                if (notif.link) {
+                                  handleNavClick(notif.link);
+                                }
+                                setNotifDropdownOpen(false);
+                              }}
+                              className={`p-3.5 hover:bg-slate-850 cursor-pointer transition-all flex gap-3 relative ${
+                                !notif.read ? 'bg-cyan-950/10 hover:bg-cyan-950/20' : ''
+                              }`}
+                            >
+                              {!notif.read && (
+                                <span className="absolute top-4 right-4 w-2 h-2 bg-cyan-500 rounded-full animate-ping" />
+                              )}
+                              
+                              <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-slate-850 border border-slate-800 text-sm">
+                                {notif.type === 'approval' ? '🎉' : notif.type === 'ai_response' ? '🤖' : '📢'}
+                              </div>
+                              
+                              <div className="flex-1 space-y-0.5 pr-2">
+                                <div className="flex items-center justify-between">
+                                  <h4 className={`text-xs font-bold leading-tight ${!notif.read ? 'text-white' : 'text-slate-300'}`}>
+                                    {notif.title}
+                                  </h4>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-snug line-clamp-2">
+                                  {notif.message}
+                                </p>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider pt-0.5">
+                                  {getRelativeTime(notif.createdAt)}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -323,6 +431,16 @@ export default function Navbar({
                       <span>Jiunge na Premium</span>
                     </button>
 
+                    {(userProfile.role === 'admin' || userProfile.role === 'super_admin') && (
+                      <button
+                        onClick={() => handleNavClick('admin')}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide hover:bg-slate-800 text-rose-400 hover:text-rose-300 flex items-center gap-2"
+                      >
+                        <ShieldAlert size={14} />
+                        <span>Admin Dashboard</span>
+                      </button>
+                    )}
+
                     <hr className="my-1 border-slate-800" />
 
                     <button
@@ -370,64 +488,75 @@ export default function Navbar({
                   )}
                 </button>
 
-                {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-3 z-50 text-white animate-fade-in max-h-[400px] flex flex-col">
-                    <div className="px-4 pb-2 border-b border-slate-800 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Arifa</h3>
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={() => markAllNotificationsAsRead(userProfile.uid, notifications)}
-                          className="text-[9px] text-cyan-400 hover:text-cyan-300 font-extrabold uppercase border border-cyan-500/20 px-2 py-0.5 rounded-md bg-cyan-500/5"
-                        >
-                          Soma Zote
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="overflow-y-auto flex-1 divide-y divide-slate-850 max-h-[300px]">
-                      {notifications.length === 0 ? (
-                        <div className="py-6 text-center text-slate-500 flex flex-col items-center justify-center gap-1">
-                          <Bell className="w-6 h-6 text-slate-600 animate-pulse" />
-                          <p className="text-[11px] font-semibold">Hakuna taarifa mpya</p>
+                <AnimatePresence>
+                  {notifDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      className="absolute right-0 mt-2 w-72 sm:w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-3 z-50 text-white max-h-[400px] flex flex-col"
+                    >
+                      <div className="px-4 pb-2 border-b border-slate-800 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Arifa</h3>
                         </div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={async () => {
-                              await markNotificationAsRead(notif.id);
-                              if (notif.link) {
-                                handleNavClick(notif.link);
-                              }
-                              setNotifDropdownOpen(false);
-                            }}
-                            className={`p-2.5 hover:bg-slate-850 cursor-pointer transition-all flex gap-2 relative ${
-                              !notif.read ? 'bg-cyan-950/10' : ''
-                            }`}
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={() => markAllNotificationsAsRead(userProfile.uid, notifications)}
+                            className="text-[9px] text-cyan-400 hover:text-cyan-300 font-extrabold uppercase border border-cyan-500/20 px-2 py-0.5 rounded-md bg-cyan-500/5"
                           >
-                            <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center bg-slate-850 border border-slate-800 text-xs">
-                              {notif.type === 'approval' ? '🎉' : notif.type === 'ai_response' ? '🤖' : '📢'}
-                            </div>
-                            
-                            <div className="flex-1 space-y-0.5 min-w-0">
-                              <h4 className="text-[11px] font-bold truncate">
-                                {notif.title}
-                              </h4>
-                              <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">
-                                {notif.message}
-                              </p>
-                              <p className="text-[8px] text-slate-500">
-                                {getRelativeTime(notif.createdAt)}
-                              </p>
-                            </div>
+                            Soma Zote
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="overflow-y-auto flex-1 divide-y divide-slate-850 max-h-[300px]">
+                        {notifications.length === 0 ? (
+                          <div className="py-6 text-center text-slate-500 flex flex-col items-center justify-center gap-1">
+                            <Bell className="w-6 h-6 text-slate-600 animate-pulse" />
+                            <p className="text-[11px] font-semibold">Hakuna taarifa mpya</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                        ) : (
+                          notifications.map((notif, index) => (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.04 }}
+                              key={notif.id}
+                              onClick={async () => {
+                                await markNotificationAsRead(notif.id);
+                                if (notif.link) {
+                                  handleNavClick(notif.link);
+                                }
+                                setNotifDropdownOpen(false);
+                              }}
+                              className={`p-2.5 hover:bg-slate-850 cursor-pointer transition-all flex gap-2 relative ${
+                                !notif.read ? 'bg-cyan-950/10' : ''
+                              }`}
+                            >
+                              <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center bg-slate-850 border border-slate-800 text-xs">
+                                {notif.type === 'approval' ? '🎉' : notif.type === 'ai_response' ? '🤖' : '📢'}
+                              </div>
+                              
+                              <div className="flex-1 space-y-0.5 min-w-0">
+                                <h4 className="text-[11px] font-bold truncate">
+                                  {notif.title}
+                                </h4>
+                                <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">
+                                  {notif.message}
+                                </p>
+                                <p className="text-[8px] text-slate-500">
+                                  {getRelativeTime(notif.createdAt)}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -492,6 +621,55 @@ export default function Navbar({
             })}
           </div>
 
+          <div className="border-t border-slate-800 pt-3 my-2">
+            <p className="px-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest pb-2">Lugha / Language</p>
+            <div className="px-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onChangeLanguage('sw')}
+                className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                  language === 'sw'
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
+                }`}
+              >
+                🇹🇿 Kiswahili
+              </button>
+              <button
+                onClick={() => onChangeLanguage('en')}
+                className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                  language === 'en'
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
+                }`}
+              >
+                🇬🇧 English
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 pt-3 my-2">
+            <p className="px-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest pb-2">Mada / Theme</p>
+            <div className="px-4 grid grid-cols-3 gap-2">
+              {[
+                { id: 'theme-tanzania-forest', label: 'Forest 🌲' },
+                { id: 'theme-night-mode', label: 'Night 🌙' },
+                { id: 'theme-high-contrast', label: 'Contrast 👁️' }
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => onChangeTheme(t.id as any)}
+                  className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                    theme === t.id
+                      ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                      : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {userProfile && (
             <div className="pt-3 mt-3 border-t border-slate-800 space-y-2">
               <div className="flex items-center gap-2 px-4 py-1.5">
@@ -510,6 +688,15 @@ export default function Navbar({
               >
                 <Upload size={16} /> Pakia karatasi mpya
               </button>
+
+              {(userProfile.role === 'admin' || userProfile.role === 'super_admin') && (
+                <button
+                  onClick={() => handleNavClick('admin')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase hover:bg-slate-800 text-rose-400 rounded-lg"
+                >
+                  <ShieldAlert size={16} /> Admin Dashboard
+                </button>
+              )}
 
               <button
                 onClick={() => {

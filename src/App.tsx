@@ -17,10 +17,12 @@ import {
   HelpCircle,
   ShieldCheck,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  ShieldAlert,
+  LogOut
 } from 'lucide-react';
 
-import { UserProfile } from './types';
+import { UserProfile, AppTheme } from './types';
 import { 
   auth, 
   fetchUserProfile, 
@@ -48,10 +50,48 @@ import UploadView from './components/UploadView';
 import ReaderView from './components/ReaderView';
 import PremiumView from './components/PremiumView';
 
+import ForumView from './components/ForumView';
+import LiveClassesView from './components/LiveClassesView';
+import CertificatesView from './components/CertificatesView';
+import LeaderboardView from './components/LeaderboardView';
+import AdminView from './components/AdminView';
+import ResourcesView from './components/ResourcesView';
+
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(true);
+
+  const [theme, setTheme] = useState<AppTheme>((localStorage.getItem('lupanulla-theme') as AppTheme) || 'theme-tanzania-forest');
+  const [language, setLanguage] = useState<'sw' | 'en'>((localStorage.getItem('lupanulla-lang') as 'sw' | 'en') || 'sw');
+
+  // Synchronize language with localStorage
+  useEffect(() => {
+    localStorage.setItem('lupanulla-lang', language);
+  }, [language]);
+
+  const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Synchronize theme with localStorage and DOM body
+  useEffect(() => {
+    localStorage.setItem('lupanulla-theme', theme);
+    const body = document.body;
+    body.classList.remove('theme-tanzania-forest', 'theme-night-mode', 'theme-high-contrast');
+    body.classList.add(theme);
+  }, [theme]);
 
   // Routing State - defaults to 'portal' (the landing page)
   const [activeView, setActiveView] = useState<string>('portal');
@@ -94,7 +134,8 @@ export default function App() {
         const validViews = [
           'portal', 'dashboard', 'masomo', 'mitihani', 'duka', 
           'fisimaji', 'videos', 'calculator', 'kamusi', 'mikoa', 
-          'ajira', 'matangazo', 'upload', 'premium', 'workspace'
+          'ajira', 'matangazo', 'upload', 'premium', 'workspace',
+          'forum', 'live', 'certificates', 'leaderboard', 'resources'
         ];
         if (validViews.includes(cleanView)) {
           setActiveView(cleanView);
@@ -237,7 +278,7 @@ export default function App() {
   };
 
   return (
-    <div id="lupanulla-app" className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-950 text-slate-800">
+    <div id="lupanulla-app" className={`min-h-screen flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-950 ${theme}`}>
       
       {/* Feedback Modal */}
       <FeedbackModal 
@@ -259,11 +300,36 @@ export default function App() {
         onSignOut={handleSignOut}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        theme={theme}
+        onChangeTheme={setTheme}
+        language={language}
+        onChangeLanguage={setLanguage}
       />
 
       {/* Main Container Area */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
         
+        {/* Offline Notification Banner */}
+        {isOffline && (
+          <div className="mb-6 bg-amber-500/10 border-2 border-amber-500/20 text-amber-900 px-5 py-4 rounded-3xl flex items-start gap-3.5 shadow-sm animate-fade-in">
+            <div className="bg-amber-500 text-slate-950 rounded-xl p-2 mt-0.5 flex-shrink-0 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-3.536 5 5 0 011.414-3.536m0 0L5.636 5.636m0 0L3 3m2.636 2.636a9 9 0 000 12.728m0 0l2.829-2.829" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-amber-950">
+                {language === 'sw' ? 'Hali ya Nje ya Mtandao (Offline Mode)' : 'Offline Study Mode Active'}
+              </h4>
+              <p className="text-[11px] sm:text-xs text-amber-900/85 font-semibold leading-relaxed">
+                {language === 'sw' 
+                  ? 'Uko nje ya mtandao au una mtandao dhaifu. Shukrani kwa mfumo wetu wa Service Worker, bado unaweza kusoma notisi zote, past papers za NECTA, na vyeti ambavyo uliwahi kuvifungua hapo awali.'
+                  : 'You are currently offline or have a weak connection. Thanks to our Service Worker cache, you can still access all notes, NECTA papers, and certificates you have previously viewed.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Profile/Auth Synchronization Spinner */}
         {profileLoading && user && (
           <div className="flex items-center justify-center py-6 gap-2 text-cyan-600 animate-pulse">
@@ -273,102 +339,178 @@ export default function App() {
         )}
 
         {/* View Switcher Router Dispatcher */}
-        {activeView === 'portal' && (
-          <PortalView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+        {userProfile?.isSuspended ? (
+          <div className="bg-white border border-red-100 rounded-3xl p-8 text-center max-w-lg mx-auto space-y-6 shadow-2xl mt-12 animate-fade-in text-slate-800">
+            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+              <ShieldAlert size={40} />
+            </div>
+            <div className="space-y-2">
+              <h2 className="font-display font-black text-2xl text-slate-900 uppercase">Akaunti Imesimamishwa</h2>
+              <p className="text-xs text-red-600 font-extrabold uppercase tracking-wider">Account Suspended</p>
+            </div>
+            <div className="bg-red-50/50 rounded-2xl p-4.5 border border-red-100/50 text-left space-y-2">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Sababu ya Kusimamishwa:</p>
+              <p className="text-sm font-semibold text-slate-700 leading-relaxed italic">
+                "{userProfile.suspensionReason || 'Ukiukaji wa masharti ya matumizi ya mfumo.'}"
+              </p>
+              {userProfile.suspendedAt && (
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Imesimamishwa mnamo: {new Date(userProfile.suspendedAt).toLocaleDateString('sw-TZ', { dateStyle: 'long' })}
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Kama unahisi uamuzi huu si sahihi au unahitaji usaidizi wa kurejesha akaunti yako, tafadhali wasiliana na Lupanulla Foundation kupitia barua pepe rasmi au msimamizi mkuu wa mfumo.
+            </p>
+            <button
+              onClick={handleSignOut}
+              className="w-full bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <LogOut size={14} /> Ondoka Kwenye Akaunti
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeView === 'portal' && (
+              <PortalView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'dashboard' && (
-          <DashboardView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'dashboard' && (
+              <DashboardView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'masomo' && (
-          <MasomoView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'masomo' && (
+              <MasomoView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'mitihani' && (
-          <MitihaniView 
-            onNavigate={navigateTo} 
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'mitihani' && (
+              <MitihaniView 
+                onNavigate={navigateTo} 
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'duka' && (
-          <DukaView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'duka' && (
+              <DukaView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'fisimaji' && (
-          <FisiMajiView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'fisimaji' && (
+              <FisiMajiView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'videos' && (
-          <VideosView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'videos' && (
+              <VideosView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'calculator' && (
-          <CalculatorView />
-        )}
+            {activeView === 'calculator' && (
+              <CalculatorView />
+            )}
 
-        {activeView === 'kamusi' && (
-          <KamusiView />
-        )}
+            {activeView === 'kamusi' && (
+              <KamusiView />
+            )}
 
-        {activeView === 'mikoa' && (
-          <MikoaView />
-        )}
+            {activeView === 'mikoa' && (
+              <MikoaView />
+            )}
 
-        {activeView === 'ajira' && (
-          <AjiraView />
-        )}
+            {activeView === 'ajira' && (
+              <AjiraView />
+            )}
 
-        {activeView === 'matangazo' && (
-          <MatangazoView />
-        )}
+            {activeView === 'matangazo' && (
+              <MatangazoView />
+            )}
 
-        {activeView === 'workspace' && (
-          <WorkspaceView />
-        )}
+            {activeView === 'workspace' && (
+              <WorkspaceView theme={theme} onChangeTheme={setTheme} />
+            )}
 
-        {activeView === 'upload' && (
-          <UploadView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'upload' && (
+              <UploadView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'reader' && activeDocumentId && (
-          <ReaderView 
-            documentId={activeDocumentId} 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-          />
-        )}
+            {activeView === 'reader' && activeDocumentId && (
+              <ReaderView 
+                documentId={activeDocumentId} 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
 
-        {activeView === 'premium' && (
-          <PremiumView 
-            onNavigate={navigateTo} 
-            userProfile={userProfile} 
-            onProfileUpdate={() => refreshProfile(user?.uid || '')}
-          />
+            {activeView === 'premium' && (
+              <PremiumView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+                onProfileUpdate={() => refreshProfile(user?.uid || '')}
+              />
+            )}
+
+            {activeView === 'resources' && (
+              <ResourcesView 
+                language={language}
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'forum' && (
+              <ForumView 
+                language={language}
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'live' && (
+              <LiveClassesView 
+                language={language}
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'certificates' && (
+              <CertificatesView 
+                language={language}
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'leaderboard' && (
+              <LeaderboardView 
+                language={language}
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'admin' && (
+              <AdminView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
+          </>
         )}
 
       </main>

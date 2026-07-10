@@ -20,7 +20,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin"
+      );
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin");
     }
 
     function isValidId(id) {
@@ -120,6 +127,29 @@ service cloud.firestore {
     match /feedback/{feedbackId} {
       allow create: if isSignedIn();
       allow read, write: if isAdmin();
+    }
+
+    // Certificates collection
+    match /certificates/{certId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Exam Results collection
+    match /exam_results/{resId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Audit Logs collection
+    match /audit_logs/{logId} {
+      allow create: if isSignedIn() && isAdmin();
+      allow read, list: if isSuperAdmin();
+    }
+
+    // System Configurations collection
+    match /system_configs/{configId} {
+      allow read, write: if isSuperAdmin();
     }
   }
 }

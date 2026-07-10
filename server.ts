@@ -77,6 +77,195 @@ app.get('/api/workspace/forms', async (req, res) => {
   }
 });
 
+app.get('/api/workspace/assignments', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const classroom = google.classroom({ version: 'v1', auth });
+    
+    // 1. Get courses first
+    const coursesRes = await classroom.courses.list({ courseStates: ['ACTIVE'] });
+    const courses = coursesRes.data.courses || [];
+    
+    if (courses.length === 0) return res.json({ assignments: [] });
+
+    // 2. Fetch coursework for each course in parallel
+    const assignmentsPromises = courses.map(async (course) => {
+      try {
+        const cwRes = await classroom.courses.courseWork.list({ 
+          courseId: course.id!,
+          pageSize: 5 // Limit to 5 per course to avoid huge responses
+        });
+        const coursework = cwRes.data.courseWork || [];
+        return coursework.map(cw => ({
+          ...cw,
+          courseName: course.name
+        }));
+      } catch (e) {
+        console.warn(`Could not fetch assignments for course ${course.id}:`, e);
+        return [];
+      }
+    });
+
+    const allAssignmentsResults = await Promise.all(assignmentsPromises);
+    const allAssignments = allAssignmentsResults.flat();
+    
+    res.json({ assignments: allAssignments });
+  } catch (error: any) {
+    console.error('Assignments API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── GMAIL ENDPOINTS ──
+
+app.get('/api/workspace/emails', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const gmail = google.gmail({ version: 'v1', auth });
+    // List last 10 messages from the primary category/inbox
+    const listRes = await gmail.users.messages.list({
+      userId: 'me',
+      maxResults: 10,
+    });
+
+    const messages = listRes.data.messages || [];
+    if (messages.length === 0) {
+      return res.json({ emails: [] });
+    }
+
+    // Fetch details for each email in parallel
+    const emailDetailsPromises = messages.map(async (msg) => {
+      try {
+        const detail = await gmail.users.messages.get({
+          userId: 'me',
+          id: msg.id!
+        });
+
+        const headers = detail.data.payload?.headers || [];
+        const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || '(No Subject)';
+        const from = headers.find(h => h.name?.toLowerCase() === 'from')?.value || 'Unknown';
+        const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || '';
+
+        return {
+          id: msg.id,
+          threadId: msg.threadId,
+          subject,
+          from,
+          date,
+          snippet: detail.data.snippet || '',
+          labelIds: detail.data.labelIds || []
+        };
+      } catch (err) {
+        console.warn(`Error fetching email details for msg ${msg.id}:`, err);
+        return null;
+      }
+    });
+
+    const emailDetails = (await Promise.all(emailDetailsPromises)).filter(Boolean);
+    res.json({ emails: emailDetails });
+  } catch (error: any) {
+    console.error('Gmail API list Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/workspace/emails/send', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  const { to, subject, body } = req.body;
+  if (!to || !subject || !body) {
+    return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
+  }
+
+  try {
+    const gmail = google.gmail({ version: 'v1', auth });
+
+    // Construct MIME message
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+      `To: ${to}`,
+      'Content-Type: text/html; charset=utf-8',
+      'MIME-Version: 1.0',
+      `Subject: ${utf8Subject}`,
+      '',
+      body,
+    ];
+    const message = messageParts.join('\n');
+    const encodedEmail = Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const sendRes = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedEmail
+      }
+    });
+
+    res.json({ success: true, messageId: sendRes.data.id });
+  } catch (error: any) {
+    console.error('Gmail API send Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ── GOOGLE DOCS ENDPOINTS ──
+
+app.get('/api/workspace/docs', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    // List Google Docs only
+    const response = await drive.files.list({
+      q: "mimeType = 'application/vnd.google-apps.document' and trashed = false",
+      pageSize: 12,
+      fields: 'nextPageToken, files(id, name, webViewLink, createdTime, modifiedTime, thumbnailLink)',
+      orderBy: 'modifiedTime desc'
+    });
+    res.json({ docs: response.data.files || [] });
+  } catch (error: any) {
+    console.error('Docs API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/workspace/docs/create', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Missing document name' });
+  }
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    // Create new document file
+    const fileRes = await drive.files.create({
+      requestBody: {
+        name: name,
+        mimeType: 'application/vnd.google-apps.document'
+      },
+      fields: 'id, name, webViewLink'
+    });
+
+    res.json({ success: true, file: fileRes.data });
+  } catch (error: any) {
+    console.error('Docs Create API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Initialize Gemini Client with standard User-Agent header
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,

@@ -204,8 +204,8 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       // URL encode the message for the link
       const encodedMessage = encodeURIComponent(waMessage);
       
-      // WhatsApp business gateway of Lupanulla Foundation (255655459385)
-      const waUrl = `https://wa.me/255655459385?text=${encodedMessage}`;
+      // WhatsApp business gateway of Lupanulla Foundation (255743548225)
+      const waUrl = `https://wa.me/255743548225?text=${encodedMessage}`;
 
       // Clear local cart
       saveCartToStorage([]);
@@ -590,6 +590,22 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
                 Maagizo yote ya vitabu husindikizwa na timu yetu ndani ya saa 24. Baada ya kubofya kitufe kikuu, utapelekwa WhatsApp kukamilisha malipo na kupata tracking code.
               </p>
             </div>
+
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3 animate-fade-in">
+              <h4 className="font-display font-extrabold text-xs uppercase text-slate-900 tracking-wider">Akaunti za Malipo (Payment Details)</h4>
+              <div className="space-y-3.5 text-xs text-slate-700">
+                <div className="border-b border-slate-100 pb-3">
+                  <p className="font-bold text-amber-600">Vodacom VodaLipa:</p>
+                  <p className="font-mono font-extrabold text-sm text-slate-950 mt-0.5">Lipa Namba: 50640388</p>
+                  <p className="text-[10px] text-slate-450 font-semibold mt-0.5 uppercase tracking-tight">Jina: LAWRENT JOSEPH MDEGELA</p>
+                </div>
+                <div>
+                  <p className="font-bold text-amber-600">Airtel Money:</p>
+                  <p className="font-mono font-extrabold text-sm text-slate-950 mt-0.5">Namba: 0684458632</p>
+                  <p className="text-[10px] text-slate-450 font-semibold mt-0.5 uppercase tracking-tight">Jina: YOHANA MARCO BAHATI</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -622,7 +638,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
               Rudi Dukani Kupakua
             </button>
             <a 
-              href="https://wa.me/255655459385" 
+              href="https://wa.me/255743548225" 
               target="_blank" 
               rel="noopener noreferrer"
               className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl flex items-center gap-1 shadow-md shadow-green-600/10"

@@ -14,10 +14,14 @@ import {
   AlertCircle,
   HelpCircle,
   FolderOpen,
-  Crown
+  Crown,
+  CheckCircle2,
+  ShieldCheck,
+  Printer
 } from 'lucide-react';
-import { fetchDocuments } from '../firebase';
-import { DocumentMetadata } from '../types';
+import { fetchDocuments, fetchExamResultByCode } from '../firebase';
+import { DocumentMetadata, ExamResult } from '../types';
+import { GoogleAdSenseUnit } from './MatangazoView';
 
 interface MitihaniViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -43,6 +47,39 @@ export default function MitihaniView({
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('newest'); // 'newest', 'views', 'alphabetical'
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+
+  // --- NEW: Exam Results Check States ---
+  const [candidateCode, setCandidateCode] = useState<string>('');
+  const [checkingResult, setCheckingResult] = useState<boolean>(false);
+  const [checkedResult, setCheckedResult] = useState<ExamResult | null>(null);
+  const [resultLookupError, setResultLookupError] = useState<string | null>(null);
+
+  // Load active publisher configuration
+  const [adsenseActive, setAdsenseActive] = useState<boolean>(() => localStorage.getItem('lup_adsense_active') !== 'false');
+
+  const handleLookupResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCheckedResult(null);
+    setResultLookupError(null);
+    
+    const code = candidateCode.trim().toUpperCase();
+    if (!code) return;
+
+    setCheckingResult(true);
+    try {
+      const match = await fetchExamResultByCode(code);
+      if (match) {
+        setCheckedResult(match);
+      } else {
+        setResultLookupError('Samahani! Hakuna matokeo yaliyopatikana kwa nambari ya mtihani uliyoingiza. Hakikisha namba imesajiliwa na msimamizi.');
+      }
+    } catch (err) {
+      console.error('Error fetching exam result:', err);
+      setResultLookupError('Hitilafu imetokea wakati wa kutafuta matokeo. Tafadhali jaribu tena baadae.');
+    } finally {
+      setCheckingResult(false);
+    }
+  };
 
   // Seed documents array if Firebase Firestore is completely empty
   const localSeedDocs: DocumentMetadata[] = [
@@ -225,6 +262,148 @@ export default function MitihaniView({
             <Plus size={16} /> Pakia Mtihani Mpya
           </button>
         </div>
+      </section>
+
+      {/* ── NEW: Exam Results Verification & Transcript Portal ── */}
+      <section className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShieldCheck size={22} />
+            </div>
+            <div>
+              <h2 className="font-sans font-black text-slate-900 text-base uppercase tracking-tight">Kituo cha Hakiki na Kutazama Matokeo</h2>
+              <p className="text-xs text-slate-400">Hakiki matokeo rasmi ya NECTA Mock, Terminal, na majaribio ya shule</p>
+            </div>
+          </div>
+          <span className="self-start sm:self-auto bg-indigo-50 text-indigo-700 font-extrabold text-[10px] uppercase tracking-wider px-3 py-1 rounded-full border border-indigo-100">
+            Mfumo wa Uhakiki Umewashwa (Active)
+          </span>
+        </div>
+
+        <form onSubmit={handleLookupResult} className="max-w-xl space-y-3">
+          <div className="space-y-1">
+            <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Ingiza Namba ya Mtihani (Candidate Code)</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3.5 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  required
+                  value={candidateCode}
+                  onChange={(e) => setCandidateCode(e.target.value)}
+                  placeholder="Mfano: S0101/0001/2026 au LUP-2026-88"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-slate-800 placeholder-slate-400"
+                />
+              </div>
+              <button 
+                type="submit"
+                disabled={checkingResult}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs px-6 py-3 rounded-2xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap disabled:opacity-75"
+              >
+                {checkingResult ? (
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <span>Tafuta Matokeo</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Error Feedback */}
+        {resultLookupError && (
+          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex gap-3 text-xs text-rose-700">
+            <AlertCircle className="flex-shrink-0 text-rose-500" size={16} />
+            <p className="font-semibold leading-normal">{resultLookupError}</p>
+          </div>
+        )}
+
+        {/* Verified Result Transcript Card */}
+        {checkedResult && (
+          <div className="border border-indigo-200 rounded-3xl bg-slate-50 overflow-hidden shadow-md animate-fade-in max-w-2xl">
+            {/* Transcript Header */}
+            <div className="bg-gradient-to-r from-indigo-900 to-slate-900 p-5 sm:p-6 text-white relative">
+              <div className="absolute top-4 right-4 bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1">
+                <CheckCircle2 size={10} />
+                HAKIKIWA (VERIFIED)
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Ripoti Rasmi ya Maendeleo ya Taaluma</span>
+                <h3 className="font-display font-extrabold text-base sm:text-lg leading-tight">{checkedResult.studentName}</h3>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-slate-300 pt-1">
+                  <span>Candidate No: <strong className="text-white">{checkedResult.candidateCode}</strong></span>
+                  <span>•</span>
+                  <span>Exam: <strong className="text-white">{checkedResult.examType} ({checkedResult.year})</strong></span>
+                  <span>•</span>
+                  <span>Class: <strong className="text-white">{checkedResult.level}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Transcript Details & Scores */}
+            <div className="p-5 sm:p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                <div>
+                  <span className="text-slate-400 block font-extrabold text-[9px] uppercase tracking-wider mb-0.5">Msimamo wa Divisheni</span>
+                  <span className="text-slate-800 font-black text-sm sm:text-base uppercase">{checkedResult.division}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block font-extrabold text-[9px] uppercase tracking-wider mb-0.5">Wastani wa Alama (GPA)</span>
+                  <span className="text-indigo-600 font-mono font-black text-sm sm:text-base">{checkedResult.gpa}</span>
+                </div>
+              </div>
+
+              {/* Subject Table */}
+              <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-150 flex justify-between font-extrabold text-[10px] text-slate-500 uppercase tracking-wider">
+                  <span>Somo (Subject)</span>
+                  <div className="flex gap-8">
+                    <span>Alama</span>
+                    <span>Daraja (Grade)</span>
+                  </div>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {checkedResult.subjects.map((sub, idx) => (
+                    <div key={idx} className="px-4 py-3 flex justify-between items-center hover:bg-slate-50/50">
+                      <span className="font-bold text-slate-700">{sub.subject}</span>
+                      <div className="flex gap-12 font-mono">
+                        <span className="text-slate-500 w-8 text-right">{sub.score}%</span>
+                        <span className="text-indigo-600 font-black w-8 text-right">Grade {sub.grade}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Verification Footer Disclaimer */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 text-[10px] text-slate-400 leading-normal">
+                <p>
+                  * Ripoti hii imetolewa na kuhakikiwa kielektroniki kutoka kwenye Hifadhi ya Takwimu ya Lupanulla Elimu Hub. 
+                  Hakuna saini ya mkono inayohitajika.
+                </p>
+                <button 
+                  onClick={() => window.print()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all self-end"
+                >
+                  <Printer size={12} />
+                  Chapa (Print)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic AdSense Integration Area inside Verification section */}
+        {adsenseActive && (
+          <div className="pt-2">
+            <GoogleAdSenseUnit 
+              slot="mitihani-results-banner" 
+              adFormat="horizontal" 
+              className="shadow-sm border-indigo-200 bg-indigo-50/5" 
+            />
+          </div>
+        )}
       </section>
 
       {/* ── Trending & Popular Past Papers Carousel Slider ── */}

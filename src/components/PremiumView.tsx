@@ -9,7 +9,8 @@ import {
   HelpCircle,
   Smartphone,
   PhoneCall,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { updateUserProfile } from '../firebase';
 
@@ -267,20 +268,57 @@ export default function PremiumView({
 
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-                <p className="pt-0.5">Chagua huduma ya <span className="font-bold text-slate-950">Lipa kwa Simu</span> (Pay to Phone)</p>
+                <p className="pt-0.5">
+                  {payMethod === 'mpesa' ? (
+                    <>Chagua huduma ya <span className="font-bold text-slate-950">Lipa kwa M-Pesa (VodaLipa)</span></>
+                  ) : payMethod === 'airtel' ? (
+                    <>Chagua huduma ya <span className="font-bold text-slate-950">Tuma Pesa</span> (Send Money)</>
+                  ) : (
+                    <>Chagua huduma ya <span className="font-bold text-slate-950">Lipa kwa Simu / Tuma Pesa</span></>
+                  )}
+                </p>
               </div>
 
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                <p className="pt-0.5">
-                  Weka Namba yetu ya malipo (Lipa namba / Merchant ID): <span className="font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded font-mono border border-amber-100">0655459385</span> au namba ya kampuni ya <span className="font-bold text-slate-950 font-mono">555666</span>
-                </p>
+                <div className="pt-0.5 space-y-2">
+                  <p className="font-bold text-slate-950">Maelezo ya Akaunti ya Malipo:</p>
+                  {payMethod === 'mpesa' && (
+                    <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl space-y-1.5 text-xs">
+                      <p className="text-slate-800">Lipa Namba ya Vodacom (VodaLipa):</p>
+                      <p className="font-extrabold text-amber-600 font-mono text-base tracking-wider bg-white px-2 py-1 rounded border border-amber-200/50 w-fit">50640388</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-tight">Thibitisha Jina: <span className="font-extrabold text-slate-800">LAWRENT JOSEPH MDEGELA</span></p>
+                    </div>
+                  )}
+                  {payMethod === 'airtel' && (
+                    <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl space-y-1.5 text-xs">
+                      <p className="text-slate-800">Namba ya Airtel Money:</p>
+                      <p className="font-extrabold text-amber-600 font-mono text-base tracking-wider bg-white px-2 py-1 rounded border border-amber-200/50 w-fit">0684458632</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-tight">Thibitisha Jina: <span className="font-extrabold text-slate-800">YOHANA MARCO BAHATI</span></p>
+                    </div>
+                  )}
+                  {payMethod === 'tigopesa' && (
+                    <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl space-y-3 text-xs">
+                      <p className="text-slate-500 font-semibold">Unaweza kutuma Tigo Pesa kwenda kwa mitandao mingine kama ifuatavyo:</p>
+                      <div className="space-y-1">
+                        <p className="text-slate-800 font-bold">Chaguo la 1: Lipa kwenda VodaLipa Vodacom</p>
+                        <p className="font-extrabold text-slate-900 font-mono">Lipa Namba: 50640388</p>
+                        <p className="text-[10px] text-slate-400">Jina: LAWRENT JOSEPH MDEGELA</p>
+                      </div>
+                      <div className="space-y-1 border-t border-amber-100/60 pt-2">
+                        <p className="text-slate-800 font-bold">Chaguo la 2: Tuma Airtel Money</p>
+                        <p className="font-extrabold text-slate-900 font-mono">Namba: 0684458632</p>
+                        <p className="text-[10px] text-slate-400">Jina: YOHANA MARCO BAHATI</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
                 <p className="pt-0.5">
-                  Weka kiasi kamili cha kifurushi chako: <span className="font-bold text-slate-950">TSh {activePlanDetails.price.toLocaleString()}</span>
+                  Weka kiasi kamili cha kifurushi chako: <span className="font-bold text-slate-950 bg-slate-100 px-1.5 py-0.5 rounded">TSh {activePlanDetails.price.toLocaleString()}</span>
                 </p>
               </div>
 
@@ -346,15 +384,29 @@ export default function PremiumView({
               </button>
             </div>
 
-            <div className="bg-slate-900 text-white border border-slate-800 rounded-3xl p-6 shadow-sm space-y-3 relative overflow-hidden">
+            <div className="bg-slate-900 text-white border border-slate-800 rounded-3xl p-6 shadow-sm space-y-4 relative overflow-hidden">
               <div className="absolute -right-12 -top-12 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
               <h4 className="font-display font-bold text-sm uppercase flex items-center gap-1.5 text-amber-400">
                 <ShieldCheck size={16} />
                 Msaada wa Malipo
               </h4>
               <p className="text-slate-400 text-[11px] leading-relaxed font-semibold">
-                Kama umepata changamoto yoyote wakati wa kufanya malipo au SMS haijafika, tafadhali tupigie simu moja kwa moja: +255 655 459 385. Mhudumu wetu atakusaidia mara moja!
+                Kama umepata changamoto yoyote wakati wa kufanya malipo au SMS haijafika, tafadhali tupigie au wasiliana nasi moja kwa moja kwa msaada wa haraka kupitia:
               </p>
+              <div className="flex flex-col gap-2.5 pt-1">
+                <a href="tel:0684458632" className="flex items-center gap-2 text-xs font-bold text-white hover:text-amber-400 hover:underline">
+                  <PhoneCall size={14} className="text-amber-400" />
+                  Piga Simu (Yohana): 0684458632
+                </a>
+                <a href="tel:0743548225" className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:underline">
+                  <PhoneCall size={14} className="text-amber-400/70" />
+                  Piga Simu (Lawrent/Support): 0743548225
+                </a>
+                <a href="https://wa.me/255684458632?text=Habari,%20nahitaji%20msaada%20wa%20malipo%20ya%20Lupanulla%20Premium" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:underline">
+                  <MessageCircle size={14} className="text-emerald-400 animate-pulse" />
+                  Msaada wa WhatsApp (Yohana) &rarr;
+                </a>
+              </div>
             </div>
           </div>
 

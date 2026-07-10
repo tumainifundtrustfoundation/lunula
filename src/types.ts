@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'author' | 'admin';
+export type UserRole = 'student' | 'author' | 'admin' | 'super_admin';
 export type SubscriptionTier = 'free' | 'premium';
 export type DocumentStatus = 'pending' | 'approved' | 'rejected';
 
@@ -9,6 +9,57 @@ export interface UserProfile {
   role: UserRole;
   subscription: SubscriptionTier;
   createdAt?: number;
+  isSuspended?: boolean;
+  suspendedAt?: number;
+  suspensionReason?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  adminId: string;
+  adminName: string;
+  adminEmail: string;
+  action: string;
+  targetId: string;
+  targetName: string;
+  details?: string;
+  timestamp: number;
+}
+
+export interface SystemConfig {
+  id: string;
+  oauthGoogleClientId?: string;
+  oauthGoogleClientSecret?: string;
+  mfaEnabled?: boolean;
+  mpesaConsumerKey?: string;
+  mpesaConsumerSecret?: string;
+  mpesaPasskey?: string;
+  airtelMoneyClientId?: string;
+  airtelMoneyClientSecret?: string;
+  mixByYasApiKey?: string;
+  stripePublicKey?: string;
+  stripeSecretKey?: string;
+  paypalClientId?: string;
+  paypalSecretKey?: string;
+  geminiApiKey?: string;
+  googleMeetClientId?: string;
+  zoomClientId?: string;
+  zoomClientSecret?: string;
+  supabaseUrl?: string;
+  supabaseServiceKey?: string;
+  cloudflareR2Bucket?: string;
+  cloudflareR2AccessKey?: string;
+  cloudflareR2SecretKey?: string;
+  emailSmtpHost?: string;
+  emailSmtpPort?: number;
+  emailSmtpUser?: string;
+  emailSmtpPass?: string;
+  googleAnalyticsId?: string;
+  googleSearchConsoleId?: string;
+  clarityId?: string;
+  cloudflareWafZoneId?: string;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface Feedback {
@@ -130,6 +181,8 @@ export interface AppNotification {
   link?: string;
 }
 
+export type AppTheme = 'theme-tanzania-forest' | 'theme-night-mode' | 'theme-high-contrast';
+
 export interface WorkspaceCourse {
   id: string;
   name: string;
@@ -152,3 +205,92 @@ export interface WorkspaceForm {
   name: string;
   webViewLink: string;
 }
+
+export interface WorkspaceAssignment {
+  id: string;
+  courseId: string;
+  title: string;
+  description?: string;
+  dueDate?: {
+    year: number;
+    month: number;
+    day: number;
+  };
+  dueTime?: {
+    hours: number;
+    minutes: number;
+  };
+  alternateLink: string;
+  courseName?: string;
+}
+
+export interface WorkspaceEmail {
+  id: string;
+  threadId: string;
+  subject: string;
+  from: string;
+  date: string;
+  snippet: string;
+  labelIds?: string[];
+}
+
+export interface WorkspaceDoc {
+  id: string;
+  name: string;
+  webViewLink: string;
+  createdTime?: string;
+  modifiedTime?: string;
+  thumbnailLink?: string;
+}
+
+export interface Certificate {
+  id: string;
+  studentName: string;
+  courseName: string;
+  subject: string;
+  grade: string;
+  score: number;
+  dateAwarded: string;
+  verificationCode: string;
+  issuedBy: string;
+  studentEmail?: string;
+}
+
+export interface ExamResult {
+  id: string;
+  studentName: string;
+  candidateCode: string; // e.g. S0101/0001/2026
+  examType: string; // Mock, Terminal, NECTA Mock, Monthly
+  level: string; // Form 1, Form 2, Form 3, Form 4, Form 5, Form 6
+  year: number;
+  division: string; // Division I, Division II, Division III, Division IV, Division 0
+  gpa: number; // e.g. 1.25
+  subjects: {
+    subject: string;
+    grade: string;
+    score: number;
+  }[];
+  publishedAt: number;
+  status: 'draft' | 'published';
+}
+
+export interface EducationalResource {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  category: string;
+  isVerified: boolean;
+  clicksCount: number;
+  recommendationsCount: number;
+  recommendedByUsers: string[]; // array of user UIDs who recommended this
+  createdAt: number;
+  createdBy: string;
+  createdByName: string;
+  institution?: string; // e.g. "NECTA", "UDOM", "MIT", etc.
+  region?: 'Tanzania' | 'International' | 'Both';
+  tags?: string[];
+}
+
+
+

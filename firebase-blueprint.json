@@ -19,13 +19,25 @@
         },
         "role": {
           "type": "string",
-          "enum": ["student", "author", "admin"],
+          "enum": ["student", "author", "admin", "super_admin"],
           "description": "The system role of the user."
         },
         "subscription": {
           "type": "string",
           "enum": ["free", "premium"],
           "description": "Subscription tier of the user."
+        },
+        "isSuspended": {
+          "type": "boolean",
+          "description": "Whether the user's account has been suspended."
+        },
+        "suspendedAt": {
+          "type": "integer",
+          "description": "Timestamp when the user was suspended."
+        },
+        "suspensionReason": {
+          "type": "string",
+          "description": "The reason why the user was suspended."
         }
       },
       "required": ["uid", "name", "email", "role", "subscription"]
@@ -86,6 +98,99 @@
         }
       },
       "required": ["id", "title", "description", "category", "tags", "fileId", "driveUrl", "uploadedBy", "uploadedByName", "createdAt", "views", "status"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Student course and exam completion certificates with verification code.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "courseName": { "type": "string" },
+        "subject": { "type": "string" },
+        "grade": { "type": "string" },
+        "score": { "type": "integer" },
+        "dateAwarded": { "type": "string" },
+        "verificationCode": { "type": "string" },
+        "issuedBy": { "type": "string" },
+        "studentEmail": { "type": "string" }
+      },
+      "required": ["studentName", "courseName", "subject", "grade", "score", "dateAwarded", "verificationCode", "issuedBy"]
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Student terminal, mock or monthly exam results with subject grades and division.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "candidateCode": { "type": "string" },
+        "examType": { "type": "string" },
+        "level": { "type": "string" },
+        "year": { "type": "integer" },
+        "division": { "type": "string" },
+        "gpa": { "type": "number" },
+        "subjects": { "type": "array" },
+        "publishedAt": { "type": "integer" },
+        "status": { "type": "string", "enum": ["draft", "published"] }
+      },
+      "required": ["studentName", "candidateCode", "examType", "level", "year", "division", "gpa", "subjects", "publishedAt", "status"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Log of actions performed by administrators for security and tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adminId": { "type": "string" },
+        "adminName": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["id", "adminId", "adminName", "adminEmail", "action", "targetId", "targetName", "timestamp"]
+    },
+    "SystemConfig": {
+      "title": "System Configuration",
+      "description": "Sensitive credentials and toggle configurations for platform integrations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "oauthGoogleClientId": { "type": "string" },
+        "oauthGoogleClientSecret": { "type": "string" },
+        "mfaEnabled": { "type": "boolean" },
+        "mpesaConsumerKey": { "type": "string" },
+        "mpesaConsumerSecret": { "type": "string" },
+        "mpesaPasskey": { "type": "string" },
+        "airtelMoneyClientId": { "type": "string" },
+        "airtelMoneyClientSecret": { "type": "string" },
+        "mixByYasApiKey": { "type": "string" },
+        "stripePublicKey": { "type": "string" },
+        "stripeSecretKey": { "type": "string" },
+        "paypalClientId": { "type": "string" },
+        "paypalSecretKey": { "type": "string" },
+        "geminiApiKey": { "type": "string" },
+        "googleMeetClientId": { "type": "string" },
+        "zoomClientId": { "type": "string" },
+        "zoomClientSecret": { "type": "string" },
+        "supabaseUrl": { "type": "string" },
+        "supabaseServiceKey": { "type": "string" },
+        "cloudflareR2Bucket": { "type": "string" },
+        "cloudflareR2AccessKey": { "type": "string" },
+        "cloudflareR2SecretKey": { "type": "string" },
+        "emailSmtpHost": { "type": "string" },
+        "emailSmtpPort": { "type": "integer" },
+        "emailSmtpUser": { "type": "string" },
+        "emailSmtpPass": { "type": "string" },
+        "googleAnalyticsId": { "type": "string" },
+        "googleSearchConsoleId": { "type": "string" },
+        "clarityId": { "type": "string" },
+        "cloudflareWafZoneId": { "type": "string" },
+        "updatedAt": { "type": "integer" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["id"]
     }
   },
   "firestore": {
@@ -120,6 +225,30 @@
     "/feedback/{feedbackId}": {
       "schema": "object",
       "description": "Student feedback and reports."
+    },
+    "/certificates/{certId}": {
+      "schema": {
+        "$ref": "#/entities/Certificate"
+      },
+      "description": "Issued academic certificates."
+    },
+    "/exam_results/{resId}": {
+      "schema": {
+        "$ref": "#/entities/ExamResult"
+      },
+      "description": "Student national, mock or monthly exam results transcripts."
+    },
+    "/audit_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/AuditLog"
+      },
+      "description": "Administrative audit logs tracking crucial security and moderation actions."
+    },
+    "/system_configs/{configId}": {
+      "schema": {
+        "$ref": "#/entities/SystemConfig"
+      },
+      "description": "Sensitive credentials and third-party configuration keys."
     }
   }
 }

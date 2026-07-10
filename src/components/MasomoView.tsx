@@ -17,6 +17,7 @@ import {
   ExternalLink,
   ShieldAlert
 } from 'lucide-react';
+import AdSenseWidget from './AdSenseWidget';
 
 interface MasomoViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -281,6 +282,9 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
         </div>
       </section>
 
+      {/* ── Google AdSense Responsive Ad Unit (Masomo-top) ── */}
+      <AdSenseWidget slotId="3000300303" className="my-2" />
+
       {/* Accordion List + Document Preview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -344,6 +348,9 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               );
             })}
           </div>
+
+          {/* ── Google AdSense Responsive Ad Unit (Masomo-sidebar) ── */}
+          <AdSenseWidget slotId="4000400404" className="mt-4" />
         </div>
 
         {/* Right Side: Topic Reader Workspace */}

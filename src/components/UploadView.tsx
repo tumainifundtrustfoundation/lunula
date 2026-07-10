@@ -13,8 +13,9 @@ import {
   ShieldAlert,
   Loader
 } from 'lucide-react';
-import { saveDocumentMetadata } from '../firebase';
+import { saveDocumentMetadata, getAccessToken } from '../firebase';
 import { DocumentMetadata } from '../types';
+import { openGooglePicker, PickedFile } from '../utils/googlePicker';
 
 interface UploadViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -24,6 +25,7 @@ interface UploadViewProps {
 export default function UploadView({ onNavigate, userProfile }: UploadViewProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pickedFromDrive, setPickedFromDrive] = useState<PickedFile | null>(null);
   
   // Fields Form
   const [title, setTitle] = useState('');
@@ -40,6 +42,36 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
   const [uploadedDocId, setUploadedDocId] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePickFromDrive = async () => {
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        alert('Tafadhali unganisha akaunti yako ya Google kwanza kwenye ukurasa wa "Maktaba ya Google" ili kutumia Google Picker!');
+        return;
+      }
+
+      await openGooglePicker({
+        mimeType: 'application/pdf',
+        onSelected: (selected) => {
+          if (selected.length > 0) {
+            const file = selected[0];
+            setPickedFromDrive(file);
+            setSelectedFile(null); // Clear local file if chosen from Drive
+            
+            // Set default title from the file name (removing .pdf extension if present)
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
+            setTitle(cleanTitle);
+          }
+        },
+        onCancel: () => {
+          console.log('Picker cancelled');
+        }
+      });
+    } catch (err: any) {
+      alert(err.message || 'Mchakato wa kuanzisha Google Picker umeshindikana.');
+    }
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -81,8 +113,8 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      setError('Tafadhali chagua faili la PDF la kupakia kwanza.');
+    if (!selectedFile && !pickedFromDrive) {
+      setError('Tafadhali chagua faili la PDF la kupakia au chagua kutoka Google Drive kwanza.');
       return;
     }
 
@@ -90,13 +122,19 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setUploading(true);
       setError(null);
 
-      // Simulate document upload process to Google Drive storage with proper callback
-      // and automatic Firestore indexing
-      const sizeKB = Math.round(selectedFile.size / 1024);
+      let fileId = '';
+      let driveUrl = '';
+      let sizeKB = 0;
 
-      // To satisfy Google Drive API integration, we can mock the drive ID but store a real pdf viewer fallback 
-      const mockDriveId = 'drive-file-' + Math.random().toString(36).substring(2, 11);
-      const generatedDriveUrl = 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true';
+      if (pickedFromDrive) {
+        fileId = pickedFromDrive.id;
+        driveUrl = pickedFromDrive.url;
+        sizeKB = pickedFromDrive.sizeBytes ? Math.round(pickedFromDrive.sizeBytes / 1024) : 120;
+      } else if (selectedFile) {
+        sizeKB = Math.round(selectedFile.size / 1024);
+        fileId = 'drive-file-' + Math.random().toString(36).substring(2, 11);
+        driveUrl = 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true';
+      }
 
       const tagsArray = tagsInput
         .split(',')
@@ -113,8 +151,8 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         description,
         category,
         tags: tagsArray,
-        fileId: mockDriveId,
-        driveUrl: generatedDriveUrl,
+        fileId,
+        driveUrl,
         uploadedBy: userProfile?.uid || 'guest',
         uploadedByName: userProfile?.name || 'Mwandishi Mgeni',
         createdAt: Date.now(),
@@ -129,6 +167,7 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setUploadedDocId(docId);
       setSuccess(true);
       setSelectedFile(null);
+      setPickedFromDrive(null);
       setTitle('');
       setDescription('');
       setTagsInput('');
@@ -294,42 +333,64 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
                 onChange={handleFileSelect}
               />
 
-              <div 
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-10 ${
-                  dragActive 
-                    ? 'border-cyan-500 bg-cyan-500/5' 
-                    : selectedFile 
-                    ? 'border-green-500 bg-green-500/5' 
-                    : 'border-slate-250 hover:border-cyan-400 hover:bg-slate-50'
-                }`}
-                onClick={handleButtonClick}
-              >
-                {selectedFile ? (
-                  <>
-                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
-                      <FileText size={24} />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{selectedFile.name}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB &bull; PDF</p>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveFile();
-                      }}
-                      className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
-                    >
-                      <Trash size={12} /> Ondoa Faili
-                    </button>
-                  </>
-                ) : (
-                  <>
+              {pickedFromDrive ? (
+                <div className="border-2 border-cyan-200 bg-cyan-50/20 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10 relative">
+                  <div className="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center shadow-inner">
+                    <FileText size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[9px] font-extrabold uppercase tracking-wider">
+                      Google Drive (Picked)
+                    </span>
+                    <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{pickedFromDrive.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">PDF Faili la Google Drive</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setPickedFromDrive(null);
+                    }}
+                    className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
+                  >
+                    <Trash size={12} /> Ondoa Faili
+                  </button>
+                </div>
+              ) : selectedFile ? (
+                <div 
+                  className="border-2 border-green-500 bg-green-500/5 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10"
+                >
+                  <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
+                    <FileText size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{selectedFile.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB &bull; PDF</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFile();
+                    }}
+                    className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
+                  >
+                    <Trash size={12} /> Ondoa Faili
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div 
+                    onDragEnter={handleDrag}
+                    onDragOver={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-10 ${
+                      dragActive 
+                        ? 'border-cyan-500 bg-cyan-500/5' 
+                        : 'border-slate-250 hover:border-cyan-400 hover:bg-slate-50'
+                    }`}
+                    onClick={handleButtonClick}
+                  >
                     <div className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-400 rounded-full flex items-center justify-center">
                       <Upload size={24} />
                     </div>
@@ -337,13 +398,28 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
                       <p className="font-bold text-slate-900 text-xs">Vuta faili hapa</p>
                       <p className="text-[10px] text-slate-400 font-semibold mt-0.5">au bofya kuchagua kwenye kifaa chako</p>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="h-px bg-slate-200 flex-1" />
+                    <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">au tumia Drive</span>
+                    <span className="h-px bg-slate-200 flex-1" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePickFromDrive}
+                    className="w-full py-3 border border-cyan-150 bg-cyan-50/40 hover:bg-cyan-55 text-cyan-700 font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] uppercase tracking-wider shadow-sm"
+                  >
+                    <FolderOpen size={14} />
+                    <span>Chagua Kutoka Google Drive</span>
+                  </button>
+                </div>
+              )}
 
               <button 
                 type="submit"
-                disabled={uploading || !selectedFile}
+                disabled={uploading || (!selectedFile && !pickedFromDrive)}
                 className="w-full py-3 text-xs text-center font-extrabold bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-150 disabled:text-slate-400 text-slate-950 rounded-xl transition-all shadow-md shadow-cyan-500/10 uppercase flex items-center justify-center gap-1.5"
               >
                 {uploading ? (

@@ -26,7 +26,7 @@ import {
   orderBy,
   onSnapshot
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -75,8 +75,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 // Configure Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
-// Request drive scope to view and upload files
+// Request drive scope to view and upload files, gmail, documents, and classroom data
 googleProvider.addScope('https://www.googleapis.com/auth/drive');
+googleProvider.addScope('https://mail.google.com/');
+googleProvider.addScope('https://www.googleapis.com/auth/documents');
+googleProvider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
 
 // In-memory token cache
 let cachedAccessToken: string | null = null;
@@ -673,4 +678,274 @@ export const markAllNotificationsAsRead = async (userId: string, notifications: 
     console.warn('markAllNotificationsAsRead error:', err.message || err);
   }
 };
+
+// --- Certificates and Exam Results Core Database Helpers ---
+
+export const addCertificate = async (cert: Omit<Certificate, 'id'>): Promise<string> => {
+  const path = 'certificates';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, cert);
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const fetchCertificates = async (): Promise<Certificate[]> => {
+  const path = 'certificates';
+  try {
+    const colRef = collection(db, path);
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Certificate));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const fetchCertificateByCode = async (code: string): Promise<Certificate | null> => {
+  const path = 'certificates';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('verificationCode', '==', code.trim().toUpperCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() } as Certificate;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+};
+
+export const deleteCertificate = async (id: string): Promise<void> => {
+  const path = `certificates/${id}`;
+  try {
+    const docRef = doc(db, 'certificates', id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const addExamResult = async (result: Omit<ExamResult, 'id'>): Promise<string> => {
+  const path = 'exam_results';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, result);
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const fetchExamResults = async (): Promise<ExamResult[]> => {
+  const path = 'exam_results';
+  try {
+    const colRef = collection(db, path);
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamResult));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const fetchExamResultByCode = async (candidateCode: string): Promise<ExamResult | null> => {
+  const path = 'exam_results';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('candidateCode', '==', candidateCode.trim().toUpperCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() } as ExamResult;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+};
+
+export const deleteExamResult = async (id: string): Promise<void> => {
+  const path = `exam_results/${id}`;
+  try {
+    const docRef = doc(db, 'exam_results', id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const createAuditLog = async (log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<string> => {
+  const path = 'audit_logs';
+  try {
+    const colRef = collection(db, path);
+    const docRef = doc(colRef);
+    const fullLog: AuditLog = {
+      ...log,
+      id: docRef.id,
+      timestamp: Date.now()
+    };
+    await setDoc(docRef, fullLog);
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const fetchAuditLogs = async (): Promise<AuditLog[]> => {
+  const path = 'audit_logs';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, orderBy('timestamp', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data() as AuditLog);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const fetchSystemConfig = async (): Promise<SystemConfig | null> => {
+  const path = 'system_configs/integrations';
+  try {
+    const docRef = doc(db, 'system_configs', 'integrations');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    return snap.data() as SystemConfig;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+};
+
+export const updateSystemConfig = async (config: Partial<SystemConfig>): Promise<void> => {
+  const path = 'system_configs/integrations';
+  try {
+    const docRef = doc(db, 'system_configs', 'integrations');
+    await setDoc(docRef, { ...config, id: 'integrations' }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+};
+
+export const fetchEducationalResources = async (): Promise<EducationalResource[]> => {
+  const path = 'educational_resources';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title || '',
+        description: data.description || '',
+        url: data.url || '',
+        category: data.category || '',
+        isVerified: data.isVerified ?? false,
+        clicksCount: data.clicksCount || 0,
+        recommendationsCount: data.recommendationsCount || 0,
+        recommendedByUsers: data.recommendedByUsers || [],
+        createdAt: data.createdAt || Date.now(),
+        createdBy: data.createdBy || '',
+        createdByName: data.createdByName || '',
+        institution: data.institution || '',
+        region: data.region || 'Both',
+        tags: data.tags || []
+      } as EducationalResource;
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const addEducationalResource = async (resource: Omit<EducationalResource, 'id' | 'clicksCount' | 'recommendationsCount' | 'recommendedByUsers' | 'createdAt'>): Promise<string> => {
+  const path = 'educational_resources';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, {
+      ...resource,
+      clicksCount: 0,
+      recommendationsCount: 0,
+      recommendedByUsers: [],
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const updateEducationalResource = async (id: string, resource: Partial<EducationalResource>): Promise<void> => {
+  const path = `educational_resources/${id}`;
+  try {
+    const docRef = doc(db, 'educational_resources', id);
+    await updateDoc(docRef, resource);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+    throw error;
+  }
+};
+
+export const deleteEducationalResource = async (id: string): Promise<void> => {
+  const path = `educational_resources/${id}`;
+  try {
+    const docRef = doc(db, 'educational_resources', id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
+  }
+};
+
+export const trackResourceClick = async (id: string): Promise<void> => {
+  const path = `educational_resources/${id}/click`;
+  try {
+    const docRef = doc(db, 'educational_resources', id);
+    await updateDoc(docRef, {
+      clicksCount: increment(1)
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const toggleRecommendResource = async (id: string, userId: string): Promise<void> => {
+  const path = `educational_resources/${id}/recommend`;
+  try {
+    const docRef = doc(db, 'educational_resources', id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const recommendedByUsers: string[] = data.recommendedByUsers || [];
+    let updatedUsers = [...recommendedByUsers];
+    let recCount = data.recommendationsCount || 0;
+
+    if (updatedUsers.includes(userId)) {
+      updatedUsers = updatedUsers.filter(uid => uid !== userId);
+      recCount = Math.max(0, recCount - 1);
+    } else {
+      updatedUsers.push(userId);
+      recCount += 1;
+    }
+
+    await updateDoc(docRef, {
+      recommendedByUsers: updatedUsers,
+      recommendationsCount: recCount
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+    throw error;
+  }
+};
+
+
 

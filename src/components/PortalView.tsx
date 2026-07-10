@@ -20,10 +20,14 @@ import {
   FileText,
   User,
   Activity,
-  Bot
+  Bot,
+  MessageCircle,
+  Phone
 } from 'lucide-react';
 import { fetchAnnouncements, fetchVideos } from '../firebase';
 import { Announcement, Video } from '../types';
+import QuoteWidget from './QuoteWidget';
+import AdSenseWidget from './AdSenseWidget';
 
 interface PortalViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -90,6 +94,12 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
           </div>
         </div>
       </div>
+
+      {/* ── Motivational Quote of the Day ── */}
+      <QuoteWidget />
+
+      {/* ── Google AdSense Responsive Ad Unit (Hero-top) ── */}
+      <AdSenseWidget slotId="1000100101" className="my-4" />
 
       {/* ── Main Hero Section + Rankings Sidebar ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -517,9 +527,15 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
           <p className="text-slate-500 text-sm leading-relaxed">
             Una maswali kuhusu Lupanulla Elimu Hub? Soma majibu hapa, au wasiliana na timu yetu kwa msaada zaidi.
           </p>
-          <div className="pt-2">
-            <a href="mailto:lupanulla.co.tz@gmail.com" className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-full transition-all">
-              Tuma Barua Pepe &rarr;
+          <div className="pt-2 flex flex-col sm:flex-row gap-2 flex-wrap">
+            <a href="mailto:lupanulla.co.tz@gmail.com" className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+              <Mail size={14} /> Barua Pepe
+            </a>
+            <a href="tel:0743548225" className="inline-flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+              <Phone size={14} /> Pigia Simu
+            </a>
+            <a href="https://wa.me/255743548225" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+              <MessageCircle size={14} /> WhatsApp Chat
             </a>
           </div>
         </div>
@@ -571,6 +587,9 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
           </div>
         </div>
       </section>
+
+      {/* ── Google AdSense Responsive Ad Unit (Portal-bottom) ── */}
+      <AdSenseWidget slotId="2000200202" className="my-6" />
 
       {/* ── Beautiful Newsletter Section ── */}
       <section className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 rounded-3xl p-6 sm:p-10 text-white shadow-xl flex flex-col lg:flex-row items-center gap-8 justify-between relative overflow-hidden">
