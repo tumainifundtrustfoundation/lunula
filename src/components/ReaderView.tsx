@@ -10,10 +10,19 @@ import {
   AlertCircle,
   HelpCircle,
   Lock,
-  Compass
+  Compass,
+  Brain,
+  Sparkles,
+  Highlighter,
+  Trash2,
+  Plus,
+  Check,
+  ChevronRight
 } from 'lucide-react';
-import { fetchDocuments } from '../firebase';
-import { DocumentMetadata } from '../types';
+import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight } from '../firebase';
+import { DocumentMetadata, HighlightAnnotation } from '../types';
+import FlashcardsModal from './FlashcardsModal';
+import { jsPDF } from 'jspdf';
 
 interface ReaderViewProps {
   documentId: string;
@@ -26,6 +35,208 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
+
+  // States for text selection and highlight annotations
+  const [readerMode, setReaderMode] = useState<'pdf' | 'notes'>('pdf');
+  const [highlights, setHighlights] = useState<HighlightAnnotation[]>([]);
+  const [selectedText, setSelectedText] = useState('');
+  const [highlightColor, setHighlightColor] = useState('bg-yellow-100 text-yellow-900 border-yellow-300');
+  const [highlightNote, setHighlightNote] = useState('');
+  const [savingHighlight, setSavingHighlight] = useState(false);
+  const [smartNotes, setSmartNotes] = useState('');
+  const [loadingSmartNotes, setLoadingSmartNotes] = useState(false);
+
+  const loadHighlights = async () => {
+    if (!userProfile?.uid) return;
+    try {
+      const fetched = await fetchHighlights(userProfile.uid, documentId);
+      setHighlights(fetched);
+    } catch (e) {
+      console.error('Error loading highlights:', e);
+    }
+  };
+
+  const handleSaveHighlight = async () => {
+    if (!selectedText.trim()) {
+      alert('Tafadhali chagua maandishi kwenye upande wa "Smart Notes" kwanza!');
+      return;
+    }
+    if (!userProfile?.uid) {
+      alert('🔒 TAFADHALI INGIA KWENYE AKAUNTI:\nKuhifadhi highlights na maelezo (annotations) ni huduma inayohitaji uwe umeingia kwenye akaunti yako ya Lupanulla.');
+      return;
+    }
+
+    try {
+      setSavingHighlight(true);
+      await saveHighlight({
+        userId: userProfile.uid,
+        documentId: documentId,
+        documentTitle: doc?.title || 'Nyaraka',
+        text: selectedText.trim(),
+        note: highlightNote.trim() || undefined,
+        color: highlightColor,
+      });
+
+      setSelectedText('');
+      setHighlightNote('');
+      await loadHighlights();
+    } catch (e) {
+      console.error('Error saving highlight:', e);
+    } finally {
+      setSavingHighlight(false);
+    }
+  };
+
+  const handleDeleteHighlight = async (id: string) => {
+    try {
+      if (confirm('Je, una uhakika unataka kufuta highlight hii?')) {
+        await deleteHighlight(id);
+        await loadHighlights();
+      }
+    } catch (e) {
+      console.error('Error deleting highlight:', e);
+    }
+  };
+
+  const fetchSmartNotesContent = async () => {
+    if (smartNotes) return;
+
+    const preAuthored: Record<string, string> = {
+      'necta-phy-f4-2023': `SURA YA KWANZA: MECHANICS AND FORCE IN EQUILIBRIUM\n\nMechanics ni tawi la fizikia linalohusika na mwendo wa vitu na nguvu zinazasababisha mwendo huo. Kanuni muhimu ya Archimedes (Archimedes' Principle) inasema kwamba: "Wakati kitu kinapozamishwa kabisa au nusu katika maji, kinakabiliwa na nguvu ya juu (upthrust) inayolingana na uzito wa maji yaliyohamishwa na kitu hicho."\n\nMfumo wa Upthrust unakokotolewa kama:\nUpthrust = V * ρ * g (ambapo V ni ujazo, ρ ni density ya maji, na g ni acceleration ya gravity).\n\nSURA YA PILI: NEWTON'S LAWS OF MOTION\n\n- Sheria ya Kwanza ya Newton (Inertia): Kila kitu kitaendelea kuwa katika hali yake ya utulivu au mwendo wa kasi mfululizo katika mtaro ulionyooka isipokuwa kilazimishwe kubadilisha hali hiyo na nguvu ya nje.\n- Sheria ya Pili ya Newton: Kiwango cha mabadiliko ya momentum ya kitu kinalingana moja kwa moja na nguvu inayotumika na hutokea katika mwelekeo wa nguvu hiyo (F = m * a).\n- Sheria ya Tatu ya Newton: Kwa kila nguvu ya utendaji (action), kuna nguvu sawa na ya kinyume ya upinzani (reaction).\n\nSURA YA TATU: HEAT AND THERMODYNAMICS\n\nKiwango cha joto kinachohitajika kubadilisha hali ya dutu bila kubadilisha joto lake kinaitwa Latent Heat.\nMfumo wa joto la jumla: Q = m * c * ΔT (ambapo c ni specific heat capacity).\n\nSURA YA NNE: ELECTRICITY AND ELECTROMAGNETISM\n\nSheria ya Ohm (Ohm's Law) inasema kwamba sasa ya umeme (I) inayopita kwenye kondakta inalingana moja kwa moja na voltage (V) katika ncha zake, mradi joto na hali nyingine za kimaumbile zibaki thabiti.\nV = I * R (ambapo R ni upinzani/resistance).`,
+      
+      'necta-math-f4-2022': `SURA YA KWANZA: SETS AND VENN DIAGRAMS\n\nSeti ni mkusanyiko wa vitu vilivyoelezewa vizuri. Venn Diagram hutumiwa kuonyesha uhusiano kati ya seti tofauti.\nKumbuka: n(A ∪ B) = n(A) + n(B) - n(A ∩ B).\nAlama ya kofia (∩) inamaanisha intersection (vitu vya pamoja), na alama ya kikombe (∪) inamaanisha union (vitu vyote vilivyomo).\n\nSURA YA PILI: QUADRATIC EQUATIONS\n\nMlinganyo wa quadratic uko katika muundo wa ax² + bx + c = 0.\nTunaweza kutatua mlinganyo huu kwa kutumia njia ya Quadratic Formula:\nx = [-b ± √(b² - 4ac)] / (2a)\nSehemu ya chini ya kipeo cha pili (b² - 4ac) inaitwa Discriminant (D). Kama D > 0, mlinganyo una majibu mawili tofauti ya kweli. Kama D = 0, kuna jibu moja linalojirudia.\n\nSURA YA TATU: TRIGONOMETRY\n\nKatika pembetatu ya pembe mraba (Right-angled triangle):\n- Sin(θ) = Opposite / Hypotenuse (Mkabala / Kiegema)\n- Cos(θ) = Adjacent / Hypotenuse (Mshazari / Kiegema)\n- Tan(θ) = Opposite / Adjacent (Mkabala / Mshazari)\nKumbuka kanuni maarufu ya Pythagoras: a² + b² = c².`,
+      
+      'mock-hist-f4-2024': `SURA YA KWANZA: COLONIAL ECONOMY IN EAST AFRICA\n\nUchumi wa kikoloni ulijengwa ili kunufaisha mataifa ya Ulaya (Metropolitan countries). Njia kuu zilizotumiwa ni pamoja na kuanzishwa kwa kilimo cha mashamba makubwa (plantation agriculture), kuanzishwa kwa kodi ya kichwa (head tax) ili kulazimisha Waafrika kufanya kazi, na ujenzi wa miundombinu kama reli ya kati (Central Line) kusafirisha malighafi.\n\nSURA YA PILI: BERLIN CONFERENCE (1884 - 1885)\n\nMkutano wa Berlin uliitishwa na Chancellor wa Ujerumani, Otto von Bismarck. Lengo kuu lilikuwa kugawana bara la Afrika kwa amani kati ya mataifa ya Ulaya bila vita. Sheria ya "Effective Occupation" ilipitishwa, inayotaka taifa lolote linalodai eneo fulani kuanzisha utawala thabiti wa kijeshi na kiutawala.\n\nSURA YA TATU: MAJIMAJI REBELLION (1905 - 1907)\n\nHuu ulikuwa uasi mkubwa dhidi ya utawala wa Kijerumani huko Tanganyika Kusini. Uliongozwa na Kinjekitile Ngwale, ambaye alitumia maji yaliyochanganywa na mtama kama silaha ya kiroho kuwaaminisha wapiganaji kuwa risasi za Wajerumani zingebadilika kuwa maji. Sababu kuu ya uasi ilikuwa kulazimishwa kulima pamba na kuteswa kwa wananchi na akida.`
+    };
+
+    if (preAuthored[documentId]) {
+      setSmartNotes(preAuthored[documentId]);
+      return;
+    }
+
+    try {
+      setLoadingSmartNotes(true);
+      const response = await fetch('/api/claude.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          system: "Wewe ni Lupanulla AI. Tengeneza muhtasari fupi na mzuri wa somo (Interactive Study Guide) kwa Kiswahili kwa ajili ya mada hii ya kitaaluma nchini Tanzania ili mwanafunzi aweze kuisoma, kuielewa na kuchagua maandishi ya kuweka highlights na maelezo yake mwenwenye.",
+          messages: [
+            {
+              role: 'user',
+              content: `Tengeneza muhtasari na notisi kamili za kujisomea zenye vichwa vya habari na maelezo ya kina kwa ajili ya: "${doc?.title}". Maelezo ya kitabu/karatasi: "${doc?.description}". Somo: "${doc?.category}". Lebo: ${doc?.tags.join(', ')}.`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error('API Request Failed');
+      const data = await response.json();
+      if (data.reply) {
+        setSmartNotes(data.reply);
+      } else {
+        throw new Error('No reply returned');
+      }
+    } catch (err) {
+      console.error('Error generating smart notes:', err);
+      setSmartNotes(`SURA YA REVISION: ${doc?.title || 'Muhtasari wa Somo'}\n\n1. UTANGULIZI\nMada hii inahusu ${doc?.category || 'Somo la Shule'}. Hapa mwanafunzi anapaswa kuelewa misingi ya ${doc?.tags.join(', ') || 'somo hili'}.\n\n2. MALENGO YA KUJIFUNZA\n- Kuelewa dhana kuu na mada muhimu za mitihani ya NECTA.\n- Kujenga uwezo vya kujibu maswali kwa ufasaha na kujiamini.\n- Kufanya mazoezi mfululizo kwa kutumia miongozo hii na kadi mahiri za Flashcards.\n\n[TAARIFA]: Chagua mstari wowote katika maelezo haya ili kuweka highlight yako na maelezo fupi ya kujikumbusha.`);
+    } finally {
+      setLoadingSmartNotes(false);
+    }
+  };
+
+  const handleToggleReaderMode = (mode: 'pdf' | 'notes') => {
+    setReaderMode(mode);
+    if (mode === 'notes') {
+      fetchSmartNotesContent();
+    }
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (selection) {
+      const text = selection.toString().trim();
+      if (text.length > 0) {
+        setSelectedText(text);
+      }
+    }
+  };
+
+  const renderParagraphWithHighlights = (paraText: string, idx: number) => {
+    if (highlights.length === 0) {
+      if (paraText.startsWith('SURA') || paraText.startsWith('Sura') || paraText.startsWith('Chapter') || paraText.match(/^\d+\./)) {
+        return <h3 key={idx} className="font-display font-extrabold text-slate-900 text-base sm:text-lg pt-4 border-b pb-1 border-slate-100 uppercase tracking-tight">{paraText}</h3>;
+      }
+      return <p key={idx} className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-line text-slate-600">{paraText}</p>;
+    }
+
+    let matches = highlights.filter(h => paraText.toLowerCase().includes(h.text.toLowerCase()));
+    if (matches.length === 0) {
+      if (paraText.startsWith('SURA') || paraText.startsWith('Sura') || paraText.startsWith('Chapter') || paraText.match(/^\d+\./)) {
+        return <h3 key={idx} className="font-display font-extrabold text-slate-900 text-base sm:text-lg pt-4 border-b pb-1 border-slate-100 uppercase tracking-tight">{paraText}</h3>;
+      }
+      return <p key={idx} className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-line text-slate-600">{paraText}</p>;
+    }
+
+    let parts: { text: string; isHighlight: boolean; color?: string; note?: string }[] = [{ text: paraText, isHighlight: false }];
+
+    for (const h of matches) {
+      const newParts: typeof parts = [];
+      for (const part of parts) {
+        if (part.isHighlight) {
+          newParts.push(part);
+          continue;
+        }
+
+        const lowerText = part.text.toLowerCase();
+        const lowerSearch = h.text.toLowerCase();
+        const startIdx = lowerText.indexOf(lowerSearch);
+
+        if (startIdx !== -1) {
+          const before = part.text.substring(0, startIdx);
+          const match = part.text.substring(startIdx, startIdx + h.text.length);
+          const after = part.text.substring(startIdx + h.text.length);
+
+          if (before) newParts.push({ text: before, isHighlight: false });
+          newParts.push({ text: match, isHighlight: true, color: h.color, note: h.note });
+          if (after) newParts.push({ text: after, isHighlight: false });
+        } else {
+          newParts.push(part);
+        }
+      }
+      parts = newParts;
+    }
+
+    if (paraText.startsWith('SURA') || paraText.startsWith('Sura') || paraText.startsWith('Chapter') || paraText.match(/^\d+\./)) {
+      return (
+        <h3 key={idx} className="font-display font-extrabold text-slate-900 text-base sm:text-lg pt-4 border-b pb-1 border-slate-100 uppercase tracking-tight">
+          {parts.map((p, pIdx) => p.isHighlight ? <span key={pIdx} className={`${p.color || 'bg-yellow-100'} px-1 rounded cursor-help`} title={p.note}>{p.text}</span> : p.text)}
+        </h3>
+      );
+    }
+
+    return (
+      <p key={idx} className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-line text-slate-600">
+        {parts.map((p, pIdx) => p.isHighlight ? (
+          <span 
+            key={pIdx} 
+            className={`${p.color || 'bg-yellow-100'} px-1 py-0.5 rounded cursor-help relative group inline`} 
+            title={p.note}
+          >
+            {p.text}
+            {p.note && (
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-950 text-white text-[10px] font-semibold py-1 px-2.5 rounded-lg whitespace-nowrap shadow-xl z-30">
+                📝 {p.note}
+              </span>
+            )}
+          </span>
+        ) : p.text)}
+      </p>
+    );
+  };
 
   // Default seeds just in case the active ID matches one of our local seeds
   const localSeedDocs: DocumentMetadata[] = [
@@ -94,7 +305,12 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       const bookmarked = JSON.parse(storedBookmarks) as string[];
       setIsBookmarked(bookmarked.includes(documentId));
     }
-  }, [documentId]);
+
+    // Load active highlights
+    if (userProfile?.uid) {
+      loadHighlights();
+    }
+  }, [documentId, userProfile?.uid]);
 
   const loadDocument = async () => {
     try {
@@ -138,16 +354,163 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   };
 
   const handleDownload = () => {
-    // Premium validation logic
-    const isPremium = userProfile?.subscription === 'premium' || userProfile?.role === 'admin';
-    if (!isPremium) {
-      alert('🔒 KUPAKUA KUMEZUILIWA:\nKupakua faili moja kwa moja ni fursa ya wanachama wa PREMIUM pekee. Tafadhali jiunge na Premium kwenye ukurasa wako wa Akaunti ili kuwezesha kupakua miongozo na mitihani yote!');
-      return;
-    }
-
     // If premium, trigger PDF download link directly
     alert('📥 Upakuaji umeanza! Faili lako la PDF linapakuliwa kutoka Google Drive sasa hivi.');
     window.open('https://www.orimi.com/pdf-test.pdf', '_blank');
+  };
+
+  const generateOfflinePDF = () => {
+    try {
+      if (!doc) {
+        alert('Nyaraka haikupatikana au bado inapakia!');
+        return;
+      }
+
+      // Initialize jsPDF document (A4, Portrait, millimeters)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageHeight = pdf.internal.pageSize.getHeight(); // A4 is 297mm
+      const pageWidth = pdf.internal.pageSize.getWidth(); // A4 is 210mm
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2); // 170mm
+
+      let y = 20;
+
+      // Helper to add headers/footers on each page
+      const addHeaderFooter = (pageNum: number, totalPagesPlaceholder: string) => {
+        pdf.setFont('Helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        
+        // Header line and branding text
+        pdf.text('LUPANULLA ELIMU HUB - Kitovu cha Elimu ya Kidijitali Tanzania', margin, 10);
+        pdf.line(margin, 12, pageWidth - margin, 12);
+
+        // Footer line and page numbering
+        pdf.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+        pdf.text(`Ukurasa ${pageNum}`, pageWidth - margin - 20, pageHeight - 10);
+        pdf.text('Hati hii imetengenezwa na Lupanulla Elimu Hub kwa usomaji wa nje ya mtandao.', margin, pageHeight - 10);
+      };
+
+      // Helper to handle text wrapping and automatic pagination
+      const printParagraph = (text: string, fontSize: number, style: 'normal' | 'bold' | 'italic' = 'normal', color: [number, number, number] = [51, 65, 85], spacingBefore = 4, spacingAfter = 4) => {
+        pdf.setFont('Helvetica', style);
+        pdf.setFontSize(fontSize);
+        pdf.setTextColor(color[0], color[1], color[2]);
+
+        const lines = pdf.splitTextToSize(text, contentWidth);
+        const lineHeight = fontSize * 0.45; // Approx height per line in mm
+
+        const blockHeight = spacingBefore + (lines.length * lineHeight) + spacingAfter;
+        if (y + blockHeight > pageHeight - 20) {
+          pdf.addPage();
+          addHeaderFooter(pdf.getNumberOfPages(), '');
+          y = 20; // reset vertical offset
+        }
+
+        y += spacingBefore;
+        for (const line of lines) {
+          pdf.text(line, margin, y);
+          y += lineHeight;
+        }
+        y += spacingAfter;
+      };
+
+      // Draw beautiful page header branding
+      pdf.setFont('Helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(6, 182, 212); // cyan-500 color
+      pdf.text('LUPANULLA ELIMU HUB', margin, y);
+      y += 5;
+
+      pdf.setFont('Helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 116, 139); // slate-500 color
+      pdf.text('KIDIGITALI STUDY GUIDE & NOTES', margin, y);
+      y += 8;
+
+      pdf.setDrawColor(226, 232, 240); // slate-200 color
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 10;
+
+      // Print Title of the document
+      printParagraph(doc.title.toUpperCase(), 16, 'bold', [15, 23, 42], 2, 6);
+
+      // Print Metadata: Subject, Category, Year, Type
+      printParagraph(`Somo: ${doc.category || 'Mkuu'} | Mwaka: ${doc.year || 'N/A'} | Aina: ${doc.type || 'Necta'}`, 10, 'bold', [14, 116, 144], 2, 6);
+
+      // Print Description if it exists
+      if (doc.description) {
+        printParagraph('Maelezo ya Nyaraka:', 11, 'bold', [71, 85, 105], 4, 2);
+        printParagraph(doc.description, 10, 'italic', [100, 116, 139], 2, 8);
+      }
+
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Smart Notes Header
+      printParagraph('MUHTASARI WA SOMO NA MAELEZO MAHIRI (SMART NOTES)', 12, 'bold', [15, 23, 42], 4, 6);
+
+      const notesText = smartNotes || `Sura ya Revision: ${doc.title}\n\n1. UTANGULIZI\nMada hii inahusu ${doc.category || 'Somo la Shule'}. Hapa mwanafunzi anapaswa kuelewa misingi ya ${doc.tags?.join(', ') || 'somo hili'}.\n\n2. MALENGO YA KUJIFUNZA\n- Kuelewa dhana kuu na mada muhimu za mitihani ya NECTA.\n- Kujenga uwezo wa kujibu maswali kwa ufasaha na kujiamini.\n- Kufanya mazoezi mfululizo kwa kutumia miongozo hii na kadi mahiri za Flashcards.`;
+      
+      const paragraphs = notesText.split('\n\n');
+
+      for (const para of paragraphs) {
+        if (!para.trim()) continue;
+
+        // Check if paragraph is a heading or chapter
+        if (para.startsWith('SURA') || para.startsWith('Sura') || para.startsWith('Chapter') || para.match(/^\d+\./)) {
+          printParagraph(para, 12, 'bold', [15, 23, 42], 8, 4);
+        } else {
+          printParagraph(para, 10, 'normal', [51, 65, 85], 2, 4);
+        }
+      }
+
+      // Append Highlight Annotations if they exist
+      if (highlights.length > 0) {
+        if (y + 30 > pageHeight - 20) {
+          pdf.addPage();
+          addHeaderFooter(pdf.getNumberOfPages(), '');
+          y = 20;
+        } else {
+          y += 5;
+          pdf.line(margin, y, pageWidth - margin, y);
+          y += 10;
+        }
+
+        printParagraph('HIGHLIGHTS NA TAFSIRI/DOKEZO ZANGU (MY ANNOTATIONS)', 12, 'bold', [6, 182, 212], 4, 6);
+
+        for (const h of highlights) {
+          printParagraph(`"${h.text}"`, 10, 'italic', [71, 85, 105], 3, 2);
+          if (h.note) {
+            printParagraph(`Dokezo langu: ${h.note}`, 9, 'bold', [14, 116, 144], 1, 3);
+          }
+          printParagraph(`Tarehe: ${new Date(h.createdAt).toLocaleDateString('sw-TZ')}`, 8, 'normal', [148, 163, 184], 1, 4);
+        }
+      }
+
+      // Add Headers/Footers on all pages
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        addHeaderFooter(i, totalPages.toString());
+      }
+
+      // Save the generated PDF
+      const sanitizedTitle = doc.title.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      pdf.save(`Lupanulla_${sanitizedTitle}_SmartNotes.pdf`);
+
+      alert('🎉 Hati yako ya PDF imetengenezwa kwa ufanisi na imepakuliwa nje ya mtandao! Unaweza kuisoma wakati wowote bila kuwa na bando la internet.');
+
+    } catch (err: any) {
+      console.error('Error generating PDF:', err);
+      alert('Imeshindwa kutengeneza PDF: ' + (err.message || err));
+    }
   };
 
   if (loading) {
@@ -170,7 +533,7 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     );
   }
 
-  const isPremium = userProfile?.subscription === 'premium' || userProfile?.role === 'admin';
+  const isPremium = true;
 
   return (
     <div id="reader-view" className="space-y-6 animate-fade-in text-slate-800 bg-slate-50">
@@ -222,44 +585,233 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
               </>
             )}
           </button>
+
+          <button 
+            onClick={generateOfflinePDF}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white"
+            title="Pakua muhtasari na highlights zako kama PDF ya kusoma offline"
+          >
+            <Sparkles size={14} className="text-amber-300" /> Pakua Notisi (PDF Offline)
+          </button>
         </div>
+      </div>
+
+      {/* Tab Switcher for Reader Mode */}
+      <div className="flex bg-slate-200/60 p-1 rounded-xl w-fit gap-1 shadow-inner">
+        <button
+          onClick={() => handleToggleReaderMode('pdf')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+            readerMode === 'pdf' 
+              ? 'bg-slate-900 text-white shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FileText size={14} /> Karatasi ya PDF (Original)
+        </button>
+        <button
+          onClick={() => handleToggleReaderMode('notes')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+            readerMode === 'notes' 
+              ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles size={14} className={readerMode === 'notes' ? 'animate-pulse text-amber-300' : 'text-cyan-500'} /> Notisi Mahiri (Smart Notes)
+        </button>
       </div>
 
       {/* Main Column Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* Left: Google Drive PDF Frame Viewer */}
+        {/* Left: Interactive Viewer/Reader area */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-lg relative h-[650px]">
-            {/* Embedded interactive Google Drive Viewer iframe proxy */}
-            <iframe 
-              src={doc.driveUrl}
-              className="w-full h-full border-0"
-              title={doc.title}
-              allowFullScreen
-            ></iframe>
+          {readerMode === 'pdf' ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-lg relative h-[650px]">
+              {/* Embedded interactive Google Drive Viewer iframe proxy */}
+              <iframe 
+                src={doc.driveUrl}
+                className="w-full h-full border-0"
+                title={doc.title}
+                allowFullScreen
+              ></iframe>
 
-            {/* Non-premium download blocker floating panel */}
-            {!isPremium && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-slate-800 p-4 rounded-2xl shadow-xl flex items-center gap-3 w-11/12 max-w-md backdrop-blur-sm z-10 animate-fade-in text-white text-xs">
-                <Crown size={22} className="text-amber-400 flex-shrink-0 animate-bounce" />
-                <div className="flex-grow space-y-0.5">
-                  <p className="font-bold uppercase tracking-wider">Hali ya Msomaji: Bure</p>
-                  <p className="text-slate-400 text-[10px] leading-snug font-semibold">Inaruhusiwa kusoma tu. Kupakua kumezuiliwa mpaka ujiunge na Lupanulla Premium.</p>
+              {/* Non-premium download blocker floating panel */}
+              {!isPremium && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-slate-800 p-4 rounded-2xl shadow-xl flex items-center gap-3 w-11/12 max-w-md backdrop-blur-sm z-10 animate-fade-in text-white text-xs">
+                  <Crown size={22} className="text-amber-400 flex-shrink-0 animate-bounce" />
+                  <div className="flex-grow space-y-0.5">
+                    <p className="font-bold uppercase tracking-wider">Hali ya Msomaji: Bure</p>
+                    <p className="text-slate-400 text-[10px] leading-snug font-semibold">Inaruhusiwa kusoma tu. Kupakua kumezuiliwa mpaka ujiunge na Lupanulla Premium.</p>
+                  </div>
+                  <button 
+                    onClick={() => onNavigate('premium')}
+                    className="bg-amber-400 text-amber-950 font-extrabold px-3 py-1.5 rounded-lg flex-shrink-0 text-[10px] uppercase"
+                  >
+                    Premium &rarr;
+                  </button>
                 </div>
-                <button 
-                  onClick={() => onNavigate('premium')}
-                  className="bg-amber-400 text-amber-950 font-extrabold px-3 py-1.5 rounded-lg flex-shrink-0 text-[10px] uppercase"
-                >
-                  Premium &rarr;
-                </button>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 min-h-[600px] animate-fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="font-display font-extrabold text-slate-950 text-base sm:text-lg uppercase flex items-center gap-2">
+                    <Sparkles className="text-amber-500 animate-pulse" size={18} />
+                    Notisi na Muhtasari wa Somo
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Kitabu cha Dijitali &bull; Lupanulla Elimu Hub</p>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[10px] bg-cyan-50 border border-cyan-100 text-cyan-700 px-3 py-2 rounded-xl font-bold max-w-xs leading-tight">
+                    💡 TIP: Chagua maandishi hapa chini kuweka highlight!
+                  </div>
+                  <button
+                    onClick={generateOfflinePDF}
+                    className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Pakua notisi hizi kama faili la PDF kwa kusoma bila bando"
+                  >
+                    <Download size={13} /> Pakua Notisi (PDF)
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {loadingSmartNotes ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-3 text-cyan-600">
+                  <div className="w-8 h-8 border-4 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs font-bold uppercase tracking-widest animate-pulse">AI Anatayarisha maelezo ya somo hili...</p>
+                </div>
+              ) : (
+                <div 
+                  className="prose prose-slate max-w-none text-slate-700 leading-relaxed space-y-4 select-text"
+                  onMouseUp={handleTextSelection}
+                  onTouchEnd={handleTextSelection}
+                >
+                  {smartNotes.split('\n\n').map((para, idx) => renderParagraphWithHighlights(para, idx))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar: Details and related tags */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Highlighter / Annotation Widget when in Notes Mode */}
+          {readerMode === 'notes' && (
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
+              <div className="flex items-center gap-2 border-b border-slate-50 pb-2.5">
+                <Highlighter size={14} className="text-cyan-500" />
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Highlight & Annotate</h4>
+              </div>
+
+              {selectedText ? (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Maandishi Uliyochagua:</span>
+                    <div className="bg-slate-50 border-l-4 border-cyan-500 p-2.5 rounded-r-xl max-h-24 overflow-y-auto text-xs text-slate-600 font-semibold italic">
+                      "{selectedText}"
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Rangi ya Highlighter:</span>
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'bg-yellow-100 text-yellow-900 border-yellow-300', colorClass: 'bg-yellow-200 border-yellow-400' },
+                        { id: 'bg-emerald-100 text-emerald-900 border-emerald-300', colorClass: 'bg-emerald-200 border-emerald-400' },
+                        { id: 'bg-cyan-100 text-cyan-900 border-cyan-300', colorClass: 'bg-cyan-200 border-cyan-400' },
+                        { id: 'bg-rose-100 text-rose-900 border-rose-300', colorClass: 'bg-rose-200 border-rose-400' },
+                      ].map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => setHighlightColor(c.id)}
+                          className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+                            highlightColor === c.id ? 'scale-110 shadow-sm ring-2 ring-slate-900/10 border-slate-900' : 'opacity-70 hover:opacity-100 border-transparent'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full ${c.colorClass.split(' ')[0]}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Ongeza Nota/Maelezo Fupi:</span>
+                    <input
+                      type="text"
+                      placeholder="Mf. Neno hili linaulizwa sana..."
+                      value={highlightNote}
+                      onChange={e => setHighlightNote(e.target.value)}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleSaveHighlight}
+                      disabled={savingHighlight}
+                      className="flex-grow py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Plus size={13} />
+                      {savingHighlight ? 'Inahifadhi...' : 'Hifadhi Highlight'}
+                    </button>
+                    <button
+                      onClick={() => setSelectedText('')}
+                      className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-extrabold uppercase transition-all"
+                    >
+                      Ghairi
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center space-y-2">
+                  <div className="w-10 h-10 bg-slate-50 border border-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                    <Highlighter size={16} />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold leading-relaxed max-w-[180px] mx-auto uppercase tracking-wide">
+                    CHAGUA MAANDISHI KATIKA NOTISI ILI KUWEKA HIGHLIGHT!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Highlights List inside Document */}
+          {readerMode === 'notes' && highlights.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-50 pb-2.5">
+                <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">Highlight Zangu ({highlights.length})</span>
+                <span className="text-[8px] bg-cyan-100 text-cyan-800 font-extrabold px-2 py-0.5 rounded-full uppercase">SALAMA</span>
+              </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                {highlights.map(h => (
+                  <div key={h.id} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl relative group space-y-1.5">
+                    <button
+                      onClick={() => handleDeleteHighlight(h.id)}
+                      className="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      title="Futa Highlight"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <div className={`${h.color.split(' ')[0]} p-1 px-1.5 rounded text-[10px] font-semibold text-slate-800 italic leading-snug line-clamp-3`}>
+                      "{h.text}"
+                    </div>
+                    {h.note && (
+                      <p className="text-[10px] text-slate-600 font-semibold bg-white border border-slate-200/60 p-1.5 px-2 rounded-lg flex items-start gap-1">
+                        <span className="text-cyan-500">📝</span> {h.note}
+                      </p>
+                    )}
+                    <span className="text-[8px] text-slate-400 font-semibold block uppercase">
+                      {new Date(h.createdAt).toLocaleDateString('sw-TZ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
             <span className="text-[10px] bg-cyan-50 border border-cyan-100 text-cyan-700 font-extrabold px-2.5 py-0.5 rounded-full uppercase block w-fit">
               {doc.type || 'NECTA'} &bull; {doc.year || 2024}
@@ -275,6 +827,26 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
             </div>
           </div>
 
+          {/* Flashcard Generation CTA */}
+          <div className="bg-gradient-to-br from-cyan-600 to-indigo-600 rounded-3xl p-5 shadow-md text-white space-y-3 border border-cyan-500/20">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-white/10 rounded-lg">
+                <Brain size={16} className="text-cyan-200" />
+              </div>
+              <h4 className="font-display font-extrabold text-xs uppercase tracking-wider">Mazoezi ya Flashcards</h4>
+            </div>
+            <p className="text-white/80 text-[10px] leading-relaxed font-semibold">
+              Soma kwa makini kisha jipime uelewa wako! Bofya hapa chini ili kutengeneza kadi mahiri za kujisomea kwa msaada wa Lupanulla AI.
+            </p>
+            <button
+              onClick={() => setIsFlashcardsOpen(true)}
+              className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-indigo-950 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Sparkles size={13} className="text-amber-500 animate-pulse" />
+              Tengeneza Flashcards
+            </button>
+          </div>
+
           <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
             <h4 className="font-bold text-slate-900 text-xs uppercase">Lebo za Somo (Tags)</h4>
             <div className="flex flex-wrap gap-1.5">
@@ -286,6 +858,12 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
         </div>
 
       </div>
+
+      <FlashcardsModal 
+        doc={doc} 
+        isOpen={isFlashcardsOpen} 
+        onClose={() => setIsFlashcardsOpen(false)} 
+      />
 
     </div>
   );

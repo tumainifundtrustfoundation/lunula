@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, AppNotification, AppTheme } from '../types';
 import { subscribeNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../firebase';
+import Logo from './Logo';
 
 interface NavbarProps {
   activeView: string;
@@ -110,7 +111,7 @@ export default function Navbar({
     { id: 'masomo', label: 'Masomo', icon: Book },
     { id: 'mitihani', label: 'Mitihani (Past Papers)', icon: FileText },
     { id: 'duka', label: 'Duka (Books)', icon: Store },
-    { id: 'fisimaji', label: 'Fisi Maji AI', icon: Bot, highlight: true },
+    { id: 'fisimaji', label: 'Lupanulla AI', icon: Bot, highlight: true },
     { id: 'workspace', label: 'Maktaba ya Google', icon: Library },
     { id: 'videos', label: 'Lupa+ Videos', icon: Play },
   ];
@@ -149,12 +150,7 @@ export default function Navbar({
           
           {/* Brand Logo - Tanzanian Educational Pride */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavClick('portal')}>
-            <img 
-              src="/logo.jpg" 
-              alt="Lupanulla Elimu Hub Logo" 
-              referrerPolicy="no-referrer"
-              className="w-10 h-10 object-cover rounded-xl shadow-md border border-slate-800"
-            />
+            <Logo size="md" />
             <div>
               <span className="font-display font-extrabold text-lg tracking-tight block leading-none uppercase">
                 Lupanulla

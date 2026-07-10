@@ -292,5 +292,17 @@ export interface EducationalResource {
   tags?: string[];
 }
 
+export interface HighlightAnnotation {
+  id: string;
+  userId: string;
+  documentId: string;
+  documentTitle: string;
+  text: string;
+  note?: string;
+  color: string;
+  createdAt: number;
+}
+
+
 
 

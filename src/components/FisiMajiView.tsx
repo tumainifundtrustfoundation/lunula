@@ -13,9 +13,11 @@ import {
   ArrowRight,
   User,
   Lightbulb,
-  CornerDownLeft
+  CornerDownLeft,
+  Crown
 } from 'lucide-react';
 import { addNotification } from '../firebase';
+import PremiumLock from './PremiumLock';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -70,7 +72,7 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
       setMessages([
         {
           role: 'assistant',
-          content: `Habari gani, **${greetName}**! Mimi ni **Fisi Maji AI**, msaidizi wako asilia wa masomo kutoka Lupanulla Foundation. 🇹🇿\n\nNimebobea kwenye mtaala wa **TIE na NECTA** kuanzia Shule ya Msingi hadi Kidato cha Sita. Unaweza kuniuliza maswali ya Hisabati, Fizikia, Kemia, Historia, au usaidizi wa kupanga ratiba ya mitihani. \n\n_Nitakusaidiaje kufikia ufaulu wa kiwango cha juu leo?_`
+          content: `Habari gani, **${greetName}**! Mimi ni **Lupanulla AI**, msaidizi wako asilia wa masomo kutoka Lupanulla Foundation. 🇹🇿\n\nNimebobea kwenye mtaala wa **TIE na NECTA** kuanzia Shule ya Msingi hadi Kidato cha Sita. Unaweza kuniuliza maswali ya Hisabati, Fizikia, Kemia, Historia, au usaidizi wa kupanga ratiba ya mitihani. \n\n_Nitakusaidiaje kufikia ufaulu wa kiwango cha juu leo?_`
         }
       ]);
     }
@@ -91,7 +93,7 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
     const reset: Message[] = [
       {
         role: 'assistant',
-        content: `Habari gani, **${greetName}**! Mimi ni **Fisi Maji AI**, msaidizi wako asilia wa masomo kutoka Lupanulla Foundation. 🇹🇿\n\nNimebobea kwenye mtaala wa **TIE na NECTA** kuanzia Shule ya Msingi hadi Kidato cha Sita. Unaweza kuniuliza maswali ya Hisabati, Fizikia, Kemia, Historia, au usaidizi wa kupanga ratiba ya mitihani. \n\n_Nitakusaidiaje kufikia ufaulu wa kiwango cha juu leo?_`
+        content: `Habari gani, **${greetName}**! Mimi ni **Lupanulla AI**, msaidizi wako asilia wa masomo kutoka Lupanulla Foundation. 🇹🇿\n\nNimebobea kwenye mtaala wa **TIE na NECTA** kuanzia Shule ya Msingi hadi Kidato cha Sita. Unaweza kuniuliza maswali ya Hisabati, Fizikia, Kemia, Historia, au usaidizi wa kupanga ratiba ya mitihani. \n\n_Nitakusaidiaje kufikia ufaulu wa kiwango cha juu leo?_`
       }
     ];
     saveChatHistory(reset);
@@ -110,7 +112,7 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
 
     try {
       // Build systemic instructions based on class levels selected
-      let systemPrompt = `Wewe ni Fisi Maji AI, Msaidizi wa Kujifunza wa Lupanulla Elimu Hub nchini Tanzania. 
+      let systemPrompt = `Wewe ni Lupanulla AI, Msaidizi wa Kujifunza wa Lupanulla Elimu Hub nchini Tanzania. 
 Mada yako kuu ni kusaidia wanafunzi wa Kitanzania kujiandaa na mitihani yao ya kitaifa ya NECTA na majaribio mengine ya shule. 
 Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
 
@@ -162,7 +164,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
       if (userProfile?.uid) {
         addNotification({
           userId: userProfile.uid,
-          title: 'Fisi Maji AI amejibu! 🤖',
+          title: 'Lupanulla AI amejibu! 🤖',
           message: `${data.reply.substring(0, 80)}${data.reply.length > 80 ? '...' : ''}`,
           type: 'ai_response',
           link: 'fisimaji'
@@ -171,7 +173,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
 
     } catch (err: any) {
       console.error('Chat AI failure:', err);
-      setError(err.message || 'Imeshindwa kuwasiliana na Fisi Maji AI. Hakikisha upo mtandaoni au jaribu tena baadae.');
+      setError(err.message || 'Imeshindwa kuwasiliana na Lupanulla AI. Hakikisha upo mtandaoni au jaribu tena baadae.');
     } finally {
       setLoading(false);
     }
@@ -192,7 +194,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
           </div>
           <div>
             <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-              <h1 className="font-display font-extrabold text-base sm:text-lg uppercase">Fisi Maji AI</h1>
+              <h1 className="font-display font-extrabold text-base sm:text-lg uppercase">Lupanulla AI</h1>
               <span className="bg-purple-600 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">SMART TUTOR</span>
             </div>
             <p className="text-slate-300 text-[10px] sm:text-xs">
@@ -201,174 +203,198 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
           </div>
         </div>
 
-        {/* Level Filter configuration tabs */}
-        <div className="flex bg-slate-900/60 p-1 rounded-xl border border-slate-800">
-          <button 
-            onClick={() => setSelectedLevel('primary')}
-            className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'primary' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-          >
-            Msingi
-          </button>
-          <button 
-            onClick={() => setSelectedLevel('olevel')}
-            className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'olevel' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-          >
-            O-Level
-          </button>
-          <button 
-            onClick={() => setSelectedLevel('alevel')}
-            className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'alevel' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-          >
-            A-Level
-          </button>
+        {/* Level Filter and Premium status configuration tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+            <button 
+              onClick={() => setSelectedLevel('primary')}
+              className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'primary' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+            >
+              Msingi
+            </button>
+            <button 
+              onClick={() => setSelectedLevel('olevel')}
+              className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'olevel' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+            >
+              O-Level
+            </button>
+            <button 
+              onClick={() => setSelectedLevel('alevel')}
+              className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all uppercase ${selectedLevel === 'alevel' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+            >
+              A-Level
+            </button>
+          </div>
+
+          {userProfile?.subscription === 'premium' ? (
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/35 text-[10px] font-extrabold uppercase tracking-wider">
+              <Crown size={11} className="animate-pulse text-amber-300" />
+              Premium AI Active
+            </div>
+          ) : (
+            <button
+              onClick={() => onNavigate('premium')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 text-[10px] font-extrabold uppercase tracking-wider shadow-sm transition-all cursor-pointer animate-pulse"
+            >
+              <Crown size={11} />
+              Upgrade Premium
+            </button>
+          )}
         </div>
       </section>
 
       {/* Main Chat Conversation box with sidebar suggestions */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
-        
-        {/* Left Column: Chat log */}
-        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col justify-between min-h-0 relative">
+      <PremiumLock 
+        userProfile={userProfile} 
+        onNavigate={onNavigate}
+        title="Msaidizi wa Elimu Lupanulla AI"
+        description="Lupanulla AI ni kipengele cha Premium tu. Jiunge sasa ili uweze kuuliza maswali bila kikomo, kupata ufafanuzi wa hatua kwa hatua wa mtaala mzima wa TIE na NECTA!"
+      >
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
           
-          <div className="absolute top-4 right-4 z-10">
-            <button 
-              onClick={handleClearChat}
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-              title="Futa Maongezi"
-            >
-              <Trash size={16} />
-            </button>
-          </div>
+          {/* Left Column: Chat log */}
+          <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col justify-between min-h-0 relative">
+            
+            <div className="absolute top-4 right-4 z-10">
+              <button 
+                onClick={handleClearChat}
+                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                title="Futa Maongezi"
+              >
+                <Trash size={16} />
+              </button>
+            </div>
 
-          {/* Messages Flow Area */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-4">
-            {messages.map((msg, i) => {
-              const isAi = msg.role === 'assistant';
-              return (
-                <div key={i} className={`flex gap-3 max-w-[85%] ${isAi ? '' : 'ml-auto flex-row-reverse'}`}>
-                  {/* Avatar wrapper */}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs ${
-                    isAi ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-700'
-                  }`}>
-                    {isAi ? <Bot size={16} /> : <User size={16} />}
-                  </div>
+            {/* Messages Flow Area */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-4">
+              {messages.map((msg, i) => {
+                const isAi = msg.role === 'assistant';
+                return (
+                  <div key={i} className={`flex gap-3 max-w-[85%] ${isAi ? '' : 'ml-auto flex-row-reverse'}`}>
+                    {/* Avatar wrapper */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs ${
+                      isAi ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {isAi ? <Bot size={16} /> : <User size={16} />}
+                    </div>
 
-                  <div className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
-                    isAi 
-                      ? 'bg-slate-50 border border-slate-150 text-slate-800' 
-                      : 'bg-cyan-600 text-white shadow-md'
-                  }`}>
-                    {/* Render message with linebreaks & simple markdown formatting */}
-                    <div className="space-y-2 whitespace-pre-wrap">
-                      {msg.content.split('\n\n').map((para, idx) => {
-                        // Very simple parser for Bold **text**
-                        let formatted = para;
-                        const boldRegex = /\*\*(.*?)\*\*/g;
-                        let match;
-                        const segments = [];
-                        let lastIndex = 0;
-                        while ((match = boldRegex.exec(para)) !== null) {
-                          if (match.index > lastIndex) {
-                            segments.push(para.substring(lastIndex, match.index));
+                    <div className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                      isAi 
+                        ? 'bg-slate-50 border border-slate-150 text-slate-800' 
+                        : 'bg-cyan-600 text-white shadow-md'
+                    }`}>
+                      {/* Render message with linebreaks & simple markdown formatting */}
+                      <div className="space-y-2 whitespace-pre-wrap">
+                        {msg.content.split('\n\n').map((para, idx) => {
+                          // Very simple parser for Bold **text**
+                          let formatted = para;
+                          const boldRegex = /\*\*(.*?)\*\*/g;
+                          let match;
+                          const segments = [];
+                          let lastIndex = 0;
+                          while ((match = boldRegex.exec(para)) !== null) {
+                            if (match.index > lastIndex) {
+                              segments.push(para.substring(lastIndex, match.index));
+                            }
+                            segments.push(<strong key={match.index} className="font-extrabold">{match[1]}</strong>);
+                            lastIndex = boldRegex.lastIndex;
                           }
-                          segments.push(<strong key={match.index} className="font-extrabold">{match[1]}</strong>);
-                          lastIndex = boldRegex.lastIndex;
-                        }
-                        if (lastIndex < para.length) {
-                          segments.push(para.substring(lastIndex));
-                        }
+                          if (lastIndex < para.length) {
+                            segments.push(para.substring(lastIndex));
+                          }
 
-                        return (
-                          <p key={idx}>
-                            {segments.length > 0 ? segments : para}
-                          </p>
-                        );
-                      })}
+                          return (
+                            <p key={idx}>
+                              {segments.length > 0 ? segments : para}
+                            </p>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Simulated Typist loader */}
-            {loading && (
-              <div className="flex gap-3 max-w-[80%]">
-                <div className="w-8 h-8 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center flex-shrink-0">
-                  <Bot size={16} />
-                </div>
-                <div className="bg-slate-50 border border-slate-150 rounded-2xl px-4 py-3 text-slate-500 text-xs font-semibold flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+              {/* Simulated Typist loader */}
+              {loading && (
+                <div className="flex gap-3 max-w-[80%]">
+                  <div className="w-8 h-8 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center flex-shrink-0">
+                    <Bot size={16} />
                   </div>
-                  <span>Fisi Maji AI anaandika...</span>
+                  <div className="bg-slate-50 border border-slate-150 rounded-2xl px-4 py-3 text-slate-500 text-xs font-semibold flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+                    </div>
+                    <span>Lupanulla AI anaandika...</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Error alerts */}
-            {error && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold items-center">
-                <AlertCircle size={16} className="flex-shrink-0" />
-                <p>{error}</p>
-              </div>
-            )}
+              {/* Error alerts */}
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold items-center">
+                  <AlertCircle size={16} className="flex-shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
 
-            <div ref={chatBottomRef} />
-          </div>
+              <div ref={chatBottomRef} />
+            </div>
 
-          {/* Form input bar */}
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendPrompt(input);
-            }} 
-            className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-2xl p-1.5"
-          >
-            <input 
-              type="text" 
-              required
-              disabled={loading}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Uliza chochote hapa (Hesabu, Fizikia, Kemia, Historia, n.k)..." 
-              className="flex-grow bg-transparent px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
-            />
-            <button 
-              type="submit" 
-              disabled={loading || !input.trim()}
-              className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 p-2.5 rounded-xl transition-all flex items-center justify-center flex-shrink-0"
+            {/* Form input bar */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendPrompt(input);
+              }} 
+              className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-2xl p-1.5"
             >
-              <Send size={16} />
-            </button>
-          </form>
-
-        </div>
-
-        {/* Right Column: Suggested templates (Desktop sidebar) */}
-        <div className="lg:col-span-1 hidden lg:block space-y-4 overflow-y-auto">
-          <h3 className="font-display font-extrabold text-xs text-slate-400 uppercase tracking-widest block">Mifano ya Kuanza</h3>
-          <div className="space-y-3">
-            {suggestions.map((sug, i) => (
-              <div 
-                key={i} 
-                onClick={() => handleSuggestionClick(sug.text)}
-                className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-cyan-400 hover:shadow-sm transition-all cursor-pointer space-y-2 text-left"
+              <input 
+                type="text" 
+                required
+                disabled={loading}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Uliza chochote hapa (Hesabu, Fizikia, Kemia, Historia, n.k)..." 
+                className="flex-grow bg-transparent px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+              <button 
+                type="submit" 
+                disabled={loading || !input.trim()}
+                className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 p-2.5 rounded-xl transition-all flex items-center justify-center flex-shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{sug.icon}</span>
-                  <h4 className="font-bold text-slate-900 text-xs">{sug.title}</h4>
-                </div>
-                <p className="text-slate-500 text-[11px] leading-relaxed line-clamp-3 font-semibold">
-                  &quot;{sug.text}&quot;
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+                <Send size={16} />
+              </button>
+            </form>
 
-      </div>
+          </div>
+
+          {/* Right Column: Suggested templates (Desktop sidebar) */}
+          <div className="lg:col-span-1 hidden lg:block space-y-4 overflow-y-auto">
+            <h3 className="font-display font-extrabold text-xs text-slate-400 uppercase tracking-widest block">Mifano ya Kuanza</h3>
+            <div className="space-y-3">
+              {suggestions.map((sug, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => handleSuggestionClick(sug.text)}
+                  className="p-4 bg-white border border-slate-200 rounded-2xl hover:border-cyan-400 hover:shadow-sm transition-all cursor-pointer space-y-2 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{sug.icon}</span>
+                    <h4 className="font-bold text-slate-900 text-xs">{sug.title}</h4>
+                  </div>
+                  <p className="text-slate-500 text-[11px] leading-relaxed line-clamp-3 font-semibold">
+                    &quot;{sug.text}&quot;
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </PremiumLock>
 
     </div>
   );

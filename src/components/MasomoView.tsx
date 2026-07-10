@@ -93,6 +93,70 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Sayansi na Teknolojia\nMada: Mfumo wa Mmeng`enyo wa Chakula\n\n1. UTANGULIZI\nMmeng`enyo wa chakula ni mchakato wa kuvunja chakula katika chembechembe ndogo zinazoweza kufyonzwa na mwili kwa matumizi ya nishati, ukuaji na ukarabati wa seli.\n\n2. SEHEMU KUU ZA MFUMO WA MMENG`ENYO\na) Kinywa (Mouth): Mmeng`enyo wa kimitambo huanza hapa kwa meno kutafuna chakula, na mmeng`enyo wa kemikali huanza kwa vimeng`enya (enzymes) vya mate.\nb) Umio (Esophagus): Njia ya kupitisha chakula kuelekea tumboni kwa mtindo wa msukumo wa peristalsis.\nc) Tumbo (Stomach): Chakula huchanganywa na asidi ya Hydrochloric (HCl) na vimeng`enya vya Pepsin kumeng`enya protini.\nd) Utumbo Mwembamba (Small Intestine): Sehemu kuu ya mmeng`enyo kukamilika na ufyonzaji wa virutubisho kufanyika.\ne) Utumbo Mkubwa (Large Intestine): Kufyonza maji na chumvichumvi na kutoa uchafu kama kinyesi.'
             }
           ]
+        },
+        {
+          name: 'Kiswahili',
+          topics: [
+            {
+              title: 'Aina za Maneno (Parts of Speech)',
+              subtopics: [
+                'Nomino (N) na aina zake',
+                'Viwakilishi vya Nomino (W)',
+                'Vitenzi (T) na uainishaji wake',
+                'Vivumishi (V) na uainishaji wake'
+              ],
+              content: 'Katika lugha ya Kiswahili, kuna makundi manane ya aina za maneno yanayounda miundo ya sentensi. Kuelewa aina hizi za maneno kunamsaidia mwanafunzi kuandika na kuzungumza Kiswahili fasaha kitaaluma.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Kiswahili\nDarasa: Msingi (Darasa la 5-7)\nMada: Aina za Maneno\n\n1. NOMINO (N)\nNomino ni neno linalotaja jina la mtu, kitu, mahali, hali au dhana.\nAina za Nomino:\na) Nomino za Pekee (mfano: Ali, Tanzania, Kilimanjaro)\nb) Nomino za Kawaida (mfano: kitabu, mti, mji)\nc) Nomino za Kundi (mfano: kundi la askari, msitu)\nd) Nomino za Dhahania (mfano: upendo, amani, werevu)\n\n2. VITENZI (T)\nVitenzi ni maneno yanayotaja tendo au hali inayofanywa au inayotokea. Mfano: soma, kimbia, lala, cheka.'
+            }
+          ]
+        },
+        {
+          name: 'English Language (Kiingereza)',
+          topics: [
+            {
+              title: 'Tenses (Nyakati)',
+              subtopics: [
+                'Present Simple Tense',
+                'Past Simple Tense',
+                'Future Simple Tense',
+                'Present Continuous Tense'
+              ],
+              content: 'Tenses in English tell us when an action takes place: in the past, present, or future. Verbs change their form depending on the tense and the subject of the sentence.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: English Language\nLevel: Primary School\nTopic: English Tenses\n\n1. PRESENT SIMPLE TENSE\nUsed to express habits, general truths, and regular actions.\nStructure:\n- Subject + Verb (s/es for third person singular) + Object.\n- Example: "He walks to school every day."\n- Example: "The sun rises in the east."\n\n2. PAST SIMPLE TENSE\nUsed for actions that were completed in the past.\n- Example: "They visited the Serengeti National Park last month."\n- Example: "She wrote an English essay yesterday."'
+            }
+          ]
+        },
+        {
+          name: 'Maarifa ya Jamii (Social Studies)',
+          topics: [
+            {
+              title: 'Mashujaa wa Tanzania (Tanzanian Heroes)',
+              subtopics: [
+                'Chifu Mkwawa wa Wahehe',
+                'Kinjekitile Ngwale na Vita vya Maji Maji',
+                'Mtemi Mirambo wa Wanyamwezi',
+                'Mtemi Isike wa Wanyamwezi'
+              ],
+              content: 'Historia ya Tanzania imepambwa na viongozi jasiri waliosimama kupambana dhidi ya uvamizi wa kikoloni (Kijerumani na Kiingereza) na kulinda mamlaka na ardhi ya jamii zao nchini Tanganyika.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Maarifa ya Jamii\nMada: Mashujaa wa Tanzania\n\n1. CHIFU MKWAWA WA WAHEHE\nChifu Mkwawa (Mkwavinyika Munyigumba Mwamuyinga) alikuwa kiongozi wa Wahehe kuanzia mwaka 1879 hadi 1898. Alijulikana sana kwa kuongoza upinzani mkali dhidi ya utawala wa Kijerumani huko Iringa.\n\n2. VITA VYA MAJI MAJI (1905-1907)\nVita hivi viliongozwa na Kinjekitile Ngwale nchini Tanganyika kupinga unyanyasaji na kodi za Kijerumani. Alitumia imani ya "Maji" ya miujiza kuwaunganisha makabila mbalimbali kupigania haki zao.'
+            }
+          ]
+        },
+        {
+          name: 'Uraia na Maadili (Civics & Moral)',
+          topics: [
+            {
+              title: 'Alama za Taifa (National Symbols)',
+              subtopics: [
+                'Mwenge wa Uhuru (The Freedom Torch)',
+                'Wimbo wa Taifa na Bendera ya Taifa',
+                'Nembo ya Taifa - Bibi na Bwana (Coat of Arms)',
+                'Hati ya Muungano'
+              ],
+              content: 'Alama za kitaifa ni kielelezo cha uhuru, umoja, uzalendo, amani na utambulisho wa nchi ya Tanzania kote duniani.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Uraia na Maadili\nMada: Alama za Taifa la Tanzania\n\n1. BENDERA YA TAIFA\nIna rangi nne zenye maana mahususi:\n- Kijani: Maliasili na uoto wa asili wa Tanzania.\n- Dilalo la Dhahabu (Njano): Utajiri wa madini nchini wetu.\n- Nyeusi: Watu weusi wa asili ya Kitanzania.\n- Bluu: Bahari, maziwa na vyanzo vya maji vya nchi yetu.\n\n2. MWENGE WA UHURU\nUliwashwa kwa mara ya kwanza juu ya kilele cha Mlima Kilimanjaro tarehe 9 Disemba 1961 kama alama ya kumulika matumaini, upendo na amani kote nchini.'
+            }
+          ]
         }
       ]
     },
@@ -127,6 +191,51 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
           ]
         },
         {
+          name: 'Chemistry (Kemia)',
+          topics: [
+            {
+              title: 'Chemical Equations (Milinganyo ya Kikemia)',
+              subtopics: [
+                'Writing word and chemical equations',
+                'Balancing simple chemical equations',
+                'Types of chemical reactions (Synthesis, Decomposition, Combustion)'
+              ],
+              content: 'A chemical equation represents a chemical reaction using chemical formulas of reactants and products. It must be balanced to satisfy the law of conservation of mass.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Chemistry (Kemia)\nLevel: Ordinary Level (O-Level)\nTopic: Balancing Chemical Equations\n\n1. THE LAW OF CONSERVATION OF MASS\nMass can neither be created nor destroyed in a chemical reaction. Therefore, the number of atoms of each element on the reactant side must equal the number of atoms on the product side.\n\n2. STEPS TO BALANCE EQUATIONS:\nExample: Formation of water\nH₂ + O₂ -> H₂O\nBalanced equation: 2H₂ + O₂ -> 2H₂O\n\nReactants: Hydrogen and Oxygen molecules.\nProducts: Water molecules.'
+            }
+          ]
+        },
+        {
+          name: 'Biology (Biolojia)',
+          topics: [
+            {
+              title: 'Classification of Living Things (Uainishaji wa Viumbe)',
+              subtopics: [
+                'Five Kingdoms of classification',
+                'Kingdom Monera and Protista',
+                'Kingdom Fungi, Plantae and Animalia'
+              ],
+              content: 'Classification is the systematic grouping of living organisms based on shared characteristics. The modern five-kingdom system organizes all life from single-celled bacteria to complex mammals.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Biology (Biolojia)\nLevel: O-Level (Forms I-IV)\nTopic: Kingdom Classification\n\n1. TAXONOMIC HIERARCHY\nKingdom -> Phylum -> Class -> Order -> Family -> Genus -> Species\n\n2. THE FIVE KINGDOMS\na) Monera: Prokaryotic organisms like bacteria.\nb) Protista: Eukaryotic single-celled organisms like Amoeba.\c) Fungi: Heterotrophic, non-photosynthetic organisms like yeast and mushrooms.\nd) Plantae: Autotrophic photosynthetic plants.\ne) Animalia: Multicellular heterotrophic animals.'
+            }
+          ]
+        },
+        {
+          name: 'Mathematics (Hisabati)',
+          topics: [
+            {
+              title: 'Quadratic Equations (Milinganyo ya Kipeuo cha Pili)',
+              subtopics: [
+                'Solving by Factoring',
+                'Solving by Completing the Square',
+                'The Quadratic Formula'
+              ],
+              content: 'A quadratic equation is a second-degree polynomial equation in a single variable, with the general form ax² + bx + c = 0, where a is not equal to 0.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Mathematics\nLevel: O-Level\nTopic: Quadratic Equations\n\n1. THE GENERAL FORM\nax² + bx + c = 0\n\n2. THE QUADRATIC FORMULA\nx = [-b ± √(b² - 4ac)] / 2a\n\nThe term (b² - 4ac) is called the discriminant. It determines the nature of the roots (real or complex).'
+            }
+          ]
+        },
+        {
           name: 'History (Historia)',
           topics: [
             {
@@ -139,6 +248,36 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               ],
               content: 'The establishment of colonial economy in East Africa was designed to satisfy the needs of industrial capitalists in Europe. Settler agriculture was heavily promoted in Kenya, while peasant agriculture was emphasized in Uganda. In Tanganyika, both plantation (sisal) and peasant (coffee/cotton) agriculture existed.',
               notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: History (Historia)\nKidato: Kidato cha Tatu (Form III)\nMada: Colonial Economy in East Africa\n\n1. MOTIVES OF COLONIAL ECONOMY\nThe economic structures established by British, German, and French colonizers in East Africa had specific aims:\na) To extract raw materials for European home industries (cotton, sisal, coffee, rubber).\nb) To find investment areas for surplus European capital.\nc) To create markets for manufactured goods from Europe.\nd) To secure cheap source of manual labor.\n\n2. SECTORS OF THE COLONIAL ECONOMY\n- Agriculture: Settler farming (e.g. White Highlands in Kenya), Plantation economy (e.g. Sisal in Tanganyika), Peasant agriculture (Uganda cotton).\n- Mining: Extraction of gold, diamonds, and mica using cheap manual labor.\n- Infrastructure: Construction of railways (e.g., Uganda Railway, Central Line) and roads connecting resource areas to the ports (Dar es Salaam, Mombasa).'
+            }
+          ]
+        },
+        {
+          name: 'Geography (Jiografia)',
+          topics: [
+            {
+              title: 'Map Reading & Interpretation (Kusoma Ramani)',
+              subtopics: [
+                'Types of maps and their scales',
+                'Grid references and coordinates',
+                'Representation of physical and cultural features on topographic maps'
+              ],
+              content: 'Map reading is the act of interpreting geographical information represented on a map. Scales show the ratio of map distance to actual ground distance on the Earth.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Geography (Jiografia)\nLevel: Form II - Form IV\nTopic: Map Reading and Scales\n\n1. TYPES OF SCALES\na) Statement Scale: e.g., "One centimeter represents one kilometer".\nb) Representative Fraction (RF): e.g., 1:50,000.\nc) Linear/Graphic Scale: A bar divided into visual units.\n\n2. CONVERTING SCALES\nTo convert 1:50,000 to statement scale:\n1 cm on map = 50,000 cm on ground = 500 meters = 0.5 kilometers.'
+            }
+          ]
+        },
+        {
+          name: 'Civics (Uraia)',
+          topics: [
+            {
+              title: 'The Constitution of Tanzania (Katiba ya Nchi)',
+              subtopics: [
+                'Meaning and importance of a Constitution',
+                'The 1977 Constitution of the United Republic of Tanzania',
+                'Branches of Government (Executive, Judiciary, Legislature)'
+              ],
+              content: 'The constitution is the supreme law of the United Republic of Tanzania. It provides the legal framework for governance and outlines the rights, responsibilities and duties of citizens.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Civics (Uraia)\nKidato: Kidato cha Pili (Form II)\nMada: The Constitution of Tanzania\n\n1. WHAT IS A CONSTITUTION?\nA constitution is a body of fundamental principles or established precedents according to which a state is governed.\n\n2. THE THREE BRANCHES OF STATE\na) Executive (Serikali Kuu): Leads the administration, headed by the President of Tanzania.\nb) Legislature (Bunge): Makes and amends laws for the country.\nc) Judiciary (Mahakama): Interprets laws and administers justice in accordance with the law.'
             }
           ]
         }
@@ -161,6 +300,51 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               ],
               content: 'Calculus is the mathematical study of continuous change. Differentiation is the process of finding the rate of change (derivative) of a function, while integration is the inverse process of accumulation (finding the area under a curve).',
               notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Advanced Mathematics\nKidato: Kidato cha Tano na Sita (Form V & VI)\nMada: Calculus (Mnyambuliko)\n\n1. LIMITS AND CONTINUITY\nA limit is the value that a function approaches as the input approaches some value. \n\n2. DIFFERENTIATION FROM FIRST PRINCIPLES\nThe derivative of f(x) with respect to x is defined as:\nf`(x) = lim(h -> 0) [f(x+h) - f(x)] / h\n\n3. CORE DIFFERENTIATION RULES\n- Power Rule: d/dx(x^n) = n*x^(n-1)\n- Product Rule: d/dx(u*v) = u*dv/dx + v*du/dx\n- Quotient Rule: d/dx(u/v) = (v*du/dx - u*dv/dx) / v²\n- Chain Rule: dy/dx = dy/du * du/dx'
+            }
+          ]
+        },
+        {
+          name: 'Physics',
+          topics: [
+            {
+              title: 'Classical Mechanics & Gravity (Makanika)',
+              subtopics: [
+                'Newton`s Laws of Motion in 2D',
+                'Projectiles and Circular Motion',
+                'Kepler`s Laws of Planetary Motion'
+              ],
+              content: 'Mechanics deals with the behavior of physical bodies when subjected to forces. At advanced level, we study rotational dynamics, projectile kinematics, and gravitational field interactions.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Physics\nLevel: Form V & VI (A-Level)\nTopic: Projectile Motion\n\n1. BASICS OF PROJECTILE MOTION\nAn object launched into space influenced only by gravity. The path is a parabola.\n\n2. KEY FORMULAS (No air resistance):\n- Time of Flight (T) = 2*u*sin(θ) / g\n- Maximum Height (H) = u²*sin²(θ) / 2g\n- Horizontal Range (R) = u²*sin(2θ) / g'
+            }
+          ]
+        },
+        {
+          name: 'Geography',
+          topics: [
+            {
+              title: 'Geomorphology & Soil Science (Sura ya Nchi na Udongo)',
+              subtopics: [
+                'Plate Tectonics and Volcanism',
+                'Weathering, mass wasting and river systems',
+                'Soil profile, classification and conservation'
+              ],
+              content: 'Geomorphology studies the origin and evolution of topographic and bathymetric features created by physical or chemical processes on Earth`s surface.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Geography\nLevel: Form V & VI\nTopic: Plate Tectonics\n\n1. THE THEORY OF PLATE TECTONICS\nEarth`s outer shell is divided into several plates that glide over the asthenosphere.\n\n2. TYPES OF PLATE BOUNDARIES\na) Divergent (e.g. East African Rift Valley where plates move apart).\nb) Convergent (e.g. Himalayas where plates crash together).\nc) Transform (e.g. San Andreas Fault where plates slide past each other).'
+            }
+          ]
+        },
+        {
+          name: 'General Studies (GS)',
+          topics: [
+            {
+              title: 'Democratic Process & Human Rights (Demokrasia)',
+              subtopics: [
+                'Principles of democracy and rule of law',
+                'The electoral system and voting process in Tanzania',
+                'Civil society, governance and human rights watch'
+              ],
+              content: 'General Studies is a compulsory multi-disciplinary subject in A-level that provides students with general knowledge of social, political, economic, and scientific issues.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: General Studies (GS)\nLevel: Form V & VI (A-Level)\nTopic: Democratic Process in Tanzania\n\n1. PRINCIPLES OF DEMOCRACY\n- Rule of Law (Utawala wa Sheria)\n- Free and Fair Elections\n- Separation of Powers\n- Freedom of Speech and Assembly\n\n2. ELECTORAL SYSTEM IN TANZANIA\nThe National Electoral Commission (NEC) is the independent body that supervises and conducts presidential, parliamentary, and local government elections in Tanzania.'
             }
           ]
         }

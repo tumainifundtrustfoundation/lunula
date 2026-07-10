@@ -34,7 +34,39 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isValidEducationalResource(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 1000
+        && data.url is string && data.url.size() > 0 && data.url.size() <= 500
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 100
+        && (data.isVerified == true || data.isVerified == false)
+        && data.clicksCount is int
+        && data.recommendationsCount is int
+        && data.recommendedByUsers is list && data.recommendedByUsers.size() <= 50000
+        && data.createdAt is int
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdByName is string && data.createdByName.size() <= 200
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && (!('institution' in data) || (data.institution is string && data.institution.size() <= 200))
+        && (!('region' in data) || (data.region is string && data.region.size() <= 50))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 50));
+    }
+
     // Public Collections (Accessible by everyone)
+    match /educational_resources/{resourceId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && isAdmin() && isValidId(resourceId) && isValidEducationalResource(request.resource.data)
+        && request.resource.data.clicksCount == 0
+        && request.resource.data.recommendationsCount == 0
+        && request.resource.data.recommendedByUsers.size() == 0;
+      allow update: if isValidEducationalResource(request.resource.data) && (
+        (isSignedIn() && isAdmin())
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicksCount']) && request.resource.data.clicksCount == resource.data.clicksCount + 1)
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recommendedByUsers', 'recommendationsCount']))
+      );
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
     match /matangazo/{annId} {
       allow get, list: if true;
       allow write: if isAdmin();

@@ -28,10 +28,12 @@ import {
   fetchUserProfile, 
   ensureUserProfile, 
   signInWithGoogle, 
-  logoutUser 
+  logoutUser,
+  signInAsGuest 
 } from './firebase';
 
 import Navbar from './components/Navbar';
+import Logo from './components/Logo';
 import PortalView from './components/PortalView';
 import DashboardView from './components/DashboardView';
 import MasomoView from './components/MasomoView';
@@ -102,6 +104,7 @@ export default function App() {
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
+  const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
   
   // Credentials
   const [email, setEmail] = useState<string>('');
@@ -195,7 +198,7 @@ export default function App() {
           name: fallbackName || auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'Mwanafunzi Lupanulla',
           email: auth.currentUser.email || '',
           role: 'student',
-          subscription: 'free',
+          subscription: 'premium',
           createdAt: Date.now()
         };
         setUserProfile(fallbackProfile);
@@ -228,6 +231,23 @@ export default function App() {
     } catch (err: any) {
       console.error('Google authorization error:', err);
       setAuthError(err.message || 'Kuingia kwa Google kumeshindikana. Tafadhali jaribu tena.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const guestUser = await signInAsGuest();
+      if (guestUser) {
+        await refreshProfile(guestUser.uid, 'Mgeni Lupanulla');
+        setShowSignInModal(false);
+      }
+    } catch (err: any) {
+      console.error('Guest authorization error:', err);
+      setAuthError('Kuingia kama mgeni kumeshindikana. Tafadhali jaribu kuingia na barua pepe au Google.');
     } finally {
       setAuthLoading(false);
     }
@@ -521,16 +541,11 @@ export default function App() {
           
           <div className="space-y-3.5">
             <div className="flex items-center gap-2.5 text-white">
-              <img 
-                src="/logo.jpg" 
-                alt="Lupanulla Elimu Hub Logo" 
-                referrerPolicy="no-referrer"
-                className="w-8 h-8 object-cover rounded-lg shadow-md"
-              />
+              <Logo size="sm" />
               <span className="font-display font-extrabold text-base tracking-wider uppercase">Lupanulla Elimu Hub</span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs font-semibold">
-              Notisi, mitihani, video, vitabu, miongozo ya walimu, na msaidizi mahiri wa akili ya bandia (Fisi Maji AI) - vyote kwa ajili ya mafanikio yako kitaaluma Tanzania.
+              Notisi, mitihani, video, vitabu, miongozo ya walimu, na msaidizi mahiri wa akili ya bandia (Lupanulla AI) - vyote kwa ajili ya mafanikio yako kitaaluma Tanzania.
             </p>
           </div>
 
@@ -568,8 +583,8 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-900 pt-6 mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px]">
           <p>© 2026 Lupanulla Foundation. Haki zote zimehifadhiwa.</p>
           <div className="flex gap-4">
-            <span className="hover:underline cursor-pointer">Sera ya Faragha</span>
-            <span className="hover:underline cursor-pointer">Vigezo na Masharti</span>
+            <span onClick={() => setActivePolicyDoc('privacy')} className="hover:underline cursor-pointer hover:text-cyan-400 transition-colors">Sera ya Faragha</span>
+            <span onClick={() => setActivePolicyDoc('terms')} className="hover:underline cursor-pointer hover:text-cyan-400 transition-colors">Vigezo na Masharti</span>
           </div>
         </div>
       </footer>
@@ -594,12 +609,7 @@ export default function App() {
             </button>
 
             <div className="text-center space-y-1.5">
-              <img 
-                src="/logo.jpg" 
-                alt="Lupanulla Elimu Hub Logo" 
-                referrerPolicy="no-referrer"
-                className="w-16 h-16 object-cover rounded-2xl mx-auto shadow-md border border-slate-100"
-              />
+              <Logo size="lg" className="mx-auto" />
               <h2 className="font-display font-extrabold text-2xl text-slate-900 leading-none mt-2 uppercase">Lupanulla Hub</h2>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Kitovu cha Elimu ya Kidijitali Tanzania</p>
             </div>
@@ -649,6 +659,15 @@ export default function App() {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 <span>Endelea na Google</span>
+              </button>
+
+              <button
+                onClick={handleGuestSignIn}
+                disabled={authLoading}
+                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:border-emerald-300 rounded-xl py-3 text-xs font-bold text-emerald-800 shadow-sm transition-all hover:scale-[1.01]"
+              >
+                <UserIcon size={16} className="text-emerald-600" />
+                <span>Ingia Haraka kama Mgeni (Demo Login)</span>
               </button>
 
               <div className="flex items-center">
@@ -715,6 +734,259 @@ export default function App() {
                 {authLoading ? 'Inaprosesi...' : authTab === 'login' ? 'Ingia Sasa' : 'Kamilisha Usajili'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── POLICY AND TERMS MODAL (Sera ya Faragha na Vigezo) ── */}
+      {activePolicyDoc && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setActivePolicyDoc(null)}
+          ></div>
+          
+          <div className="relative bg-white border border-slate-100 w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-fade-in z-[190] text-slate-800">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-cyan-50 text-cyan-600 rounded-xl">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-base uppercase text-slate-900 leading-none">
+                    {activePolicyDoc === 'privacy' 
+                      ? (language === 'sw' ? 'Sera ya Faragha' : 'Privacy Policy') 
+                      : (language === 'sw' ? 'Vigezo na Masharti' : 'Terms & Conditions')
+                    }
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    {language === 'sw' ? 'Marekebisho ya mwisho: Julai 2026' : 'Last updated: July 2026'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActivePolicyDoc(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Body (Scrollable) */}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-xs sm:text-sm text-slate-600 leading-relaxed font-semibold">
+              {activePolicyDoc === 'privacy' ? (
+                // PRIVACY POLICY CONTENT
+                language === 'sw' ? (
+                  <div className="space-y-4">
+                    <p className="text-slate-800 font-medium">
+                      Karibu kwenye Lupanulla Elimu Hub. Tunaheshimu sana faragha yako na tumejitolea kulinda taarifa zako binafsi unapotumia jukwaa letu. Sera hii ya faragha inaeleza jinsi tunavyokusanya, kutumia, na kulinda taarifa zako.
+                    </p>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        1. Taarifa Tunazokusanya (Data Collection)
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Tunapata taarifa binafsi kama barua pepe (email), jina kamili, na namba ya simu unapojisajili, unapotuma kazi, au unapojiunga na mpango vya Premium. Taarifa hizi huhifadhiwa kwa njia salama kwa kutumia mifumo iliyothibitishwa ya Google Firebase na Cloud Firestore.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        2. Matumizi ya Taarifa (How We Use It)
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Tunatumia taarifa zako kukupa huduma stahiki, ikiwemo kukuruhusu kupakua nyaraka za mitaala, kuingiliana na msaidizi mahiri wa akili ya bandia (Lupanulla AI), kufuatilia maendeleo ya kimasomo kwenye "Leaderboard", na kukutumia ujumbe muhimu wa kiutendaji.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        3. Usalama wa Malipo na Miamala
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Malipo yote ya Premium na vitabu vya duka yanathibitishwa kupitia namba ya muamala (Transaction ID / Ref) pekee. Lupanulla Hub haihifadhi, haisomi, na haitakaa iitishe namba yako ya siri ya huduma za kifedha (M-Pesa, Tigo Pesa au Airtel Money). Malipo yanashughulikiwa salama kwa mawasiliano rasmi.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        4. Google AdSense na Washirika wa Matangazo
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Tunatumia matangazo ya Google AdSense na washirika wengine kuonyesha matangazo kwenye jukwaa ili kugharamia mitambo yetu (hosting servers) na kuendelea kutoa notisi bora bila malipo. Google inaweza kutumia kuki (cookies) kuonyesha matangazo yanayokidhi matakwa yako ya kivinjari.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        5. Mabadiliko ya Sera Hii
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Tunaweza kuboresha sera hii mara kwa mara ili kuendana na mabadiliko ya kisheria na teknolojia. Tutaweka tarehe ya maboresho juu ya ukurasa huu mara marekebisho yanapofanyika.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-slate-800 font-medium">
+                      Welcome to Lupanulla Elimu Hub. We highly respect your privacy and are committed to safeguarding your personal information. This privacy policy describes how we collect, use, and protect your data.
+                    </p>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        1. Information We Collect
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        We collect personal information such as your email address, full name, and phone number when you sign up, upload content, or subscribe to our Premium packages. This data is securely stored using certified Google Firebase and Cloud Firestore infrastructure.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        2. How We Use Your Information
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Your information is used to provide you with school resources, allow unlimited downloads of academic notes and past papers, support interaction with our AI tutor (Lupanulla AI), track learning rewards on the Leaderboard, and communicate crucial account updates.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        3. Transaction and Mobile Money Security
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        All payments for premium materials are verified solely through the receipt of mobile money Transaction IDs. Lupanulla Hub never saves, intercepts, or asks for your mobile money secret PIN. All transactions are handled securely through trusted direct verification channels.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                        4. Google AdSense and Third-Party Advertising
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        We display Google AdSense ads and work with external ad networks to monetize content. This revenue allows us to maintain cloud servers and keep core educational resources free. Google may use cookies to serve personalized ads based on your web activity.
+                      </p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                // TERMS AND CONDITIONS CONTENT
+                language === 'sw' ? (
+                  <div className="space-y-4">
+                    <p className="text-slate-800 font-medium">
+                      Kwa kutumia jukwaa la Lupanulla Elimu Hub, unakubaliana na vigezo na masharti haya ya matumizi. Tafadhali soma kwa makini kabla ya kuendelea kutumia mifumo yetu.
+                    </p>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        1. Matumizi ya Maudhui na Hakimiliki
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Nyaraka zote, mitihani, na notisi zinazopatikana kwenye jukwaa hili ni kwa ajili ya matumizi yako binafsi ya kimasomo tu. Ni marufuku kabisa kunakili, kuchapisha upya kibiashara, au kusambaza vitabu na notisi hizi kwenye mifumo mingine bila kupata kibali cha maandishi kutoka Lupanulla Foundation.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        2. Uanachama wa Premium na Malipo
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Unapojiunga na kifurushi cha Premium, utapata uwezo vya kudownload PDF bila kikomo na huduma ya msaidizi wa akili mnemba ya Lupanulla AI. Malipo yanayofanywa kwa ajili ya uanachama wa Premium au ununuzi vya vitabu ni ya mwisho na hayarudishwi (Non-refundable) pindi tu huduma inapowezeshwa kwenye akaunti yako.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        3. Sheria za Tabia na Michango (Forum Rules)
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Watumiaji wanaweza kuchangia mijadala ya kimasomo au kupakia faili. Ni marufuku kupakia nyaraka zenye kashfa, lugha isiyo ya maadili, maudhui yasiyo ya kimasomo, au nyaraka zinazokiuka hakimiliki. Lupanulla Foundation ina haki ya kufuta maudhui hayo na kuzuia akaunti ya mtumiaji husika bila taarifa.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        4. Ukomo wa Dhima (Disclaimer)
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Maudhui yote na notisi zimeandaliwa kwa uangalifu mkubwa na walimu wetu. Hata hivyo, mtaala unaweza kubadilika na msaidizi wetu wa Lupanulla AI anaweza kutoa majibu yenye hitilafu wakati mwingine. Mtumiaji anashauriwa kutumia maudhui haya sambamba na miongozo rasmi ya Wizara ya Elimu na Baraza la Mitihani la Tanzania (NECTA).
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-slate-800 font-medium">
+                      By accessing and using Lupanulla Elimu Hub, you agree to comply with and be bound by the following terms and conditions of service. Please review them carefully.
+                    </p>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        1. Use of Educational Resources and Copyrights
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        All examination materials, notes, booklets, and files provided on this hub are strictly for individual educational purposes. Commercial redistribution, unauthorized re-publishing, or mass sharing of these materials without written consent from Lupanulla Foundation is strictly prohibited.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        2. Premium Membership and Refund Policy
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        Subscribing to a Premium package grants you unlimited downloads of PDFs and full interaction with our AI-powered tutor (Lupanulla AI). All payments made towards Premium plans or book orders are final and completely non-refundable once the service is activated.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        3. User Contributions & Upload Rules
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        When contributing to forums or uploading study papers, users are prohibited from uploading offensive content, non-educational files, or copyrighted material. We reserve the right to remove any inappropriate content and suspend accounts violating these terms.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-display font-extrabold text-xs uppercase text-slate-950 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        4. Disclaimer of Warranties & Liability
+                      </h4>
+                      <p className="text-slate-500 text-xs pl-3">
+                        While our educators make every effort to keep materials accurate, curricula evolve and the Lupanulla AI assistant may occasionally output errors. Users are encouraged to utilize these tools in conjunction with official NECTA syllabus guidelines.
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Footer buttons of Modal */}
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setActivePolicyDoc(null)}
+                className="px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs tracking-tight transition-all cursor-pointer shadow-md"
+              >
+                {language === 'sw' ? 'Nimeelewa na Kukubali' : 'I Understand & Accept'}
+              </button>
+            </div>
           </div>
         </div>
       )}

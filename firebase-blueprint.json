@@ -191,9 +191,38 @@
         "updatedBy": { "type": "string" }
       },
       "required": ["id"]
+    },
+    "EducationalResource": {
+      "title": "Educational Resource",
+      "description": "Trusted educational resources and links curated by admins or proposed by community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "category": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "clicksCount": { "type": "integer" },
+        "recommendationsCount": { "type": "integer" },
+        "recommendedByUsers": { "type": "array" },
+        "createdAt": { "type": "integer" },
+        "createdBy": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "institution": { "type": "string" },
+        "region": { "type": "string" },
+        "tags": { "type": "array" }
+      },
+      "required": ["id", "title", "url", "category", "isVerified", "clicksCount", "recommendationsCount", "recommendedByUsers", "createdAt", "createdBy", "createdByName"]
     }
   },
   "firestore": {
+    "/educational_resources/{resourceId}": {
+      "schema": {
+        "$ref": "#/entities/EducationalResource"
+      },
+      "description": "Collection of trusted educational links and directories."
+    },
     "/users/{userId}": {
       "schema": {
         "$ref": "#/entities/User"

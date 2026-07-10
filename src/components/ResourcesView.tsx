@@ -41,10 +41,10 @@ const CATEGORIES_LIST = [
   { id: 'government', swLabel: 'Vyanzo vya Serikali', enLabel: 'Government Resources', icon: Building2 },
   { id: 'examinations', swLabel: 'Rasilimali za Mitihani', enLabel: 'Examination Resources', icon: FileText },
   { id: 'libraries', swLabel: 'Maktaba za Nyaraka', enLabel: 'Libraries & Archives', icon: Library },
-  { id: 'universities', swLabel: 'Vyuo Vikuu & Elimu ya Juu', enLabel: 'Universities & colleges', icon: GraduationCap },
+  { id: 'universities', swLabel: 'Viungo vya Vyuo Vikuu', enLabel: 'University Links', icon: GraduationCap },
   { id: 'open_education', swLabel: 'Vyanzo Huru vya Elimu', enLabel: 'Open Educational Resources', icon: BookOpen },
   { id: 'research', swLabel: 'Utafiti na Maandishi', enLabel: 'Research & Science', icon: Globe },
-  { id: 'scholarships', swLabel: 'Fursa za Ufadhili (Scholarships)', enLabel: 'Scholarship Opportunities', icon: Award },
+  { id: 'scholarships', swLabel: 'Ufadhili wa Masomo', enLabel: 'Scholarships', icon: Award },
   { id: 'certifications', swLabel: 'Vyeti vya Kitaalamu', enLabel: 'Professional Certifications', icon: Sparkles }
 ];
 
@@ -161,6 +161,118 @@ const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
     institution: 'Tanzania Library Services Board (TLSB)',
     region: 'Tanzania',
     tags: ['Maktaba', 'Vitabu', 'TLSB', 'Nyaraka']
+  },
+  {
+    title: 'Taasisi ya Elimu Tanzania (TIE)',
+    description: 'Tovuti rasmi ya Taasisi ya Elimu Tanzania (TIE) inayohusika na uandishi wa vitabu vya mitaala ya shule za msingi na sekondari pamoja na kutoa maktaba ya kidijitali (TIE Online Library).',
+    url: 'https://www.tie.go.tz',
+    category: 'government',
+    isVerified: true,
+    clicksCount: 195,
+    recommendationsCount: 52,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7500000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Taasisi ya Elimu Tanzania (TIE)',
+    region: 'Tanzania',
+    tags: ['TIE', 'Vitabu vya Kiada', 'Mitaala', 'Nyaraka']
+  },
+  {
+    title: 'NACTVET Portal',
+    description: 'Baraza la Taifa la Elimu ya Ufundi na Mafunzo ya Ufundi Stadi (NACTVET) - kwa ajili ya miongozo ya udahili wa kozi za stashahada (Diploma) na vyeti (Certificate).',
+    url: 'https://www.nactvet.go.tz',
+    category: 'government',
+    isVerified: true,
+    clicksCount: 134,
+    recommendationsCount: 28,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7800000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Elimu ya Ufundi (NACTVET)',
+    region: 'Tanzania',
+    tags: ['NACTVET', 'Diploma', 'Admission', 'Vyeti']
+  },
+  {
+    title: 'Shule Direct',
+    description: 'Jukwaa la kujifunzia mtandaoni nchini Tanzania linalotoa notisi na mazoezi kwa wanafunzi wa sekondari kulingana na mtaala wa taifa.',
+    url: 'https://www.shuledirect.co.tz',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 167,
+    recommendationsCount: 41,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7900000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Shule Direct Foundation',
+    region: 'Tanzania',
+    tags: ['Shule Direct', 'O-Level', 'A-Level', 'Notes']
+  },
+  {
+    title: 'Chuo Kikuu cha Dar es Salaam (UDSM)',
+    description: 'Tovuti rasmi ya Chuo Kikuu cha Dar es Salaam, chuo kikongwe na kikubwa zaidi nchini Tanzania kinachotoa mafunzo na udahili kwa ngazi mbalimbali za masomo.',
+    url: 'https://www.udsm.ac.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 210,
+    recommendationsCount: 58,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8100000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Chuo Kikuu cha Dar es Salaam (UDSM)',
+    region: 'Tanzania',
+    tags: ['UDSM', 'University', 'Dar es Salaam', 'Tanzania']
+  },
+  {
+    title: 'Chuo Kikuu cha Kilimo Sokoine (SUA)',
+    description: 'Chuo Kikuu cha Kilimo Sokoine kilichopo Morogoro, kinachobobea katika sayansi za kilimo, misitu, ufugaji na sayansi husishi.',
+    url: 'https://www.sua.ac.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 125,
+    recommendationsCount: 30,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8200000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Chuo Kikuu cha Sokoine (SUA)',
+    region: 'Tanzania',
+    tags: ['SUA', 'Kilimo', 'Morogoro', 'University']
+  },
+  {
+    title: 'Chuo Kikuu Mzumbe (MU)',
+    description: 'Tovuti rasmi ya Chuo Kikuu Mzumbe kinachofahamika kwa ubora wa kutoa mafunzo ya utawala, sheria, biashara, rasilimali watu na maendeleo.',
+    url: 'https://www.mzumbe.ac.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 142,
+    recommendationsCount: 36,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8300000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Chuo Kikuu Mzumbe (MU)',
+    region: 'Tanzania',
+    tags: ['Mzumbe', 'MU', 'Law', 'Business', 'University']
+  },
+  {
+    title: 'Chuo Kikuu Huria cha Tanzania (OUT)',
+    description: 'Chuo Kikuu Huria cha Tanzania kinachotoa fursa ya masomo kwa njia ya mtandao na masafa marefu kwa wanafunzi wa ndani na nje ya nchi.',
+    url: 'https://www.out.ac.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 119,
+    recommendationsCount: 27,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8400000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Chuo Kikuu Huria (OUT)',
+    region: 'Tanzania',
+    tags: ['OUT', 'Open University', 'Distance Learning']
   },
   {
     title: 'Chevening Scholarships (UK Government)',
@@ -643,6 +755,89 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
             </select>
           </div>
 
+        </div>
+      </div>
+
+      {/* 3.5 POPULAR CATEGORY PILLS (High-polished touch-friendly selector for students) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <Sparkles size={12} className="text-amber-500 animate-pulse" />
+            {language === 'sw' ? 'Chujio Haraka cha Makundi' : 'Popular Categories & Quick Filters'}
+          </p>
+          <span className="text-[10px] text-slate-400 font-extrabold bg-slate-100/80 px-2 py-0.5 rounded">
+            {language === 'sw' ? 'Bofya kuchuja' : 'Click to filter'}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 flex-nowrap">
+          {/* 'All' Pill */}
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-tight transition-all border cursor-pointer ${
+              selectedCategory === 'all'
+                ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 border-cyan-400/30 shadow-md font-extrabold'
+                : 'bg-white text-slate-600 border-slate-150 hover:border-slate-250 hover:bg-slate-50'
+            }`}
+          >
+            <Library size={13} className={selectedCategory === 'all' ? 'text-slate-950' : 'text-slate-400'} />
+            <span>{language === 'sw' ? 'Vyote kwa Pamoja' : 'All Resources'}</span>
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+              selectedCategory === 'all' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {resources.length}
+            </span>
+          </button>
+
+          {/* Grouped & Distinct Category Pills */}
+          {CATEGORIES_LIST.map(cat => {
+            const Icon = cat.icon;
+            const count = resources.filter(r => r.category === cat.id).length;
+            const isActive = selectedCategory === cat.id;
+            
+            // Highlight specific categories dynamically with special colored icons or backgrounds
+            const isSpecialGroup = ['government', 'universities', 'scholarships'].includes(cat.id);
+            
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-tight transition-all border cursor-pointer ${
+                  isActive
+                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white border-cyan-400/20 shadow-md font-extrabold'
+                    : isSpecialGroup
+                      ? 'bg-cyan-50/50 text-cyan-950 border-cyan-100 hover:bg-cyan-50 hover:border-cyan-200'
+                      : 'bg-white text-slate-600 border-slate-150 hover:border-slate-250 hover:bg-slate-50'
+                }`}
+              >
+                <Icon 
+                  size={13} 
+                  className={
+                    isActive 
+                      ? 'text-white' 
+                      : isSpecialGroup 
+                        ? 'text-cyan-600' 
+                        : 'text-slate-400'
+                  } 
+                />
+                <span className="flex items-center gap-1.5">
+                  {language === 'sw' ? cat.swLabel : cat.enLabel}
+                  {isSpecialGroup && !isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-550 inline-block animate-ping" />
+                  )}
+                </span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  isActive 
+                    ? 'bg-white/20 text-white font-black' 
+                    : isSpecialGroup
+                      ? 'bg-cyan-100 text-cyan-800 font-extrabold'
+                      : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -113,7 +113,7 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
               onClick={() => onNavigate('fisimaji')}
               className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm px-6 py-3 rounded-full transition-all border border-slate-700/60"
             >
-              Uliza Fisi Maji AI
+              Uliza Lupanulla AI
             </button>
           </div>
         </div>

@@ -8,10 +8,11 @@ import {
   User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  signInAnonymously
 } from 'firebase/auth';
 import {
-  getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   setDoc,
@@ -26,13 +27,17 @@ import {
   orderBy,
   onSnapshot
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-lupanullaelimuhu-abc7a195-7e19-4695-b20a-82e818d9a037'); /* CRITICAL: The app will break without this line */
+
+// Use initializeFirestore with force long polling settings to ensure stable Firestore connection in the sandboxed preview iframe/network environment
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-lupanullaelimuhu-abc7a195-7e19-4695-b20a-82e818d9a037'); /* CRITICAL: The app will break without this line */
 
 // --- Firestore Error Handling (Skill Requirement) ---
 export enum OperationType {
@@ -123,6 +128,22 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
 };
 
 /**
+ * Custom sign in anonymously as a Guest student
+ */
+export const signInAsGuest = async (): Promise<User | null> => {
+  try {
+    const result = await signInAnonymously(auth);
+    // Set a default display name for the guest user
+    await updateProfile(result.user, { displayName: 'Mgeni Lupanulla' });
+    await ensureUserProfile(result.user, 'Mgeni Lupanulla');
+    return result.user;
+  } catch (err: any) {
+    console.error('Guest Sign In Error:', err);
+    throw err;
+  }
+};
+
+/**
  * Sign out of Firebase and clear cached token
  */
 export const logoutUser = async () => {
@@ -172,7 +193,7 @@ export const ensureUserProfile = async (user: User, displayName: string): Promis
     name: displayName,
     email: user.email || '',
     role: 'student',
-    subscription: 'free',
+    subscription: 'premium',
     createdAt: Date.now()
   };
 
@@ -946,6 +967,94 @@ export const toggleRecommendResource = async (id: string, userId: string): Promi
     throw error;
   }
 };
+
+/**
+ * Save an annotation/highlight to Firestore (or fallback locally if offline)
+ */
+export const saveHighlight = async (highlight: Omit<HighlightAnnotation, 'id' | 'createdAt'>): Promise<string> => {
+  const path = 'highlights';
+  try {
+    const docRef = doc(collection(db, path));
+    const fullHighlight: HighlightAnnotation = {
+      ...highlight,
+      id: docRef.id,
+      createdAt: Date.now()
+    };
+    await setDoc(docRef, fullHighlight);
+    return docRef.id;
+  } catch (err: any) {
+    console.warn('saveHighlight offline fallback triggered:', err.message || err);
+    const localHighlights = localStorage.getItem('local_highlights');
+    const list = localHighlights ? JSON.parse(localHighlights) : [];
+    const id = 'local_' + Math.random().toString(36).substring(2, 9);
+    const fullHighlight: HighlightAnnotation = {
+      ...highlight,
+      id,
+      createdAt: Date.now()
+    };
+    list.push(fullHighlight);
+    localStorage.setItem('local_highlights', JSON.stringify(list));
+    return id;
+  }
+};
+
+/**
+ * Fetch highlights for a user and optional documentId
+ */
+export const fetchHighlights = async (userId: string, documentId?: string): Promise<HighlightAnnotation[]> => {
+  const path = 'highlights';
+  try {
+    const colRef = collection(db, path);
+    let q = query(colRef, where('userId', '==', userId));
+    if (documentId) {
+      q = query(colRef, where('userId', '==', userId), where('documentId', '==', documentId));
+    }
+    const snap = await getDocs(q);
+    const onlineList = snap.docs.map(d => d.data() as HighlightAnnotation);
+    
+    // Merge with local storage highlights
+    const localHighlights = localStorage.getItem('local_highlights');
+    const localList: HighlightAnnotation[] = localHighlights ? JSON.parse(localHighlights) : [];
+    const filteredLocal = localList.filter(h => h.userId === userId && (!documentId || h.documentId === documentId));
+    
+    return [...onlineList, ...filteredLocal].sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err: any) {
+    console.warn('fetchHighlights offline fallback triggered:', err.message || err);
+    const localHighlights = localStorage.getItem('local_highlights');
+    const localList: HighlightAnnotation[] = localHighlights ? JSON.parse(localHighlights) : [];
+    return localList
+      .filter(h => h.userId === userId && (!documentId || h.documentId === documentId))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+};
+
+/**
+ * Delete a highlight from Firestore/local storage
+ */
+export const deleteHighlight = async (id: string): Promise<void> => {
+  try {
+    if (id.startsWith('local_')) {
+      const localHighlights = localStorage.getItem('local_highlights');
+      if (localHighlights) {
+        let list: HighlightAnnotation[] = JSON.parse(localHighlights);
+        list = list.filter(h => h.id !== id);
+        localStorage.setItem('local_highlights', JSON.stringify(list));
+      }
+      return;
+    }
+    const docRef = doc(db, 'highlights', id);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    console.warn(`deleteHighlight error for ${id}:`, err.message || err);
+    const localHighlights = localStorage.getItem('local_highlights');
+    if (localHighlights) {
+      let list: HighlightAnnotation[] = JSON.parse(localHighlights);
+      list = list.filter(h => h.id !== id);
+      localStorage.setItem('local_highlights', JSON.stringify(list));
+    }
+  }
+};
+
 
 
 

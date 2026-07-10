@@ -338,7 +338,7 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
             </div>
           </div>
 
-          {/* Fisi Maji AI Card */}
+          {/* Lupanulla AI Card */}
           <div 
             onClick={() => onNavigate('fisimaji')}
             className="group cursor-pointer bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-cyan-300 transition-all flex flex-col h-full"
@@ -350,7 +350,7 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
             </div>
             <div className="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] text-slate-400 font-bold tracking-wider block mb-1">Fisi Maji AI &bull; Smart Tutor</span>
+                <span className="text-[10px] text-slate-400 font-bold tracking-wider block mb-1">Lupanulla AI &bull; Smart Tutor</span>
                 <h3 className="font-bold text-slate-950 text-base leading-snug group-hover:text-cyan-600 transition-colors">Uliza Swali Lolote la Masomo kwa Lugha ya Swahili</h3>
                 <p className="text-slate-500 text-xs mt-2 line-clamp-3">Msaidizi wa akili ya bandia aliyebobea kwenye mtaala wa TIE, NECTA, TCU na HESLB atakusaidia kuelewa kila kitu.</p>
               </div>
@@ -561,12 +561,12 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
               onClick={() => toggleFaq(1)}
               className="w-full flex justify-between items-center text-left font-bold text-slate-900 text-sm sm:text-base"
             >
-              <span>Fisi Maji AI ananisaidiaje katika masomo?</span>
+              <span>Lupanulla AI ananisaidiaje katika masomo?</span>
               {faqOpen[1] ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
             </button>
             {faqOpen[1] && (
               <p className="text-slate-500 text-xs sm:text-sm mt-3 leading-relaxed border-t border-slate-100 pt-3">
-                Fisi Maji AI ni msaidizi wako binafsi wa masomo. Anaelewa mtaala wa Tanzania (TIE &amp; NECTA) kikamilifu. Unaweza kumuuliza kutatua maswali magumu ya hesabu, kueleza dhana za sayansi, kukutafutia maana ya maneno au kukusaidia kuandika insha kwa Swahili fasaha.
+                Lupanulla AI ni msaidizi wako binafsi wa masomo. Anaelewa mtaala wa Tanzania (TIE &amp; NECTA) kikamilifu. Unaweza kumuuliza kutatua maswali magumu ya hesabu, kueleza dhana za sayansi, kukutafutia maana ya maneno au kukusaidia kuandika insha kwa Swahili fasaha.
               </p>
             )}
           </div>

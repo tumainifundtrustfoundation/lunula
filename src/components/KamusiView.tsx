@@ -122,7 +122,7 @@ export default function KamusiView() {
             <Book size={32} className="mx-auto text-slate-300" />
             <h4 className="font-bold text-slate-900 text-xs sm:text-sm uppercase">Neno halikupatikana bado</h4>
             <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">
-              Msamiati ulioandika haupo kwenye maktaba yetu fupi ya kamusi kwa sasa. Unaweza kumuuliza msaidizi wetu wa akili ya bandia **Fisi Maji AI** kwa tafsiri sahihi!
+              Msamiati ulioandika haupo kwenye maktaba yetu fupi ya kamusi kwa sasa. Unaweza kumuuliza msaidizi wetu wa akili ya bandia **Lupanulla AI** kwa tafsiri sahihi!
             </p>
           </div>
         )}

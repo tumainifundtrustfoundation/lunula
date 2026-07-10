@@ -63,7 +63,7 @@ export default function LeaderboardView({ language, userProfile }: LeaderboardVi
   // Achievement badges
   const [achievements] = useState<Achievement[]>([
     { id: '1', title: 'NECTA Champ', desc: 'Soma andiko au notisi 10 za kujiandaa na mitihani.', xpReward: 500, icon: '🏆', isUnlocked: true, unlockedDate: '2026-06-20' },
-    { id: '2', title: 'AI Explorer', desc: 'Uliza Fisi Maji AI zaidi ya maswali 15 ya kitaaluma.', xpReward: 350, icon: '🤖', isUnlocked: true, unlockedDate: '2026-07-01' },
+    { id: '2', title: 'AI Explorer', desc: 'Uliza Lupanulla AI zaidi ya maswali 15 ya kitaaluma.', xpReward: 350, icon: '🤖', isUnlocked: true, unlockedDate: '2026-07-01' },
     { id: '3', title: 'Perfect Streak', desc: 'Fanya marudio na soma kila siku kwa siku 5 mfululizo.', xpReward: 1000, icon: '🔥', isUnlocked: true, unlockedDate: '2026-07-08' },
     { id: '4', title: 'Kitovu Contributor', desc: 'Shiriki na changia majibu sahihi 5 kwenye Jukwaa la Jamii.', xpReward: 800, icon: '✍️', isUnlocked: false }
   ]);

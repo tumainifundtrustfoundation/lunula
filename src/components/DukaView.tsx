@@ -599,6 +599,11 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
                   <p className="font-mono font-extrabold text-sm text-slate-950 mt-0.5">Lipa Namba: 50640388</p>
                   <p className="text-[10px] text-slate-450 font-semibold mt-0.5 uppercase tracking-tight">Jina: LAWRENT JOSEPH MDEGELA</p>
                 </div>
+                <div className="border-b border-slate-100 pb-3">
+                  <p className="font-bold text-amber-600">Tigo Pesa (Tuma Pesa):</p>
+                  <p className="font-mono font-extrabold text-sm text-slate-950 mt-0.5">Namba: 0652637810</p>
+                  <p className="text-[10px] text-slate-450 font-semibold mt-0.5 uppercase tracking-tight">Jina: SIGBERT EVARIST MINJA</p>
+                </div>
                 <div>
                   <p className="font-bold text-amber-600">Airtel Money:</p>
                   <p className="font-mono font-extrabold text-sm text-slate-950 mt-0.5">Namba: 0684458632</p>

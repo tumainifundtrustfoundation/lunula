@@ -10,7 +10,10 @@ import {
   Smartphone,
   PhoneCall,
   Lock,
-  MessageCircle
+  MessageCircle,
+  Sparkles,
+  Bot,
+  Brain
 } from 'lucide-react';
 import { updateUserProfile } from '../firebase';
 
@@ -45,7 +48,7 @@ export default function PremiumView({
       name: 'Kifurushi cha Mwezi 1 (Sana Zaidi!)',
       price: 5000,
       period: 'kwa mwezi',
-      desc: 'Kifurushi pendwa zaidi nchini. Inakupa uwezo wa kupakua na kupata msaada wa Fisi Maji AI muda wote.'
+      desc: 'Kifurushi pendwa zaidi nchini. Inakupa uwezo wa kupakua na kupata msaada wa Lupanulla AI muda wote.'
     },
     term: {
       name: 'Kifurushi cha Muhula (Term Package)',
@@ -111,7 +114,7 @@ export default function PremiumView({
             </span>
             <h1 className="text-3xl sm:text-4xl font-display font-extrabold uppercase leading-none">Jiunge na Premium</h1>
             <p className="text-slate-100 text-xs sm:text-sm leading-relaxed">
-              Ondoa kikomo cha kusoma mtandaoni na wezesha upakuaji (download) usio na kikomo wa past papers, miongozo yote, vitabu vya TIE na upate majibu ya haraka zaidi kutoka kwa Fisi Maji AI!
+              Ondoa kikomo cha kusoma mtandaoni na wezesha upakuaji (download) usio na kikomo wa past papers, miongozo yote, vitabu vya TIE na upate majibu ya haraka zaidi kutoka kwa Lupanulla AI!
             </p>
           </div>
 
@@ -209,7 +212,7 @@ export default function PremiumView({
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
-                <p>Majibu ya haraka zaidi na msaada mkubwa wa Fisi Maji AI bila vizuizi vyovyote vya siku.</p>
+                <p>Majibu ya haraka zaidi na msaada mkubwa wa Lupanulla AI bila vizuizi vyovyote vya siku.</p>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
@@ -218,6 +221,84 @@ export default function PremiumView({
               <div className="flex items-start gap-2">
                 <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
                 <p>Hakuna matangazo yoyote ya usumbufu wakati unajisomea.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Premium AI Features Showcase - "ai ionekane kwenye premium" */}
+          <div className="bg-gradient-to-r from-cyan-900 via-indigo-950 to-slate-950 border border-cyan-500/25 rounded-3xl p-6 sm:p-8 text-white space-y-6 relative overflow-hidden shadow-lg animate-fade-in">
+            <div className="absolute inset-0 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:24px_24px] opacity-10"></div>
+            <div className="absolute -right-16 -bottom-16 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-xl">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold uppercase tracking-wider border border-cyan-500/30">
+                  <Sparkles size={11} className="text-amber-300 animate-pulse" />
+                  Kipengele Kikuu cha AI Premium
+                </span>
+                <h3 className="text-xl sm:text-2xl font-display font-extrabold uppercase tracking-tight text-white flex items-center gap-2">
+                  <Bot size={24} className="text-cyan-400 animate-bounce" />
+                  Msaidizi wa Elimu wa Lupanulla AI & Notisi Mahiri
+                </h3>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-semibold">
+                  Wezesha uwezo kamili wa akili mnemba (Artificial Intelligence) uliolengwa maalum kwa ajili ya mtaala wa NECTA na vitabu vya TIE nchini Tanzania. Premium inakupa:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 space-y-1">
+                    <h4 className="text-cyan-300 text-xs font-bold uppercase flex items-center gap-1">
+                      <Sparkles size={12} className="text-cyan-400" />
+                      Smart Notes (AI Summaries)
+                    </h4>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Huzalisha muhtasari na miongozo mahiri ya mada zote za NECTA kwa kubofya kitufe kimoja tu.</p>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 space-y-1">
+                    <h4 className="text-cyan-300 text-xs font-bold uppercase flex items-center gap-1">
+                      <Brain size={12} className="text-cyan-400" />
+                      Interactive Annotations
+                    </h4>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Chagua maandishi yoyote ndani ya notisi ili kuweka highlight na kuongeza dokezo la kukusaidia kukumbuka.</p>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 space-y-1">
+                    <h4 className="text-cyan-300 text-xs font-bold uppercase flex items-center gap-1">
+                      <Bot size={12} className="text-cyan-400" />
+                      Lupanulla AI Chat Tutor
+                    </h4>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Chat bila kikomo na mwalimu asilia aliyefundishwa mtaala wa kitaifa kutatua hesabu na maswali magumu.</p>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 space-y-1">
+                    <h4 className="text-cyan-300 text-xs font-bold uppercase flex items-center gap-1">
+                      <ArrowRight size={12} className="text-cyan-400" />
+                      Offline PDF Export
+                    </h4>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Pakua (download) Smart Notes zako zote pamoja na highlights kama faili la PDF la kusoma offline bila bando la internet.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Graphical simulation of AI tutor in action */}
+              <div className="flex-shrink-0 w-full md:w-64 bg-slate-950/80 border border-white/10 p-4 rounded-2xl space-y-3 backdrop-blur-sm shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <span className="text-[9px] text-cyan-400 font-extrabold uppercase tracking-wider">Lupanulla AI Simulator</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="bg-white/5 p-2 rounded-xl text-[10px] text-slate-300">
+                    <p className="font-extrabold text-[8px] uppercase text-cyan-400">Mwanafunzi:</p>
+                    <p className="font-semibold italic">&quot;Nisaidie kutatua 2x² + 5x - 3 = 0&quot;</p>
+                  </div>
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 p-2.5 rounded-xl text-[10px] text-slate-200">
+                    <p className="font-extrabold text-[8px] uppercase text-amber-400">Lupanulla AI:</p>
+                    <p className="font-semibold">Njia ya Quadratic Formula ni x = [-b ± √(b² - 4ac)] / 2a. Hapa tunapata x = 0.5 au x = -3...</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => onNavigate('fisimaji')}
+                  className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Sparkles size={12} className="text-amber-950 animate-pulse" /> Jaribu Lupanulla AI sasa
+                </button>
               </div>
             </div>
           </div>
@@ -299,14 +380,21 @@ export default function PremiumView({
                   )}
                   {payMethod === 'tigopesa' && (
                     <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl space-y-3 text-xs">
-                      <p className="text-slate-500 font-semibold">Unaweza kutuma Tigo Pesa kwenda kwa mitandao mingine kama ifuatavyo:</p>
                       <div className="space-y-1">
-                        <p className="text-slate-800 font-bold">Chaguo la 1: Lipa kwenda VodaLipa Vodacom</p>
+                        <p className="text-slate-800 font-bold">Namba ya Tigo Pesa (Tuma Pesa):</p>
+                        <p className="font-extrabold text-amber-600 font-mono text-base tracking-wider bg-white px-2 py-1 rounded border border-amber-200/50 w-fit">0652637810</p>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-tight">Thibitisha Jina: <span className="font-extrabold text-slate-850">SIGBERT EVARIST MINJA</span> au jina husika la muamala</p>
+                      </div>
+                      <div className="border-t border-amber-100/60 pt-2 text-[10px] text-slate-500 font-semibold">
+                        Njia mbadala kama huna Tigo Pesa ya moja kwa moja:
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-800 font-bold">Chaguo la 2: Lipa kwenda VodaLipa Vodacom</p>
                         <p className="font-extrabold text-slate-900 font-mono">Lipa Namba: 50640388</p>
                         <p className="text-[10px] text-slate-400">Jina: LAWRENT JOSEPH MDEGELA</p>
                       </div>
                       <div className="space-y-1 border-t border-amber-100/60 pt-2">
-                        <p className="text-slate-800 font-bold">Chaguo la 2: Tuma Airtel Money</p>
+                        <p className="text-slate-800 font-bold">Chaguo la 3: Tuma Airtel Money</p>
                         <p className="font-extrabold text-slate-900 font-mono">Namba: 0684458632</p>
                         <p className="text-[10px] text-slate-400">Jina: YOHANA MARCO BAHATI</p>
                       </div>
@@ -394,8 +482,12 @@ export default function PremiumView({
                 Kama umepata changamoto yoyote wakati wa kufanya malipo au SMS haijafika, tafadhali tupigie au wasiliana nasi moja kwa moja kwa msaada wa haraka kupitia:
               </p>
               <div className="flex flex-col gap-2.5 pt-1">
-                <a href="tel:0684458632" className="flex items-center gap-2 text-xs font-bold text-white hover:text-amber-400 hover:underline">
-                  <PhoneCall size={14} className="text-amber-400" />
+                <a href="tel:0652637810" className="flex items-center gap-2 text-xs font-bold text-white hover:text-amber-400 hover:underline">
+                  <PhoneCall size={14} className="text-amber-400 animate-pulse" />
+                  Piga Simu (Sigbert): 0652637810
+                </a>
+                <a href="tel:0684458632" className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:underline">
+                  <PhoneCall size={14} className="text-amber-400/80" />
                   Piga Simu (Yohana): 0684458632
                 </a>
                 <a href="tel:0743548225" className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:underline">
@@ -422,7 +514,7 @@ export default function PremiumView({
           <div className="space-y-2">
             <h2 className="font-display font-extrabold text-2xl text-slate-900 uppercase">Sasa Wewe ni PREMIUM!</h2>
             <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-md mx-auto font-medium">
-              Malipo yako ya muamala yamethibitishwa kikamilifu! Sasa una akaunti ya **Premium Member**. Unaweza kusoma, kupakua faili zote bila kikomo na kutumia Fisi Maji AI wakati wowote.
+              Malipo yako ya muamala yamethibitishwa kikamilifu! Sasa una akaunti ya **Premium Member**. Unaweza kusoma, kupakua faili zote bila kikomo na kutumia Lupanulla AI wakati wowote.
             </p>
           </div>
 

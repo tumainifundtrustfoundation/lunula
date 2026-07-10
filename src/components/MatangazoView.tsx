@@ -197,7 +197,7 @@ export default function MatangazoView() {
     },
     {
       id: 'ann-3',
-      title: 'Mafunzo Maalum ya AI (Fisi Maji) Kupitia WhatsApp Sasa Yapo Wazi',
+      title: 'Mafunzo Maalum ya AI (Lupanulla) Kupitia WhatsApp Sasa Yapo Wazi',
       desc: 'Lupanulla imezindua group maalum la WhatsApp ambapo wanafunzi wanapata usaidizi wa haraka kutoka kwa msaidizi wetu mahiri wa kijasusi kutatua maswali magumu ya Sayansi na Hesabu.',
       createdAt: Date.now() - 3600000 * 48
     }
@@ -501,7 +501,7 @@ export default function MatangazoView() {
               Lupanulla Foundation
             </h3>
             <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-semibold">
-              Lupanulla Elimu Hub ni jukwaa namba moja la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video za masomo, na msaidizi wa AI (Fisi Maji AI) ili kurahisisha na kuboresha ufaulu wa wanafunzi nchini.
+              Lupanulla Elimu Hub ni jukwaa namba moja la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video za masomo, na msaidizi wa AI (Lupanulla AI) ili kurahisisha na kuboresha ufaulu wa wanafunzi nchini.
             </p>
             
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-900 pt-5 text-xs font-semibold text-slate-600 dark:text-slate-400">
