@@ -100,6 +100,26 @@
         "$ref": "#/entities/Document"
       },
       "description": "A catalog of shareable documents stored in Google Drive and searchable in Firestore."
+    },
+    "/matangazo/{annId}": {
+      "schema": "object",
+      "description": "Announcements and news for the platform."
+    },
+    "/videos/{vidId}": {
+      "schema": "object",
+      "description": "Educational videos."
+    },
+    "/products/{prodId}": {
+      "schema": "object",
+      "description": "Products or resources for sale."
+    },
+    "/notifications/{notifId}": {
+      "schema": "object",
+      "description": "User notifications."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "object",
+      "description": "Student feedback and reports."
     }
   }
 }

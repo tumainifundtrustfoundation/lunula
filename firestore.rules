@@ -2,11 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Common Helpers
     function isSignedIn() {
       return request.auth != null;
@@ -30,6 +25,22 @@ service cloud.firestore {
 
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Public Collections (Accessible by everyone)
+    match /matangazo/{annId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /videos/{vidId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{prodId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
     }
 
     // Users collection
@@ -63,13 +74,10 @@ service cloud.firestore {
         || (isSignedIn() && (resource.data.uploadedBy == request.auth.uid || isAdmin()))
       );
 
-      allow list: if isSignedIn() && (
-        resource.data.status == "approved"
-        || resource.data.uploadedBy == request.auth.uid
-        || isAdmin()
-      );
+      allow list: if (resource.data.status == "approved")
+        || (isSignedIn() && (resource.data.uploadedBy == request.auth.uid || isAdmin()));
 
-      allow create: if isSignedIn() && (isUserWithRole("author") || isUserWithRole("admin")) && isValidId(docId)
+      allow create: if isSignedIn() && isValidId(docId)
         && request.resource.data.id == docId
         && request.resource.data.uploadedBy == request.auth.uid
         && request.resource.data.status == "pending"
@@ -103,9 +111,15 @@ service cloud.firestore {
     // Notifications collection
     match /notifications/{notifId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all");
-      allow create: if isSignedIn();
+      allow create: if true; // Allow system to create notifications via client triggers if needed, but consider server-only in future
       allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all") && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if isAdmin();
+    }
+
+    // Feedback collection
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
     }
   }
 }

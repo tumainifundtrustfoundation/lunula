@@ -11,6 +11,17 @@ export interface UserProfile {
   createdAt?: number;
 }
 
+export interface Feedback {
+  id?: string;
+  userId: string;
+  userName: string;
+  email: string;
+  type: 'missing_notes' | 'improvement' | 'bug' | 'other';
+  message: string;
+  createdAt: number;
+  status: 'new' | 'reviewed' | 'resolved';
+}
+
 export interface DocumentMetadata {
   id: string;
   title: string;
@@ -117,4 +128,27 @@ export interface AppNotification {
   read: boolean;
   createdAt: number;
   link?: string;
+}
+
+export interface WorkspaceCourse {
+  id: string;
+  name: string;
+  section?: string;
+  descriptionHeading?: string;
+  description?: string;
+  alternateLink?: string;
+}
+
+export interface WorkspaceFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink: string;
+  thumbnailLink?: string;
+}
+
+export interface WorkspaceForm {
+  id: string;
+  name: string;
+  webViewLink: string;
 }

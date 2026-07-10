@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { google } from 'googleapis';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -11,6 +12,70 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Helper to get OAuth2 client from request header
+function getOAuth2Client(req: express.Request) {
+  const token = req.headers['x-oauth-token'] as string;
+  if (!token) return null;
+  
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: token });
+  return oauth2Client;
+}
+
+// API routes FIRST
+app.get('/api/workspace/courses', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const classroom = google.classroom({ version: 'v1', auth });
+    const response = await classroom.courses.list({
+      courseStates: ['ACTIVE'],
+    });
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Classroom API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/workspace/files', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    const response = await drive.files.list({
+      pageSize: 10,
+      fields: 'nextPageToken, files(id, name, mimeType, webViewLink, thumbnailLink)',
+      q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+    });
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Drive API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/workspace/forms', async (req, res) => {
+  const auth = getOAuth2Client(req);
+  if (!auth) return res.status(401).json({ error: 'OAuth token missing' });
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    // Search for forms in drive
+    const response = await drive.files.list({
+      q: "mimeType = 'application/vnd.google-apps.form' and trashed = false",
+      pageSize: 10,
+      fields: 'files(id, name, webViewLink)',
+    });
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Forms API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Initialize Gemini Client with standard User-Agent header
 const ai = new GoogleGenAI({
@@ -67,16 +132,30 @@ app.post('/api/claude.php', async (req, res) => {
     }));
 
     // Call Gemini API using modern SDK with built-in retry logic
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+    // Using gemini-3.5-flash as recommended by latest guidelines
+    const interaction = await callGeminiWithRetry(() => ai.interactions.create({
       model: 'gemini-3.5-flash',
-      contents: contents,
-      config: {
-        systemInstruction: system || 'Wewe ni msaidizi wa masomo Tanzania.',
+      input: contents.length > 0 ? contents[contents.length - 1].parts[0].text : 'Habari',
+      // If we want to support multi-turn history with Interactions API, we'd need to manage session IDs.
+      // For now, we'll use the simplified single-turn interaction pattern as shown in skill.
+      system_instruction: system || 'Wewe ni msaidizi wa masomo Tanzania unayeitwa Fisi Maji AI. Unawasaidia wanafunzi wa Lupanulla kufaulu mitihani yao kwa kutoa notisi, maelezo, na majibu ya maswali ya kitaaluma.',
+      generation_config: {
         temperature: 0.7,
       }
     }));
 
-    const reply = response.text || 'Samahani, sikuweza kupata jibu sahihi wakati huu.';
+    // Extract text output from Interaction Response
+    let fullOutput = "";
+    for (const step of interaction.steps) {
+      if (step.type === 'model_output') {
+        const textContent = step.content?.find((c: any) => c.type === 'text');
+        if (textContent && textContent.text) {
+          fullOutput += textContent.text;
+        }
+      }
+    }
+
+    const reply = fullOutput || 'Samahani, sikuweza kupata jibu sahihi wakati huu.';
     res.json({ reply });
   } catch (error: any) {
     console.error('Gemini API Error:', error);
@@ -99,15 +178,23 @@ app.post('/api/chat', async (req, res) => {
       parts: [{ text: m.content }]
     }));
 
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+    const interaction = await callGeminiWithRetry(() => ai.interactions.create({
       model: 'gemini-3.5-flash',
-      contents,
-      config: {
-        systemInstruction: system,
-      }
+      input: contents.length > 0 ? contents[contents.length - 1].parts[0].text : 'Habari',
+      system_instruction: system,
     }));
 
-    res.json({ reply: response.text });
+    let fullOutput = "";
+    for (const step of interaction.steps) {
+      if (step.type === 'model_output') {
+        const textContent = step.content?.find((c: any) => c.type === 'text');
+        if (textContent && textContent.text) {
+          fullOutput += textContent.text;
+        }
+      }
+    }
+
+    res.json({ reply: fullOutput });
   } catch (error: any) {
     console.error('Gemini API Error:', error);
     const isHighDemand = error.status === 503 || (error.message && (error.message.includes('503') || error.message.includes('high demand') || error.message.includes('UNAVAILABLE')));

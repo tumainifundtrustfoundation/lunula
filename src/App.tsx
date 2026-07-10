@@ -42,6 +42,8 @@ import KamusiView from './components/KamusiView';
 import MikoaView from './components/MikoaView';
 import AjiraView from './components/AjiraView';
 import MatangazoView from './components/MatangazoView';
+import FeedbackModal from './components/FeedbackModal';
+import WorkspaceView from './components/WorkspaceView';
 import UploadView from './components/UploadView';
 import ReaderView from './components/ReaderView';
 import PremiumView from './components/PremiumView';
@@ -58,6 +60,7 @@ export default function App() {
 
   // Login Modal State
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
   
   // Credentials
@@ -91,7 +94,7 @@ export default function App() {
         const validViews = [
           'portal', 'dashboard', 'masomo', 'mitihani', 'duka', 
           'fisimaji', 'videos', 'calculator', 'kamusi', 'mikoa', 
-          'ajira', 'matangazo', 'upload', 'premium'
+          'ajira', 'matangazo', 'upload', 'premium', 'workspace'
         ];
         if (validViews.includes(cleanView)) {
           setActiveView(cleanView);
@@ -109,6 +112,10 @@ export default function App() {
 
   // Sync state navigation back to hash
   const navigateTo = (view: string, documentId?: string) => {
+    if (view === 'feedback') {
+      setIsFeedbackOpen(true);
+      return;
+    }
     if (view === 'reader' && documentId) {
       window.location.hash = `#reader?id=${documentId}`;
     } else {
@@ -179,7 +186,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Google authorization error:', err);
-      setAuthError('Kuingia kwa Google kumeshindikana. Tafadhali jaribu tena.');
+      setAuthError(err.message || 'Kuingia kwa Google kumeshindikana. Tafadhali jaribu tena.');
     } finally {
       setAuthLoading(false);
     }
@@ -232,6 +239,14 @@ export default function App() {
   return (
     <div id="lupanulla-app" className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-950 text-slate-800">
       
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        user={user}
+        userProfile={userProfile}
+      />
+
       {/* Navigation Bar */}
       <Navbar 
         activeView={activeView} 
@@ -329,6 +344,10 @@ export default function App() {
           <MatangazoView />
         )}
 
+        {activeView === 'workspace' && (
+          <WorkspaceView />
+        )}
+
         {activeView === 'upload' && (
           <UploadView 
             onNavigate={navigateTo} 
@@ -361,7 +380,7 @@ export default function App() {
           <div className="space-y-3.5">
             <div className="flex items-center gap-2.5 text-white">
               <img 
-                src="/src/assets/images/lupanulla_logo_1783623714916.jpg" 
+                src="/logo.jpg" 
                 alt="Lupanulla Elimu Hub Logo" 
                 referrerPolicy="no-referrer"
                 className="w-8 h-8 object-cover rounded-lg shadow-md"
@@ -434,7 +453,7 @@ export default function App() {
 
             <div className="text-center space-y-1.5">
               <img 
-                src="/src/assets/images/lupanulla_logo_1783623714916.jpg" 
+                src="/logo.jpg" 
                 alt="Lupanulla Elimu Hub Logo" 
                 referrerPolicy="no-referrer"
                 className="w-16 h-16 object-cover rounded-2xl mx-auto shadow-md border border-slate-100"

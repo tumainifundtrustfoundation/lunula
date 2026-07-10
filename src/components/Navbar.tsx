@@ -22,7 +22,9 @@ import {
   Trophy,
   Store,
   LayoutDashboard,
-  Bell
+  Bell,
+  MessageSquare,
+  Library
 } from 'lucide-react';
 import { UserProfile, AppNotification } from '../types';
 import { subscribeNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../firebase';
@@ -95,6 +97,7 @@ export default function Navbar({
     { id: 'mitihani', label: 'Mitihani (Past Papers)', icon: FileText },
     { id: 'duka', label: 'Duka (Books)', icon: Store },
     { id: 'fisimaji', label: 'Fisi Maji AI', icon: Bot, highlight: true },
+    { id: 'workspace', label: 'Maktaba ya Google', icon: Library },
     { id: 'videos', label: 'Lupa+ Videos', icon: Play },
   ];
 
@@ -104,6 +107,7 @@ export default function Navbar({
     { id: 'mikoa', label: 'Standings kitaifa', icon: Trophy },
     { id: 'ajira', label: 'Ajira za Walimu', icon: Briefcase },
     { id: 'matangazo', label: 'Habari & Kuhusu', icon: Megaphone },
+    { id: 'feedback', label: 'Toa Maoni', icon: MessageSquare },
   ];
 
   return (
@@ -114,7 +118,7 @@ export default function Navbar({
           {/* Brand Logo - Tanzanian Educational Pride */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavClick('portal')}>
             <img 
-              src="/src/assets/images/lupanulla_logo_1783623714916.jpg" 
+              src="/logo.jpg" 
               alt="Lupanulla Elimu Hub Logo" 
               referrerPolicy="no-referrer"
               className="w-10 h-10 object-cover rounded-xl shadow-md border border-slate-800"

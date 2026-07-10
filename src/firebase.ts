@@ -26,13 +26,52 @@ import {
   orderBy,
   onSnapshot
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-lupanullaelimuhu-abc7a195-7e19-4695-b20a-82e818d9a037'); /* CRITICAL: The app will break without this line */
+
+// --- Firestore Error Handling (Skill Requirement) ---
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error Details:', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+// ----------------------------------------------------
 
 // Configure Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
@@ -53,7 +92,7 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const token = credential?.accessToken;
     if (!token) {
-      throw new Error('Failed to retrieve Google Drive OAuth Access Token.');
+      throw new Error('Hukuweza kupata Token ya Google Drive. Tafadhali hakikisha umekubali ruhusa zote.');
     }
     cachedAccessToken = token;
     
@@ -61,8 +100,17 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     await ensureUserProfile(result.user, result.user.displayName || 'Google User');
     
     return { user: result.user, accessToken: token };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Google Sign In Error:', err);
+    
+    if (err.code === 'auth/popup-closed-by-user') {
+      throw new Error('Dirisha la kuingia limefungwa kabla ya kumaliza. Tafadhali ruhusu "Popups" kwenye kivinjari chako na usifunge dirisha mapema.');
+    } else if (err.code === 'auth/cancelled-popup-request') {
+      throw new Error('Ombi la kuingia lilighairiwa. Tafadhali jaribu tena.');
+    } else if (err.code === 'auth/popup-blocked') {
+      throw new Error('Kivinjari chako kimezuia dirisha la kuingia (Popup). Tafadhali ruhusu Popups kwa tovuti hii ili uweze kuingia.');
+    }
+    
     throw err;
   } finally {
     isSigningIn = false;
@@ -89,6 +137,25 @@ export const getAccessToken = (): string | null => {
  */
 export const setAccessToken = (token: string | null) => {
   cachedAccessToken = token;
+};
+
+/**
+ * Submits student feedback to Firestore
+ */
+export const submitFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'status'>): Promise<string> => {
+  const path = 'feedback';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, {
+      ...feedback,
+      createdAt: Date.now(),
+      status: 'new'
+    });
+    return docRef.id;
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+    throw err;
+  }
 };
 
 /**
@@ -243,8 +310,9 @@ export const fetchDocuments = async (filters?: {
   uploadedBy?: string;
   status?: DocumentStatus;
 }): Promise<DocumentMetadata[]> => {
+  const path = 'documents';
   try {
-    const colRef = collection(db, 'documents');
+    const colRef = collection(db, path);
     let q = query(colRef);
     
     if (filters?.category) {
@@ -257,10 +325,36 @@ export const fetchDocuments = async (filters?: {
       q = query(q, where('status', '==', filters.status));
     }
     
+    // Note: We avoid adding orderBy('createdAt', 'desc') here to prevent "missing index" errors
+    // unless the developer has specifically created the composite indexes in Firebase Console.
+    // Sorting is handled in-memory in the components for better reliability.
+    
     const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as DocumentMetadata);
-  } catch (err) {
-    console.error('fetchDocuments error:', err);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as DocumentMetadata));
+  } catch (err: any) {
+    if (err.code === 'permission-denied') {
+      console.warn('fetchDocuments: Permission denied. Access restricted or user not signed in.');
+      return [];
+    }
+    
+    // If it's a missing index error, don't throw, just log and return empty to trigger local seeds
+    if (err.code === 'failed-precondition' || (err.message && err.message.includes('index'))) {
+      console.warn('Firestore index missing for complex query, falling back to simple query or memory sort.');
+      // Simple fallback query
+      try {
+        const simpleQ = query(collection(db, path), where('status', '==', 'approved'));
+        const snap = await getDocs(simpleQ);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() } as DocumentMetadata));
+      } catch (innerErr) {
+        return [];
+      }
+    }
+
+    try {
+      handleFirestoreError(err, OperationType.LIST, path);
+    } catch (e) {
+      // Just log and return empty to avoid crashing UI
+    }
     return [];
   }
 };

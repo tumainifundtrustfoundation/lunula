@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { 
   Megaphone, 
   Clock, 
@@ -8,10 +9,49 @@ import {
   Globe, 
   Heart, 
   Award,
-  Compass
+  Compass,
+  User
 } from 'lucide-react';
 import { fetchAnnouncements } from '../firebase';
 import { Announcement } from '../types';
+
+/**
+ * MhuniWalking Component
+ * Animates a character walking from left to right
+ */
+function MhuniWalking() {
+  return (
+    <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none overflow-hidden z-0">
+      <motion.div
+        initial={{ x: '-100%' }}
+        animate={{ x: '120%' }}
+        transition={{
+          duration: 15,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="flex items-center gap-2 text-cyan-200/40"
+      >
+        <div className="flex flex-col items-center">
+          <motion.div
+            animate={{ 
+              rotate: [0, -10, 10, 0],
+              y: [0, -5, 0]
+            }}
+            transition={{
+              duration: 0.5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            <User size={32} strokeWidth={3} />
+          </motion.div>
+          <span className="text-[10px] font-bold uppercase tracking-tighter">Mhuni mtaalam</span>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function MatangazoView() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -55,6 +95,7 @@ export default function MatangazoView() {
       {/* Announcements Banner */}
       <section className="bg-gradient-to-r from-cyan-600 to-indigo-950 p-6 rounded-3xl text-white shadow-md relative overflow-hidden border border-cyan-500/10 text-center sm:text-left">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <MhuniWalking />
         <div className="relative z-10 space-y-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-xs font-bold uppercase tracking-wider">
             <Megaphone size={12} /> Lupanulla Foundations

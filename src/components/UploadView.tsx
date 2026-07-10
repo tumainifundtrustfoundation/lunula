@@ -119,7 +119,7 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         uploadedByName: userProfile?.name || 'Mwandishi Mgeni',
         createdAt: Date.now(),
         views: 0,
-        status: 'approved', // Auto-approved for verified platform builders
+        status: 'pending', // Requires admin approval by default as per rules
         year: Number(year) || 2024,
         type: type,
         sizeKB: sizeKB
