@@ -52,7 +52,12 @@ import {
   createAuditLog,
   fetchAuditLogs,
   fetchSystemConfig,
-  updateSystemConfig
+  updateSystemConfig,
+  saveDocumentMetadata,
+  fetchLibraryConfig,
+  saveLibraryConfig,
+  LibraryConfig,
+  DEFAULT_LIBRARY_CONFIG
 } from '../firebase';
 
 interface AdminViewProps {
@@ -123,6 +128,37 @@ export default function AdminView({
   const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
   const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
 
+  // --- NEW: Digital Library admin management states ---
+  const [libConfig, setLibConfig] = useState<LibraryConfig>(DEFAULT_LIBRARY_CONFIG);
+  const [isLibraryConfigLoading, setIsLibraryConfigLoading] = useState<boolean>(false);
+  const [showConfigManager, setShowConfigManager] = useState<boolean>(false);
+  
+  // Library management modes
+  const [isDocFormOpen, setIsDocFormOpen] = useState<boolean>(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentMetadata | null>(null);
+  
+  // Document Form fields
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docDescription, setDocDescription] = useState<string>('');
+  const [docCategory, setDocCategory] = useState<string>('Notes');
+  const [docTagsInput, setDocTagsInput] = useState<string>('');
+  const [docDriveUrl, setDocDriveUrl] = useState<string>('');
+  const [docFileId, setDocFileId] = useState<string>('');
+  const [docThumbnailUrl, setDocThumbnailUrl] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('Mathematics');
+  const [docEducationLevel, setDocEducationLevel] = useState<string>('O-Level');
+  const [docClassLevel, setDocClassLevel] = useState<string>('Form 1');
+  const [docYear, setDocYear] = useState<number>(2026);
+  const [docRegion, setDocRegion] = useState<string>('');
+  const [docStatus, setDocStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
+  const [isDocSaving, setIsDocSaving] = useState<boolean>(false);
+  const [adminDocSearch, setAdminDocSearch] = useState<string>('');
+
+  // Configuration adding helpers
+  const [newSubject, setNewSubject] = useState<string>('');
+  const [newClass, setNewClass] = useState<string>('');
+  const [newCategory, setNewCategory] = useState<string>('');
+
   useEffect(() => {
     const verifyUserRoleAndLoad = async () => {
       if (!userProfile?.uid) {
@@ -165,6 +201,12 @@ export default function AdminView({
         const aDocs = await fetchDocuments();
         aDocs.sort((a, b) => b.createdAt - a.createdAt);
         setAllDocs(aDocs);
+        try {
+          const config = await fetchLibraryConfig();
+          setLibConfig(config);
+        } catch (e) {
+          console.warn('Failed to fetch library config in admin panel', e);
+        }
       } else if (activeTab === 'users') {
         const users = await fetchAllUsers();
         users.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -585,6 +627,207 @@ export default function AdminView({
     } finally {
       setActioningId(null);
     }
+  };
+
+  // --- NEW: DIGITAL LIBRARY AND CONFIG MANAGEMENT METHODS ---
+  const handleOpenAddDoc = () => {
+    setEditingDoc(null);
+    setDocTitle('');
+    setDocDescription('');
+    setDocCategory(libConfig.categories[0] || 'Notes');
+    setDocTagsInput('');
+    setDocDriveUrl('');
+    setDocFileId('');
+    setDocThumbnailUrl('');
+    setDocSubject(libConfig.subjects[0] || 'Mathematics');
+    setDocEducationLevel(libConfig.educationLevels[0] || 'O-Level');
+    setDocClassLevel(libConfig.classes[0] || 'Form 1');
+    setDocYear(2026);
+    setDocRegion('');
+    setDocStatus('approved');
+    setIsDocFormOpen(true);
+  };
+
+  const handleOpenEditDoc = (docItem: DocumentMetadata) => {
+    setEditingDoc(docItem);
+    setDocTitle(docItem.title || '');
+    setDocDescription(docItem.description || '');
+    setDocCategory(docItem.category || 'Notes');
+    setDocTagsInput(docItem.tags?.join(', ') || '');
+    setDocDriveUrl(docItem.driveUrl || '');
+    setDocFileId(docItem.fileId || '');
+    setDocThumbnailUrl((docItem as any).thumbnailUrl || '');
+    setDocSubject(docItem.subject || (docItem as any).subject || 'Mathematics');
+    setDocEducationLevel((docItem as any).educationLevel || 'O-Level');
+    setDocClassLevel((docItem as any).classLevel || 'Form 1');
+    setDocYear(docItem.year || 2026);
+    setDocRegion((docItem as any).region || docItem.accent || '');
+    setDocStatus(docItem.status || 'approved');
+    setIsDocFormOpen(true);
+  };
+
+  const handleSaveDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docTitle) {
+      alert('Tafadhali jaza jina la nyaraka.');
+      return;
+    }
+    if (!docDriveUrl) {
+      alert('Tafadhali jaza Drive URL au Link ya nyaraka.');
+      return;
+    }
+    
+    setIsDocSaving(true);
+    try {
+      const tags = docTagsInput.split(',').map(t => t.trim()).filter(Boolean);
+      const parsedYear = Number(docYear) || 2026;
+      
+      const payload: Partial<DocumentMetadata> = {
+        title: docTitle,
+        description: docDescription,
+        category: docCategory,
+        tags: tags,
+        driveUrl: docDriveUrl,
+        fileId: docFileId || `custom-${Date.now()}`,
+        uploadedBy: userProfile?.uid || 'admin',
+        uploadedByName: userProfile?.name || 'Msimamizi Lupanulla',
+        year: parsedYear,
+        status: docStatus,
+        rating: 5,
+        downloadsCount: editingDoc?.downloadsCount || 0,
+        // New extended library parameters
+        educationLevel: docEducationLevel,
+        classLevel: docClassLevel,
+        subject: docSubject,
+        documentType: docCategory,
+        region: docRegion,
+        thumbnailUrl: docThumbnailUrl,
+        type: docCategory
+      } as any;
+
+      if (editingDoc) {
+        // Edit existing document
+        await updateDocument(editingDoc.id, payload);
+        alert('Nyaraka imerekebishwa kikamilifu!');
+        await logAdminAction('edit_document', editingDoc.id, docTitle, `Updated document metadata details in library.`);
+      } else {
+        // Create new document metadata
+        const newId = await saveDocumentMetadata({
+          title: docTitle,
+          description: docDescription,
+          category: docCategory,
+          tags: tags,
+          driveUrl: docDriveUrl,
+          fileId: docFileId || `custom-${Date.now()}`,
+          uploadedBy: userProfile?.uid || 'admin',
+          uploadedByName: userProfile?.name || 'Msimamizi Lupanulla',
+          year: parsedYear,
+          status: docStatus,
+          // New properties mapping
+          educationLevel: docEducationLevel,
+          classLevel: docClassLevel,
+          subject: docSubject,
+          documentType: docCategory,
+          region: docRegion,
+          thumbnailUrl: docThumbnailUrl,
+          type: docCategory
+        } as any);
+        
+        // Auto-approve newly created doc if status is set to approved
+        if (docStatus !== 'pending') {
+          await updateDocument(newId, { status: docStatus });
+        }
+        alert('Nyaraka mpya imehifadhiwa kikamilifu!');
+        await logAdminAction('create_document', newId, docTitle, `Added new document directly to system library.`);
+      }
+
+      // Close Form and Reload Docs
+      setIsDocFormOpen(false);
+      setEditingDoc(null);
+      const docs = await fetchDocuments();
+      docs.sort((a, b) => b.createdAt - a.createdAt);
+      setAllDocs(docs);
+    } catch (err: any) {
+      console.error('Error saving document:', err);
+      alert('Imeshindikana kuhifadhi nyaraka: ' + (err.message || err));
+    } finally {
+      setIsDocSaving(false);
+    }
+  };
+
+  const handleAddSubject = async () => {
+    if (!newSubject.trim()) return;
+    const clean = newSubject.trim();
+    if (libConfig.subjects.includes(clean)) {
+      alert('Somo hili tayari lipo.');
+      return;
+    }
+    const updated = {
+      ...libConfig,
+      subjects: [...libConfig.subjects, clean].sort()
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
+    setNewSubject('');
+  };
+
+  const handleRemoveSubject = async (sub: string) => {
+    const updated = {
+      ...libConfig,
+      subjects: libConfig.subjects.filter(s => s !== sub)
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
+  };
+
+  const handleAddClass = async () => {
+    if (!newClass.trim()) return;
+    const clean = newClass.trim();
+    if (libConfig.classes.includes(clean)) {
+      alert('Darasa hili tayari lipo.');
+      return;
+    }
+    const updated = {
+      ...libConfig,
+      classes: [...libConfig.classes, clean]
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
+    setNewClass('');
+  };
+
+  const handleRemoveClass = async (cls: string) => {
+    const updated = {
+      ...libConfig,
+      classes: libConfig.classes.filter(c => c !== cls)
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
+    const clean = newCategory.trim();
+    if (libConfig.categories.includes(clean)) {
+      alert('Aina hii tayari ipo.');
+      return;
+    }
+    const updated = {
+      ...libConfig,
+      categories: [...libConfig.categories, clean]
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
+    setNewCategory('');
+  };
+
+  const handleRemoveCategory = async (cat: string) => {
+    const updated = {
+      ...libConfig,
+      categories: libConfig.categories.filter(c => c !== cat)
+    };
+    await saveLibraryConfig(updated);
+    setLibConfig(updated);
   };
 
   const handleRoleChange = async (userId: string, newRole: any) => {

@@ -1055,6 +1055,67 @@ export const deleteHighlight = async (id: string): Promise<void> => {
   }
 };
 
+export interface LibraryConfig {
+  subjects: string[];
+  classes: string[];
+  categories: string[];
+  educationLevels: string[];
+}
+
+export const DEFAULT_LIBRARY_CONFIG: LibraryConfig = {
+  educationLevels: ['Primary', 'O-Level', 'A-Level', 'Teachers'],
+  classes: [
+    'Darasa la 1', 'Darasa la 2', 'Darasa la 3', 'Darasa la 4', 'Darasa la 5', 'Darasa la 6', 'Darasa la 7',
+    'Form 1', 'Form 2', 'Form 3', 'Form 4',
+    'Form 5', 'Form 6',
+    'Grade A Diploma', 'Diploma in Education', 'Bachelor of Education'
+  ],
+  subjects: [
+    'Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'Geography', 'History', 'Civics',
+    'General Studies', 'Basic Applied Mathematics', 'Advanced Mathematics', 'Literature in English',
+    'Commerce', 'Bookkeeping', 'Bible Knowledge', 'Islamic Knowledge', 'ICT', 'Lesson Planning', 'Child Development'
+  ],
+  categories: [
+    'Notes', 'Books', 'Past Papers', 'Mock Exams', 'Pre-Necta', 'Necta', 'Marking Schemes', 'Practicals', 'Syllabus', 'Lesson Notes', 'Revision Questions'
+  ]
+};
+
+/**
+ * Fetch Library Config from Firestore with a robust fallback
+ */
+export const fetchLibraryConfig = async (): Promise<LibraryConfig> => {
+  try {
+    const docRef = doc(db, 'system_configs', 'library_settings');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      return {
+        educationLevels: data.educationLevels || DEFAULT_LIBRARY_CONFIG.educationLevels,
+        classes: data.classes || DEFAULT_LIBRARY_CONFIG.classes,
+        subjects: data.subjects || DEFAULT_LIBRARY_CONFIG.subjects,
+        categories: data.categories || DEFAULT_LIBRARY_CONFIG.categories
+      };
+    }
+    return DEFAULT_LIBRARY_CONFIG;
+  } catch (err) {
+    console.warn('fetchLibraryConfig offline fallback:', err);
+    return DEFAULT_LIBRARY_CONFIG;
+  }
+};
+
+/**
+ * Save Library Config to Firestore
+ */
+export const saveLibraryConfig = async (config: LibraryConfig): Promise<void> => {
+  try {
+    const docRef = doc(db, 'system_configs', 'library_settings');
+    await setDoc(docRef, config);
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.WRITE, 'system_configs/library_settings');
+  }
+};
+
+
 
 
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GraduationCap } from 'lucide-react';
+import logoImg from '../assets/images/lupanulla_logo_1783623714916.jpg';
 
 interface LogoProps {
   className?: string;
@@ -9,10 +10,16 @@ interface LogoProps {
 export default function Logo({ className = '', size = 'md' }: LogoProps) {
   const [imgError, setImgError] = useState(false);
 
-  const sizeClasses = {
-    sm: 'w-8 h-8 rounded-lg',
-    md: 'w-10 h-10 rounded-xl',
-    lg: 'w-16 h-16 rounded-2xl'
+  const imgSizeClasses = {
+    sm: 'h-[40px] w-auto rounded-lg',
+    md: 'h-[50px] md:h-[60px] w-auto rounded-xl',
+    lg: 'h-[70px] md:h-[80px] w-auto rounded-2xl'
+  };
+
+  const svgSizeClasses = {
+    sm: 'w-10 h-10 rounded-lg',
+    md: 'w-12 h-12 md:w-14 md:h-14 rounded-xl',
+    lg: 'w-16 h-16 md:w-20 md:h-20 rounded-2xl'
   };
 
   const svgPadding = {
@@ -30,19 +37,19 @@ export default function Logo({ className = '', size = 'md' }: LogoProps) {
   if (!imgError) {
     return (
       <img
-        src="/logo.jpg"
+        src={logoImg}
         alt="Lupanulla Elimu Hub Logo"
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
-        className={`${sizeClasses[size]} object-cover shadow-md border border-slate-800/10 ${className}`}
+        className={`${imgSizeClasses[size]} object-contain shadow-md border border-slate-800/10 ${className}`}
       />
     );
   }
 
-  // Beautiful SVG Fallback when /logo.jpg fails to load
+  // Beautiful SVG Fallback when image fails to load
   return (
     <div 
-      className={`${sizeClasses[size]} ${svgPadding[size]} bg-gradient-to-br from-cyan-500 via-teal-500 to-indigo-600 shadow-md border border-cyan-400/20 flex items-center justify-center relative overflow-hidden group ${className}`}
+      className={`${svgSizeClasses[size]} ${svgPadding[size]} bg-gradient-to-br from-cyan-500 via-teal-500 to-indigo-600 shadow-md border border-cyan-400/20 flex items-center justify-center relative overflow-hidden group ${className}`}
     >
       {/* Background radial highlight */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_60%)] animate-pulse" />
@@ -58,3 +65,4 @@ export default function Logo({ className = '', size = 'md' }: LogoProps) {
     </div>
   );
 }
+
