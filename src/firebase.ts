@@ -25,7 +25,9 @@ import {
   deleteDoc,
   increment,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -34,9 +36,12 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Use initializeFirestore with force long polling settings to ensure stable Firestore connection in the sandboxed preview iframe/network environment
+// Use initializeFirestore with force long polling and persistent local cache to ensure stable connection in sandboxed preview iframe/network environment
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
 }, (firebaseConfig as any).firestoreDatabaseId || '(default)'); /* CRITICAL: Connects to the live default database */
 
 // --- Firestore Error Handling (Skill Requirement) ---
