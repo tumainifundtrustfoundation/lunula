@@ -12,6 +12,10 @@ export interface UserProfile {
   isSuspended?: boolean;
   suspendedAt?: number;
   suspensionReason?: string;
+  emailVerified?: boolean;
+  verificationCode?: string;
+  xp?: number;
+  studyTime?: number;
 }
 
 export interface AuditLog {

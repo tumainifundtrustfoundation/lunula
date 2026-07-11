@@ -49,7 +49,10 @@ import {
   Legend
 } from 'recharts';
 import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig } from '../types';
+import UploadGuideWidget from './UploadGuideWidget';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
+  auth,
   fetchDocuments, 
   updateDocument, 
   deleteDocumentMetadata, 
@@ -103,6 +106,12 @@ export default function AdminView({
   userProfile
 }: AdminViewProps) {
   const [activeTab, setActiveTab] = useState<string>('approvals');
+  
+  // Standalone Admin Login states
+  const [adminEmail, setAdminEmail] = useState<string>('');
+  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
+  const [adminAuthLoading, setAdminAuthLoading] = useState<boolean>(false);
   
   // Data states
   const [pendingDocs, setPendingDocs] = useState<DocumentMetadata[]>([]);
@@ -1012,22 +1021,156 @@ export default function AdminView({
     return topData;
   };
 
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminPassword) {
+      setAdminAuthError('Tafadhali jaza barua pepe na nenosiri lako.');
+      return;
+    }
+    setAdminAuthLoading(true);
+    setAdminAuthError(null);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, adminEmail.trim(), adminPassword);
+      const freshProfile = await fetchUserProfile(userCredential.user.uid);
+      if (freshProfile?.role === 'admin' || freshProfile?.role === 'super_admin') {
+        setFreshRole(freshProfile.role);
+        setAdminAuthError(null);
+      } else {
+        setAdminAuthError('Umeingia kikamilifu, lakini akaunti hii haina mamlaka ya msimamizi. Hakikisha unatumia akaunti iliyosajiliwa kama Admin.');
+      }
+    } catch (err: any) {
+      console.error('Direct admin login error:', err);
+      let errorMsg = 'Barua pepe au nenosiri si sahihi. Tafadhali jaribu tena.';
+      if (err.code === 'auth/user-not-found') {
+        errorMsg = 'Mtumiaji huyu hajapatikana.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMsg = 'Nenosiri si sahihi.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMsg = 'Barua pepe si sahihi.';
+      }
+      setAdminAuthError(errorMsg);
+    } finally {
+      setAdminAuthLoading(false);
+    }
+  };
+
+  const handleAdminLogoutAndRetry = async () => {
+    try {
+      await auth.signOut();
+      setFreshRole(null);
+      setAdminEmail('');
+      setAdminPassword('');
+      setAdminAuthError(null);
+    } catch (err) {
+      console.error('Error logging out:', err);
+    }
+  };
+
   if (userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin' && freshRole !== 'admin' && freshRole !== 'super_admin') {
     return (
-      <div className="bg-white border border-gray-100 rounded-3xl p-8 text-center max-w-md mx-auto space-y-4 shadow-xl mt-12 animate-fade-in">
-        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
-          <ShieldAlert size={28} />
+      <div className="max-w-md mx-auto mt-12 animate-fade-in space-y-6">
+        {/* Standalone Admin Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 text-white relative overflow-hidden">
+          {/* Subtle gradient light indicator */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl"></div>
+
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/20 shadow-inner">
+              <ShieldAlert size={32} />
+            </div>
+            <h2 className="font-sans font-black text-2xl uppercase tracking-wider text-rose-500">Msimamizi Pekee</h2>
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest">ScribdShare Admin Portal</p>
+          </div>
+
+          <p className="text-xs text-slate-300 text-center leading-relaxed font-semibold">
+            Huu ni ukurasa maalum wa wasimamizi (Admin Panel) unaojitegemea. Tafadhali ingiza barua pepe na nenosiri lako la usimamizi ili kuendelea.
+          </p>
+
+          {adminAuthError && (
+            <div className="bg-rose-950/40 border border-rose-900 rounded-2xl p-4 text-xs text-rose-300 font-semibold flex gap-2.5 items-start">
+              <XCircle size={16} className="shrink-0 mt-0.5" />
+              <p>{adminAuthError}</p>
+            </div>
+          )}
+
+          {auth.currentUser ? (
+            /* Logged in but not admin/super_admin */
+            <div className="space-y-4">
+              <div className="bg-slate-950/50 border border-slate-850 p-4 rounded-2xl text-xs space-y-1">
+                <p className="text-slate-400 font-semibold">Akaunti iliyoingia kwa sasa:</p>
+                <p className="font-bold text-white truncate">{auth.currentUser.email}</p>
+                <p className="text-[10px] text-amber-500 font-extrabold uppercase mt-1">Haina Haki za Admin</p>
+              </div>
+              <button
+                onClick={handleAdminLogoutAndRetry}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-3.5 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-700"
+              >
+                Ingia na Akaunti Nyingine
+              </button>
+            </div>
+          ) : (
+            /* Direct Admin Login Form */
+            <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <Mail size={12} className="text-slate-400" />
+                  Barua Pepe ya Admin
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="lupanulla.co.tz@gmail.com"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 font-semibold text-white placeholder-slate-600 transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <Lock size={12} className="text-slate-400" />
+                  Nenosiri la Siri
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••••••"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 font-semibold text-white placeholder-slate-600 transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={adminAuthLoading}
+                className="w-full bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-black text-xs py-3.5 rounded-xl transition-all uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+              >
+                {adminAuthLoading ? 'Inathibitisha...' : 'Kuingia kama Msimamizi'}
+              </button>
+            </form>
+          )}
+
+          <div className="border-t border-slate-850 pt-4 text-center">
+            <button
+              onClick={() => onNavigate('portal')}
+              className="text-slate-400 hover:text-white font-bold text-xs transition-colors"
+            >
+              &larr; Rudi kwenye Maktaba Kuu
+            </button>
+          </div>
         </div>
-        <h3 className="font-sans font-extrabold text-lg text-gray-900">Ufikiaji Umezuiliwa</h3>
-        <p className="text-sm text-gray-400 leading-relaxed">
-          Huna mamlaka ya kuingia kwenye ukurasa wa wasimamizi (Admin Dashboard). Kama wewe ni wasimamizi, hakikisha akaunti yako imeandikishwa na mamlaka stahiki.
-        </p>
-        <button
-          onClick={() => onNavigate('documents')}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 rounded-xl transition-all"
-        >
-          Rudi kwenye Maktaba
-        </button>
+
+        {/* Dynamic Support/Contact Badge */}
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center space-y-1">
+          <p className="text-[10px] text-slate-500 font-semibold">
+            Unahitaji msaada wa kiufundi au umesahau nenosiri lako la usimamizi?
+          </p>
+          <p className="text-xs font-bold text-slate-700">
+            Wasiliana na msaada: <a href="mailto:lupanulla.co.tz@hotmail.com" className="text-rose-600 hover:underline">lupanulla.co.tz@hotmail.com</a>
+          </p>
+        </div>
       </div>
     );
   }
@@ -1269,6 +1412,8 @@ export default function AdminView({
                   </button>
                 </div>
               </div>
+
+              <UploadGuideWidget />
 
               {/* Filtering and search */}
               <div className="relative">

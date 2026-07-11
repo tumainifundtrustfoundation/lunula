@@ -12,12 +12,19 @@ import {
   Clock,
   CheckCircle,
   Plus,
-  Minus
+  Minus,
+  Trophy
 } from 'lucide-react';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 
-export default function FocusTimer() {
+interface FocusTimerProps {
+  language?: 'sw' | 'en';
+  userProfile?: any;
+  onAwardPoints?: (points: number, minutes: number) => void;
+}
+
+export default function FocusTimer({ language = 'sw', userProfile, onAwardPoints }: FocusTimerProps) {
   // Timer durations in minutes
   const [focusDuration, setFocusDuration] = useState(25);
   const [shortBreakDuration, setShortBreakDuration] = useState(5);
@@ -28,6 +35,7 @@ export default function FocusTimer() {
   const [isActive, setIsActive] = useState(false);
   const [completedCycles, setCompletedCycles] = useState(0);
   const [isAmbientPlaying, setIsAmbientPlaying] = useState(false);
+  const [xpAwardedPopup, setXpAwardedPopup] = useState<number | null>(null);
 
   // Audio Context refs for synthesis
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -79,6 +87,13 @@ export default function FocusTimer() {
     
     if (mode === 'focus') {
       setCompletedCycles((prev) => prev + 1);
+      
+      const pointsEarned = focusDuration * 10;
+      setXpAwardedPopup(pointsEarned);
+      if (onAwardPoints && userProfile?.uid) {
+        onAwardPoints(pointsEarned, focusDuration);
+      }
+      
       // Auto-switch to appropriate break
       if ((completedCycles + 1) % 4 === 0) {
         setMode('longBreak');
@@ -282,7 +297,47 @@ export default function FocusTimer() {
   };
 
   return (
-    <div id="study-pomodoro-timer" className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all space-y-6">
+    <div id="study-pomodoro-timer" className="relative bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all space-y-6">
+      {/* XP Awarded Popup Overlay */}
+      <AnimatePresence>
+        {xpAwardedPopup !== null && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute inset-0 bg-white/95 backdrop-blur-xs rounded-3xl p-6 flex flex-col items-center justify-center text-center z-50 space-y-4"
+          >
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shadow-lg shadow-amber-200">
+              <Trophy className="w-8 h-8 animate-bounce" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-display font-black text-slate-900 text-lg uppercase tracking-tight">
+                {language === 'sw' ? 'Muzunguko Umekamilika!' : 'Session Completed!'}
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold">
+                {language === 'sw' 
+                  ? `Hongera! Umesoma kwa dakika ${focusDuration} bila kuacha.` 
+                  : `Well done! You studied for ${focusDuration} minutes without interruption.`}
+              </p>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-150 px-4 py-2.5 rounded-2xl flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+              <span className="text-sm font-black text-amber-800">
+                +{xpAwardedPopup} XP Points
+              </span>
+            </div>
+
+            <button
+              onClick={() => setXpAwardedPopup(null)}
+              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm"
+            >
+              {language === 'sw' ? 'Endelea' : 'Continue'}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Widget Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -475,14 +530,32 @@ export default function FocusTimer() {
       </div>
 
       {/* Focus stats */}
-      <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-cyan-600" />
-          <span className="text-xs text-slate-600 font-medium">Mizunguko iliyokamilika:</span>
+      <div className="space-y-2">
+        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-cyan-600" />
+            <span className="text-xs text-slate-600 font-medium">
+              {language === 'sw' ? 'Mizunguko iliyokamilika:' : 'Completed sessions:'}
+            </span>
+          </div>
+          <span className="text-sm font-black text-cyan-700 bg-cyan-50 px-3 py-1 rounded-xl border border-cyan-100">
+            {completedCycles}
+          </span>
         </div>
-        <span className="text-sm font-black text-cyan-700 bg-cyan-50 px-3 py-1 rounded-xl border border-cyan-100">
-          {completedCycles}
-        </span>
+
+        {userProfile && (
+          <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-600" />
+              <span className="text-xs text-slate-600 font-medium">
+                {language === 'sw' ? 'Muda wa kusoma (Jumla):' : 'Total study time:'}
+              </span>
+            </div>
+            <span className="text-sm font-black text-indigo-700 bg-indigo-50 px-3 py-1 rounded-xl border border-indigo-100">
+              {userProfile?.studyTime || 0} {language === 'sw' ? 'Dakika' : 'Mins'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

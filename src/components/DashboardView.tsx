@@ -22,13 +22,16 @@ import {
 } from 'lucide-react';
 import { fetchDocuments } from '../firebase';
 import { DocumentMetadata } from '../types';
+import FocusTimer from './FocusTimer';
 
 interface DashboardViewProps {
   onNavigate: (view: string, id?: string) => void;
   userProfile: any;
+  language: 'sw' | 'en';
+  onAwardPoints: (points: number, minutes: number) => void;
 }
 
-export default function DashboardView({ onNavigate, userProfile }: DashboardViewProps) {
+export default function DashboardView({ onNavigate, userProfile, language = 'sw', onAwardPoints }: DashboardViewProps) {
   const [streakCount, setStreakCount] = useState(5);
   const [resultsNumber, setResultsNumber] = useState('');
   const [checkingResults, setCheckingResults] = useState(false);
@@ -166,7 +169,7 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
           <div className="w-10 h-10 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center mb-3"><Trophy size={20} /></div>
-          <span className="text-2xl font-display font-extrabold text-slate-900 block leading-none">2,450 XP</span>
+          <span className="text-2xl font-display font-extrabold text-slate-900 block leading-none">{(userProfile?.xp !== undefined ? userProfile.xp : 2450).toLocaleString()} XP</span>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 block">Pointi za Masomo (XP)</span>
         </div>
 
@@ -251,8 +254,15 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
 
         </div>
 
-        {/* Right Sidebar Column: Results checker, leaderboards */}
+        {/* Right Sidebar Column: Pomodoro Study Timer, Results checker, leaderboards */}
         <div className="space-y-8">
+          
+          {/* Pomodoro Study Timer */}
+          <FocusTimer 
+            language={language}
+            userProfile={userProfile}
+            onAwardPoints={onAwardPoints}
+          />
           
           {/* Hub ya Vyanzo vya Elimu Quick Callout Card */}
           <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white rounded-3xl p-6 shadow-md border border-cyan-500/20 space-y-4">

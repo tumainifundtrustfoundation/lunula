@@ -50,15 +50,23 @@ export default function LeaderboardView({ language, userProfile }: LeaderboardVi
   const [copied, setCopied] = useState(false);
 
   // Leaderboard lists
-  const [leaderboardData] = useState<LeaderboardUser[]>([
-    { rank: 1, name: 'Emanuel Sokoine', level: 18, xp: 9840, streak: 24, region: 'Dar es Salaam', avatarBg: 'bg-emerald-500' },
-    { rank: 2, name: 'Devota Mbowe', level: 16, xp: 8710, streak: 18, region: 'Arusha', avatarBg: 'bg-blue-500' },
-    { rank: 3, name: 'Baraka Msigwa', level: 15, xp: 7920, streak: 12, region: 'Mwanza', avatarBg: 'bg-indigo-500' },
-    { rank: 4, name: userProfile?.name || 'Mimi (Mwanafunzi)', level: 12, xp: 5400, streak: 5, region: 'Dodoma', avatarBg: 'bg-purple-600', isCurrentUser: true },
-    { rank: 5, name: 'Farida Karume', level: 11, xp: 4890, streak: 9, region: 'Zanzibar', avatarBg: 'bg-amber-500' },
-    { rank: 6, name: 'Siza Mwansasu', level: 10, xp: 4120, streak: 6, region: 'Mbeya', avatarBg: 'bg-red-500' },
-    { rank: 7, name: 'Hamisi Kigwangalla', level: 9, xp: 3590, streak: 4, region: 'Tabora', avatarBg: 'bg-pink-500' }
-  ]);
+  const leaderboardData: LeaderboardUser[] = React.useMemo(() => {
+    const rawList: LeaderboardUser[] = [
+      { rank: 0, name: 'Emanuel Sokoine', level: 18, xp: 9840, streak: 24, region: 'Dar es Salaam', avatarBg: 'bg-emerald-500' },
+      { rank: 0, name: 'Devota Mbowe', level: 16, xp: 8710, streak: 18, region: 'Arusha', avatarBg: 'bg-blue-500' },
+      { rank: 0, name: 'Baraka Msigwa', level: 15, xp: 7920, streak: 12, region: 'Mwanza', avatarBg: 'bg-indigo-500' },
+      { rank: 0, name: userProfile?.name || 'Mimi (Mwanafunzi)', level: userProfile?.xp ? Math.max(12, Math.floor(userProfile.xp / 450)) : 12, xp: userProfile?.xp !== undefined ? userProfile.xp : 5400, streak: 5, region: 'Dodoma', avatarBg: 'bg-purple-600', isCurrentUser: true },
+      { rank: 0, name: 'Farida Karume', level: 11, xp: 4890, streak: 9, region: 'Zanzibar', avatarBg: 'bg-amber-500' },
+      { rank: 0, name: 'Siza Mwansasu', level: 10, xp: 4120, streak: 6, region: 'Mbeya', avatarBg: 'bg-red-500' },
+      { rank: 0, name: 'Hamisi Kigwangalla', level: 9, xp: 3590, streak: 4, region: 'Tabora', avatarBg: 'bg-pink-500' }
+    ];
+
+    const sorted = [...rawList].sort((a, b) => b.xp - a.xp);
+    return sorted.map((user, idx) => ({
+      ...user,
+      rank: idx + 1
+    }));
+  }, [userProfile]);
 
   // Achievement badges
   const [achievements] = useState<Achievement[]>([

@@ -119,6 +119,15 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
       throw new Error('Ombi la kuingia lilighairiwa. Tafadhali jaribu tena.');
     } else if (err.code === 'auth/popup-blocked') {
       throw new Error('Kivinjari chako kimezuia dirisha la kuingia (Popup). Tafadhali ruhusu Popups kwa tovuti hii ili uweze kuingia.');
+    } else if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('auth/unauthorized-domain'))) {
+      const hostname = window.location.hostname;
+      const errorObj = {
+        code: 'auth/unauthorized-domain',
+        message: `Domain '${hostname}' haijaidhinishwa kwenye Firebase Console yako ya mradi wa Lupanulla.`,
+        hostname,
+        projectId: firebaseConfig.projectId
+      };
+      throw new Error(JSON.stringify(errorObj));
     }
     
     throw err;
@@ -187,15 +196,24 @@ export const submitFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt'
 /**
  * Helper to ensure a profile exists in Firestore for the authenticated user
  */
-export const ensureUserProfile = async (user: User, displayName: string): Promise<UserProfile> => {
+export const ensureUserProfile = async (user: User, displayName: string, additionalFields?: Partial<UserProfile>): Promise<UserProfile> => {
   const isSuperAdmin = user.uid === 'a9wJ0DcKpkN9I9iyO2yQzcI7VlT2' || user.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com';
+  
+  // Google sign in or anonymous guest sign in should be pre-verified. 
+  // Custom email/password signups should specify emailVerified: false in additionalFields.
+  const defaultVerified = user.emailVerified || user.isAnonymous || false;
+
   const profile: UserProfile = {
     uid: user.uid,
     name: displayName,
     email: user.email || '',
     role: isSuperAdmin ? 'super_admin' : 'student',
     subscription: 'premium',
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    emailVerified: defaultVerified,
+    xp: 0,
+    studyTime: 0,
+    ...additionalFields
   };
 
   try {
@@ -203,7 +221,13 @@ export const ensureUserProfile = async (user: User, displayName: string): Promis
     const snap = await getDoc(userRef);
     
     if (snap.exists()) {
-      return snap.data() as UserProfile;
+      const existing = snap.data() as UserProfile;
+      // If super_admin, always ensure they are super_admin
+      if (isSuperAdmin && existing.role !== 'super_admin') {
+        await updateDoc(userRef, { role: 'super_admin' });
+        existing.role = 'super_admin';
+      }
+      return existing;
     }
     
     await setDoc(userRef, profile);
@@ -223,6 +247,21 @@ export const updateUserProfile = async (uid: string, updates: Partial<UserProfil
     await updateDoc(userRef, updates);
   } catch (err: any) {
     console.warn('updateUserProfile failed (likely offline):', err.message || err);
+  }
+};
+
+/**
+ * Award study points and track study time
+ */
+export const awardStudyPoints = async (uid: string, points: number, durationMinutes: number): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      xp: increment(points),
+      studyTime: increment(durationMinutes)
+    });
+  } catch (err: any) {
+    console.warn('awardStudyPoints offline/network fallback triggered:', err.message || err);
   }
 };
 

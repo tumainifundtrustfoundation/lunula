@@ -507,9 +507,14 @@ export default function MatangazoView() {
             <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-900 pt-5 text-xs font-semibold text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-2.5">
                 <Mail size={16} className="text-cyan-600 shrink-0" />
-                <a href="mailto:lupanulla.co.tz@gmail.com" className="hover:text-cyan-600 hover:underline truncate">
-                  lupanulla.co.tz@gmail.com
-                </a>
+                <div className="flex flex-col">
+                  <a href="mailto:lupanulla.co.tz@hotmail.com" className="hover:text-cyan-600 hover:underline truncate">
+                    Msaada: lupanulla.co.tz@hotmail.com
+                  </a>
+                  <a href="mailto:lupanulla.co.tz@gmail.com" className="hover:text-cyan-600 hover:underline truncate text-[10px] text-slate-400">
+                    Admin: lupanulla.co.tz@gmail.com
+                  </a>
+                </div>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone size={16} className="text-cyan-600 shrink-0" />

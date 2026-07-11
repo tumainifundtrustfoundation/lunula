@@ -22,12 +22,16 @@ import {
   Activity,
   Bot,
   MessageCircle,
-  Phone
+  Phone,
+  X,
+  Sparkles
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { fetchAnnouncements, fetchVideos } from '../firebase';
 import { Announcement, Video } from '../types';
 import QuoteWidget from './QuoteWidget';
 import AdSenseWidget from './AdSenseWidget';
+import founderImg from '../assets/images/lupanulla_logo_1783623714916.jpg';
 
 interface PortalViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -42,6 +46,10 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
   const [faqOpen, setFaqOpen] = useState<{ [key: number]: boolean }>({ 0: true });
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState('');
+  
+  // Floating news banner & popup states
+  const [showFloatingBanner, setShowFloatingBanner] = useState(true);
+  const [showNewsPopup, setShowNewsPopup] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,7 +79,13 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
   };
 
   return (
-    <div id="portal-view" className="space-y-12 animate-fade-in font-sans text-slate-900 bg-slate-50">
+    <motion.div 
+      id="portal-view" 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+      className="space-y-12 font-sans text-slate-900 bg-slate-50 relative pb-16"
+    >
       
       {/* ── Matukio Ticker (Continuous Horizontal Marquee) ── */}
       <div className="bg-gradient-to-r from-cyan-500/10 via-indigo-500/5 to-purple-500/10 border border-slate-200/60 rounded-2xl p-3 shadow-md">
@@ -411,29 +425,49 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <div onClick={() => onNavigate('masomo')} className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer">
+          <motion.div 
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => onNavigate('masomo')} 
+            className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="w-11 h-11 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center mb-4"><BookOpen size={22} className="stroke-[2]" /></div>
             <h3 className="font-bold text-slate-950 text-sm">Masomo Makuu (Subjects)</h3>
             <p className="text-slate-500 text-xs mt-2 leading-relaxed">Hisabati, Fizikia, Kemia, Biolojia, Kiswahili, Jiografia, Uraia kwa mitaala yote ya Tanzania.</p>
-          </div>
+          </motion.div>
 
-          <div onClick={() => onNavigate('mitihani')} className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer">
+          <motion.div 
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => onNavigate('mitihani')} 
+            className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="w-11 h-11 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center mb-4"><FileText size={22} className="stroke-[2]" /></div>
             <h3 className="font-bold text-slate-950 text-sm">Mitihani (Past Papers)</h3>
             <p className="text-slate-500 text-xs mt-2 leading-relaxed">Mitihani ya taifa ya NECTA, mock za mikoa, pre-NECTA, marking schemes, na majibu ya vitabu.</p>
-          </div>
+          </motion.div>
 
-          <div onClick={() => onNavigate('videos')} className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer">
+          <motion.div 
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => onNavigate('videos')} 
+            className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="w-11 h-11 bg-red-100 text-red-700 rounded-xl flex items-center justify-center mb-4"><Play size={22} className="stroke-[2]" /></div>
             <h3 className="font-bold text-slate-950 text-sm">Darasani (Video Tutorials)</h3>
             <p className="text-slate-500 text-xs mt-2 leading-relaxed">Tazama video za walimu mashuhuri wakisuluhisha maswali magumu na kuelezea mada kwa undani.</p>
-          </div>
+          </motion.div>
 
-          <div onClick={() => onNavigate('duka')} className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer">
+          <motion.div 
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            onClick={() => onNavigate('duka')} 
+            className="p-5 rounded-2xl border border-slate-150 bg-slate-50/50 hover:bg-white hover:border-cyan-400 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="w-11 h-11 bg-green-100 text-green-700 rounded-xl flex items-center justify-center mb-4"><Bot size={22} className="stroke-[2]" /></div>
             <h3 className="font-bold text-slate-950 text-sm">Duka la Elimu</h3>
             <p className="text-slate-500 text-xs mt-2 leading-relaxed">Njia rahisi ya kununua vitabu vya miongozo na vifaa vya shule kwa checkout ya moja kwa moja WhatsApp.</p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -517,6 +551,71 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
         </div>
       </section>
 
+      {/* ── Section: Mwanzilishi (Founder Section) ── */}
+      <section className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-10 text-white border border-slate-800 shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          {/* Picture Container */}
+          <div className="lg:col-span-4 flex justify-center">
+            <div className="relative group">
+              {/* Outer soft glow decoration */}
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
+              
+              <div className="relative bg-slate-950 p-2 rounded-2xl border border-slate-800">
+                <img 
+                  src={founderImg} 
+                  alt="Lupanulla - Mwanzilishi" 
+                  referrerPolicy="no-referrer"
+                  className="w-full max-w-[280px] h-[340px] object-cover rounded-xl transition-all duration-500 group-hover:scale-[1.02]"
+                />
+                <div className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg text-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">LUPANULLA (FOUNDER)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bio text container */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="space-y-1">
+              <span className="text-xs text-cyan-400 font-extrabold uppercase tracking-wider block">MWANZILISHI NA MKURUGENZI</span>
+              <h2 className="font-display font-black text-2xl sm:text-4xl uppercase tracking-tight text-white leading-tight">
+                Kutana na Lupanulla
+              </h2>
+            </div>
+            
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed italic border-l-4 border-cyan-500 pl-4 py-1">
+              "Elimu ni ngao yenye nguvu zaidi inayomuwezesha kijana wa Kitanzania kufikia ndoto zake. Lengo la Lupanulla Foundation ni kuhakikisha kuwa kila mwanafunzi nchini Tanzania anapata notisi bora, video za kufundisha, na msaada wa kisasa kabisa wa AI bila vikwazo vya kifedha."
+            </p>
+            
+            <div className="space-y-4 text-slate-300 text-xs sm:text-sm">
+              <p className="leading-relaxed">
+                Lupanulla ni mhandisi wa programu (Software Engineer), mjasiriamali wa kiteknolojia na mwanaharakati wa elimu nchini Tanzania. Akiwa amevalia kofia yake maarufu yenye chapa ya kizalendo ya <span className="text-cyan-400 font-bold">"UOMBON MGONGONI"</span>, alianzisha <strong>Lupanulla Elimu Hub</strong> kuleta mageuzi makubwa ya kidijitali kwenye sekta ya elimu.
+              </p>
+              <p className="leading-relaxed">
+                Kupitia jukwaa hili, mamia ya wanafunzi nchini kote wamefanikiwa kufanya maandalizi thabiti ya mitihani yao ya taifa na kufaulu kwa kiwango cha juu. Lupanulla anaendelea kuongoza mipango ya kiteknolojia kusaidia jamii kufikia malengo yao kupitia nguvu ya maendeleo ya programu huru.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button 
+                onClick={() => onNavigate('workspace')}
+                className="inline-flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/10 uppercase tracking-wider"
+              >
+                Soma Wasifu Kamili
+              </button>
+              <a 
+                href="mailto:lupanulla.co.tz@gmail.com" 
+                className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-5 py-3 rounded-xl transition-all border border-slate-700 uppercase tracking-wider"
+              >
+                Mwandikie Barua Pepe
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FAQ Systems (Accordion layout) ── */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="space-y-4">
@@ -527,16 +626,23 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
           <p className="text-slate-500 text-sm leading-relaxed">
             Una maswali kuhusu Lupanulla Elimu Hub? Soma majibu hapa, au wasiliana na timu yetu kwa msaada zaidi.
           </p>
-          <div className="pt-2 flex flex-col sm:flex-row gap-2 flex-wrap">
-            <a href="mailto:lupanulla.co.tz@gmail.com" className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
-              <Mail size={14} /> Barua Pepe
-            </a>
-            <a href="tel:0743548225" className="inline-flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
-              <Phone size={14} /> Pigia Simu
-            </a>
-            <a href="https://wa.me/255743548225" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
-              <MessageCircle size={14} /> WhatsApp Chat
-            </a>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+              <a href="mailto:lupanulla.co.tz@hotmail.com" className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+                <Mail size={14} /> Barua Pepe ya Msaada
+              </a>
+              <a href="mailto:lupanulla.co.tz@gmail.com" className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+                <Mail size={14} /> Barua Pepe ya Admin
+              </a>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+              <a href="tel:0743548225" className="inline-flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+                <Phone size={14} /> Pigia Simu
+              </a>
+              <a href="https://wa.me/255743548225" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+                <MessageCircle size={14} /> WhatsApp Chat
+              </a>
+            </div>
           </div>
         </div>
 
@@ -626,6 +732,158 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
         </div>
       </section>
 
-    </div>
+      {/* ── Floating News Banner with Popup Modal ── */}
+      <AnimatePresence>
+        {showFloatingBanner && (
+          <motion.div 
+            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350, delay: 1 }}
+            className="fixed bottom-6 right-6 z-50 max-w-sm w-[90vw] bg-slate-950 text-white p-4 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-3 backdrop-blur-md bg-opacity-95 shadow-cyan-500/10 cursor-pointer"
+            onClick={() => setShowNewsPopup(true)}
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-500/15 text-cyan-400 rounded-lg animate-pulse">
+                  <Megaphone size={16} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">HABARI YA SASA</span>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFloatingBanner(false);
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+                title="Funga"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            
+            <div className="space-y-1">
+              <h4 className="font-sans font-extrabold text-xs text-white leading-tight">
+                Miongozo ya Mikopo ya HESLB & Updates za NECTA Zimefunguliwa!
+              </h4>
+              <p className="text-[10px] text-slate-300 leading-relaxed font-semibold">
+                Soma taarifa kamili ya nafasi mpya za kujiunga na updates zote za elimu Tanzania.
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNewsPopup(true);
+                }}
+                className="flex-grow bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-black text-[10px] py-2 px-3 rounded-lg transition-all uppercase tracking-wider text-center shadow-md hover:scale-[1.02]"
+              >
+                Soma Taarifa Kamili &rarr;
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── News Details Popup Modal ── */}
+      <AnimatePresence>
+        {showNewsPopup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNewsPopup(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            
+            {/* Modal Box */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-150 overflow-hidden text-slate-800 z-10"
+            >
+              {/* Decorative accent colors */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600"></div>
+              
+              <div className="flex justify-between items-start mb-6 pt-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-red-100 text-red-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider flex items-center gap-1">
+                      <Sparkles size={12} className="animate-spin" /> Matukio ya Moto
+                    </span>
+                    <span className="text-slate-400 text-xs font-semibold">Julai 2026</span>
+                  </div>
+                  <h3 className="font-display font-black text-lg sm:text-xl text-slate-900 leading-tight uppercase">
+                    Taarifa na Updates Muhimu Elimu Tanzania
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => setShowNewsPopup(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 p-2 rounded-full transition-colors shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="space-y-5 text-sm leading-relaxed text-slate-600 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="bg-cyan-50/40 border border-cyan-100/50 p-4 rounded-2xl space-y-2">
+                  <h4 className="font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center gap-1.5 text-cyan-800">
+                    <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
+                    1. Dirisha la Mikopo ya HESLB 2026/2027
+                  </h4>
+                  <p className="text-xs font-semibold leading-relaxed">
+                    Bodi ya Mikopo ya Wanafunzi wa Elimu ya Juu (HESLB) imefungua rasmi dirisha la kuwasilisha maombi ya mikopo kwa mwaka mpya wa masomo. Tembelea ukurasa wa <span className="text-cyan-600 font-bold hover:underline cursor-pointer" onClick={() => { setShowNewsPopup(false); onNavigate('mikoa'); }}>Miongozo na Elimu ya Juu</span> ili kuona vigezo, taratibu sahihi, na kuepuka makosa yanayoweza kusababisha kukosa mkopo.
+                  </p>
+                </div>
+                
+                <div className="bg-indigo-50/40 border border-indigo-100/50 p-4 rounded-2xl space-y-2">
+                  <h4 className="font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center gap-1.5 text-indigo-800">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    2. Mitihani ya Kitaifa ya NECTA na Mock Updates
+                  </h4>
+                  <p className="text-xs font-semibold leading-relaxed">
+                    Kalenda ya mitihani ya CSEE na ACSEE imesasishwa rasmi. Tumeongeza mitihani mipya ya majaribio (Mock Exams) kutoka mikoa yote ya Tanzania (Dar es Salaam, Arusha, Mwanza, Kilimanjaro, Dodoma, Morogoro, n.k.) ikiwa na majibu yake sahihi. Bonyeza <span className="text-indigo-600 font-bold hover:underline cursor-pointer" onClick={() => { setShowNewsPopup(false); onNavigate('mitihani'); }}>hapa kupata Past Papers</span>.
+                  </p>
+                </div>
+                
+                <div className="bg-emerald-50/40 border border-emerald-100/50 p-4 rounded-2xl space-y-2">
+                  <h4 className="font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center gap-1.5 text-emerald-800">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    3. Darasa Jipya la Lupa+ Live
+                  </h4>
+                  <p className="text-xs font-semibold leading-relaxed">
+                    Walimu bora na wenye uzoefu wa kusahihisha mitihani ya kitaifa watakuwa wakifanya vipindi vya mubashara vya kusuluhisha maswali magumu ya hesabu, kemia, fizikia na biolojia. Anza sasa kujiunga!
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+                <button 
+                  onClick={() => {
+                    setShowNewsPopup(false);
+                    onNavigate('masomo');
+                  }}
+                  className="flex-grow bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all uppercase tracking-wider text-center"
+                >
+                  Anza Kusoma Sasa
+                </button>
+                <button 
+                  onClick={() => setShowNewsPopup(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold text-xs py-3.5 px-6 rounded-xl transition-all uppercase tracking-wider text-center border border-slate-250 w-full sm:w-auto"
+                >
+                  Funga
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
   );
 }

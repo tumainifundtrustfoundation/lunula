@@ -22,6 +22,7 @@ import {
 import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight } from '../firebase';
 import { DocumentMetadata, HighlightAnnotation } from '../types';
 import FlashcardsModal from './FlashcardsModal';
+import PDFPreviewer from './PDFPreviewer';
 import { jsPDF } from 'jspdf';
 
 interface ReaderViewProps {
@@ -107,7 +108,9 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       
       'necta-math-f4-2022': `SURA YA KWANZA: SETS AND VENN DIAGRAMS\n\nSeti ni mkusanyiko wa vitu vilivyoelezewa vizuri. Venn Diagram hutumiwa kuonyesha uhusiano kati ya seti tofauti.\nKumbuka: n(A ∪ B) = n(A) + n(B) - n(A ∩ B).\nAlama ya kofia (∩) inamaanisha intersection (vitu vya pamoja), na alama ya kikombe (∪) inamaanisha union (vitu vyote vilivyomo).\n\nSURA YA PILI: QUADRATIC EQUATIONS\n\nMlinganyo wa quadratic uko katika muundo wa ax² + bx + c = 0.\nTunaweza kutatua mlinganyo huu kwa kutumia njia ya Quadratic Formula:\nx = [-b ± √(b² - 4ac)] / (2a)\nSehemu ya chini ya kipeo cha pili (b² - 4ac) inaitwa Discriminant (D). Kama D > 0, mlinganyo una majibu mawili tofauti ya kweli. Kama D = 0, kuna jibu moja linalojirudia.\n\nSURA YA TATU: TRIGONOMETRY\n\nKatika pembetatu ya pembe mraba (Right-angled triangle):\n- Sin(θ) = Opposite / Hypotenuse (Mkabala / Kiegema)\n- Cos(θ) = Adjacent / Hypotenuse (Mshazari / Kiegema)\n- Tan(θ) = Opposite / Adjacent (Mkabala / Mshazari)\nKumbuka kanuni maarufu ya Pythagoras: a² + b² = c².`,
       
-      'mock-hist-f4-2024': `SURA YA KWANZA: COLONIAL ECONOMY IN EAST AFRICA\n\nUchumi wa kikoloni ulijengwa ili kunufaisha mataifa ya Ulaya (Metropolitan countries). Njia kuu zilizotumiwa ni pamoja na kuanzishwa kwa kilimo cha mashamba makubwa (plantation agriculture), kuanzishwa kwa kodi ya kichwa (head tax) ili kulazimisha Waafrika kufanya kazi, na ujenzi wa miundombinu kama reli ya kati (Central Line) kusafirisha malighafi.\n\nSURA YA PILI: BERLIN CONFERENCE (1884 - 1885)\n\nMkutano wa Berlin uliitishwa na Chancellor wa Ujerumani, Otto von Bismarck. Lengo kuu lilikuwa kugawana bara la Afrika kwa amani kati ya mataifa ya Ulaya bila vita. Sheria ya "Effective Occupation" ilipitishwa, inayotaka taifa lolote linalodai eneo fulani kuanzisha utawala thabiti wa kijeshi na kiutawala.\n\nSURA YA TATU: MAJIMAJI REBELLION (1905 - 1907)\n\nHuu ulikuwa uasi mkubwa dhidi ya utawala wa Kijerumani huko Tanganyika Kusini. Uliongozwa na Kinjekitile Ngwale, ambaye alitumia maji yaliyochanganywa na mtama kama silaha ya kiroho kuwaaminisha wapiganaji kuwa risasi za Wajerumani zingebadilika kuwa maji. Sababu kuu ya uasi ilikuwa kulazimishwa kulima pamba na kuteswa kwa wananchi na akida.`
+      'mock-hist-f4-2024': `SURA YA KWANZA: COLONIAL ECONOMY IN EAST AFRICA\n\nUchumi wa kikoloni ulijengwa ili kunufaisha mataifa ya Ulaya (Metropolitan countries). Njia kuu zilizotumiwa ni pamoja na kuanzishwa kwa kilimo cha mashamba makubwa (plantation agriculture), kuanzishwa kwa kodi ya kichwa (head tax) ili kulazimisha Waafrika kufanya kazi, na ujenzi wa miundombinu kama reli ya kati (Central Line) kusafirisha malighafi.\n\nSURA YA PILI: BERLIN CONFERENCE (1884 - 1885)\n\nMkutano wa Berlin uliitishwa na Chancellor wa Ujerumani, Otto von Bismarck. Lengo kuu lilikuwa kugawana bara la Afrika kwa amani kati ya mataifa ya Ulaya bila vita. Sheria ya "Effective Occupation" ilipitishwa, inayotaka taifa lolote linalodai eneo fulani kuanzisha utawala thabiti wa kijeshi na kiutawala.\n\nSURA YA TATU: MAJIMAJI REBELLION (1905 - 1907)\n\nHuu ulikuwa uasi mkubwa dhidi ya utawala wa Kijerumani huko Tanganyika Kusini. Uliongozwa na Kinjekitile Ngwale, ambaye alitumia maji yaliyochanganywa na mtama kama silaha ya kiroho kuwaaminisha wapiganaji kuwa risasi za Wajerumani zingebadilika kuwa maji. Sababu kuu ya uasi ilikuwa kulazimishwa kulima pamba na kuteswa kwa wananchi na akida.`,
+      
+      'mock-bio-f4-2026': `SURA YA KWANZA: NADHARIA ZA EVOLUTION NA USHAHIDI WA KIBIOLOJIA\n\nEvolution ni mabadiliko ya taratibu ya viumbe hai kutoka kizazi kimoja hadi kingine kwa muda mrefu wa miaka. Nadharia kuu mbili ni:\n- Nadharia ya Jean-Baptiste Lamarck (Lamarckism): Inasema sifa zote ambazo kiumbe anajipatia katika maisha yake (acquired characteristics) kwa kutumia sana au kutotumia kiungo fulani cha mwili hupitishwa kwa watoto wake.\n- Nadharia ya Charles Darwin (Darwinism / Natural Selection): Inasisitiza mazingira yanachagua viumbe wenye uwezo mkubwa wa kuishi (survival of the fittest) na wale wasio na sifa zinazofaa hufa.\n\nUshahidi wa kusaidia nadharia ya Evolution unajumuisha:\n1. Palaeontology (Mabaki ya kale / Fossils).\n2. Comparative Anatomy (Ulinganifu wa viungo vya miili kama Homologous na Analogous organs).\n3. Comparative Embryology (Ulinganifu wa maendeleo ya kijusi wakati wa ujauzito).\n\nSURA YA PILI: ICOLOGY NA UCHAFUZI WA MAZINGIRA (PLASTIC POLLUTION)\n\nMifuko ya plastiki inajumuisha takataka zisizooza (non-biodegradable waste) ambazo huleta madhara makubwa nchini Tanzania:\n- Kuharibu udongo kwa kuzuia maji kupenya chini na kuathiri mizizi ya mimea.\n- Kifo cha mifugo na wanyamapori wanapokula plastiki wakidhania kuwa ni chakula.\n- Kuziba kwa mifereji na miundombinu ya maji taka, kusababisha mafuriko na milipuko ya magonjwa ya kipindupindu.\n\nNjia za kuzuia uchafuzi wa plastiki:\n- Marufuku kamili ya matumizi ya mifuko ya plastiki isiyooza (plastic bag ban).\n- Kuhamasisha matumizi ya mifuko mbadala (Kikapu, bahasha za karatasi, nk).\n- Kuanzisha viwanda vya kurejeleza plastiki (Recycling plants).\n\nSURA YA TATU: MAFANIKIO YA EVOLUTION NA SIFA ZA CLASS INSECTA\n\nInsects (Wadudu) ni kundi lililofanikiwa zaidi duniani kwa sababu ya:\n1. Kuwa na Exoskeleton ngumu ya chitin inayozuia kupoteza maji mwilini.\n2. Uwezo mkubwa wa kuruka (Wings) kuwakimbia maadui na kutafuta chakula.\n3. Uzazi mkubwa na wa haraka sana (High reproduction rate).\n4. Mfumo wa upumuaji wa Tracheole unaofanya kazi bila kutegemea mfumo wa damu.\n\nSURA YA NNE: KAZI YA INI KATIKA METABOLISI NA USIMAMIZI WA GLUKOSI\n\nIni (Liver) hufanya kazi zifuatazo kusaidia kusimamia sukari mwilini:\n- Glycogenesis: Hubadilisha glukosi ya ziada kuwa glycogen kwa msaada wa insulin wakati kiwango cha sukari mwilini kiko juu.\n- Glycogenolysis: Hubadilisha glycogen iliyohifadhiwa kuwa glukosi wakati sukari ya damu iko chini kwa msaada wa glucagon.`
     };
 
     if (preAuthored[documentId]) {
@@ -293,6 +296,24 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       year: 2024,
       type: 'Mock',
       sizeKB: 140
+    },
+    {
+      id: 'mock-bio-f4-2026',
+      title: 'Morogoro Region Regional Form Four Mock Examination 2026 - Biology 1',
+      description: 'Official regional mock examination paper for Biology 1. Features high-quality questions on physiology, classification, genetics, ecology, and evolution aligned with the latest NECTA syllabus.',
+      category: 'Science & Technology',
+      tags: ['Biology', 'Mock', 'Morogoro', '2026', 'Form IV'],
+      fileId: 'sample-drive-id-4',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now() - 3600000 * 24 * 1, // 1 day ago
+      views: 1845,
+      status: 'approved',
+      paperNo: 'Paper 1',
+      year: 2026,
+      type: 'Mock',
+      sizeKB: 295
     }
   ];
 
@@ -626,31 +647,16 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
         {/* Left: Interactive Viewer/Reader area */}
         <div className="lg:col-span-3 space-y-4">
           {readerMode === 'pdf' ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-lg relative h-[650px]">
-              {/* Embedded interactive Google Drive Viewer iframe proxy */}
-              <iframe 
-                src={doc.driveUrl}
-                className="w-full h-full border-0"
-                title={doc.title}
-                allowFullScreen
-              ></iframe>
-
-              {/* Non-premium download blocker floating panel */}
-              {!isPremium && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-slate-800 p-4 rounded-2xl shadow-xl flex items-center gap-3 w-11/12 max-w-md backdrop-blur-sm z-10 animate-fade-in text-white text-xs">
-                  <Crown size={22} className="text-amber-400 flex-shrink-0 animate-bounce" />
-                  <div className="flex-grow space-y-0.5">
-                    <p className="font-bold uppercase tracking-wider">Hali ya Msomaji: Bure</p>
-                    <p className="text-slate-400 text-[10px] leading-snug font-semibold">Inaruhusiwa kusoma tu. Kupakua kumezuiliwa mpaka ujiunge na Lupanulla Premium.</p>
-                  </div>
-                  <button 
-                    onClick={() => onNavigate('premium')}
-                    className="bg-amber-400 text-amber-950 font-extrabold px-3 py-1.5 rounded-lg flex-shrink-0 text-[10px] uppercase"
-                  >
-                    Premium &rarr;
-                  </button>
-                </div>
-              )}
+            <div className="space-y-4">
+              <PDFPreviewer 
+                documentId={doc.id}
+                documentTitle={doc.title}
+                driveUrl={doc.driveUrl}
+                category={doc.category}
+                year={doc.year}
+                type={doc.type}
+                onSelectText={setSelectedText}
+              />
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 min-h-[600px] animate-fade-in">
@@ -697,8 +703,8 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
 
         {/* Right Sidebar: Details and related tags */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Highlighter / Annotation Widget when in Notes Mode */}
-          {readerMode === 'notes' && (
+          {/* Highlighter / Annotation Widget when in Notes Mode or when text is selected */}
+          {(readerMode === 'notes' || selectedText) && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
               <div className="flex items-center gap-2 border-b border-slate-50 pb-2.5">
                 <Highlighter size={14} className="text-cyan-500" />
@@ -778,7 +784,7 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
           )}
 
           {/* Highlights List inside Document */}
-          {readerMode === 'notes' && highlights.length > 0 && (
+          {highlights.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
               <div className="flex items-center justify-between border-b border-slate-50 pb-2.5">
                 <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">Highlight Zangu ({highlights.length})</span>

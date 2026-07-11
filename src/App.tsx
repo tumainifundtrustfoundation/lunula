@@ -17,6 +17,7 @@ import {
   HelpCircle,
   ShieldCheck,
   CheckCircle2,
+  CheckCircle,
   BookOpen,
   ShieldAlert,
   LogOut
@@ -27,6 +28,8 @@ import {
   auth, 
   fetchUserProfile, 
   ensureUserProfile, 
+  updateUserProfile,
+  awardStudyPoints,
   signInWithGoogle, 
   logoutUser,
   signInAsGuest 
@@ -104,8 +107,15 @@ export default function App() {
   // Login Modal State
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
-  const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
+  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify'>('login');
   const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
+  
+  // OTP Verification States
+  const [otpInput, setOtpInput] = useState<string>('');
+  const [otpResending, setOtpResending] = useState<boolean>(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string>('');
+  const [simulatedOtp, setSimulatedOtp] = useState<string>('');
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState<string | null>(null);
 
   const closePolicyDoc = () => {
     setActivePolicyDoc(null);
@@ -120,6 +130,8 @@ export default function App() {
   const [password, setPassword] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [unauthorizedDomainInfo, setUnauthorizedDomainInfo] = useState<{ hostname: string; projectId: string } | null>(null);
+  const [domainCopied, setDomainCopied] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
   // Sync URL hash routing on load & navigation
@@ -199,6 +211,90 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  // Forced verification if user is logged in but not verified
+  useEffect(() => {
+    if (user && userProfile && userProfile.emailVerified === false) {
+      setShowSignInModal(true);
+      setAuthTab('verify');
+      setUnverifiedEmail(user.email || '');
+      if (userProfile.verificationCode) {
+        setSimulatedOtp(userProfile.verificationCode);
+      }
+    }
+  }, [user, userProfile]);
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpInput || otpInput.trim().length !== 6) {
+      setAuthError('Tafadhali ingiza nambari zote 6 za uthibitisho.');
+      return;
+    }
+    
+    setAuthLoading(true);
+    setAuthError(null);
+    setOtpSuccessMessage(null);
+    try {
+      if (!user) {
+        throw new Error('Mtumiaji hajapatikana. Tafadhali ingia tena.');
+      }
+      
+      const freshProfile = await fetchUserProfile(user.uid);
+      const correctCode = freshProfile?.verificationCode || userProfile?.verificationCode || simulatedOtp;
+      
+      if (otpInput.trim() === correctCode) {
+        await updateUserProfile(user.uid, { emailVerified: true });
+        await refreshProfile(user.uid);
+        setOtpInput('');
+        setAuthError(null);
+        setOtpSuccessMessage('Uthibitisho Umefanikiwa! Karibu Lupanulla Elimu Hub.');
+        setTimeout(() => {
+          setShowSignInModal(false);
+          setOtpSuccessMessage(null);
+        }, 1500);
+      } else {
+        setAuthError('Nambari ya siri uliyoingiza si sahihi. Tafadhali jaribu tena.');
+      }
+    } catch (err: any) {
+      console.error('Error verifying OTP:', err);
+      setAuthError(err.message || 'Kuna hitilafu iliyotokea wakati wa uthibitisho.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!user) return;
+    setOtpResending(true);
+    setAuthError(null);
+    setOtpSuccessMessage(null);
+    try {
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await updateUserProfile(user.uid, { verificationCode: otpCode, emailVerified: false });
+      setSimulatedOtp(otpCode);
+      
+      await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: user.email, 
+          code: otpCode, 
+          name: userProfile?.name || user.displayName || 'Mtumiaji Lupanulla' 
+        })
+      });
+      
+      await refreshProfile(user.uid);
+      setOtpSuccessMessage('Nambari mpya ya siri imetumwa kwenye barua pepe yako.');
+      setTimeout(() => {
+        setOtpSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('Error resending OTP:', err);
+      setAuthError('Imeshindwa kutuma upya nambari ya siri. Jaribu tena baadae.');
+    } finally {
+      setOtpResending(false);
+    }
+  };
+
   const refreshProfile = async (uid: string, fallbackName?: string) => {
     setProfileLoading(true);
     try {
@@ -226,6 +322,23 @@ export default function App() {
     }
   };
 
+  const handleAwardPoints = async (points: number, minutes: number) => {
+    if (!userProfile?.uid) return;
+    try {
+      await awardStudyPoints(userProfile.uid, points, minutes);
+      setUserProfile((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          xp: (prev.xp || 0) + points,
+          studyTime: (prev.studyTime || 0) + minutes
+        };
+      });
+    } catch (err) {
+      console.error('Error awarding points:', err);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await logoutUser();
@@ -240,6 +353,7 @@ export default function App() {
   const handleGoogleSignIn = async () => {
     setAuthLoading(true);
     setAuthError(null);
+    setUnauthorizedDomainInfo(null);
     try {
       const result = await signInWithGoogle();
       if (result) {
@@ -248,6 +362,18 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Google authorization error:', err);
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed && parsed.code === 'auth/unauthorized-domain') {
+          setUnauthorizedDomainInfo({
+            hostname: parsed.hostname,
+            projectId: parsed.projectId
+          });
+          return;
+        }
+      } catch (e) {
+        // Not JSON or does not match
+      }
       setAuthError(err.message || 'Kuingia kwa Google kumeshindikana. Tafadhali jaribu tena.');
     } finally {
       setAuthLoading(false);
@@ -275,12 +401,36 @@ export default function App() {
     e.preventDefault();
     setAuthLoading(true);
     setAuthError(null);
+    setOtpSuccessMessage(null);
 
     try {
       if (authTab === 'login') {
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-        await refreshProfile(userCredential.user.uid);
-        setShowSignInModal(false);
+        const profile = await fetchUserProfile(userCredential.user.uid);
+        
+        if (profile && profile.emailVerified === false) {
+          const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+          await updateUserProfile(userCredential.user.uid, { verificationCode: otpCode });
+          setSimulatedOtp(otpCode);
+          setUnverifiedEmail(email.trim());
+          setAuthTab('verify');
+          
+          await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: email.trim(), 
+              code: otpCode, 
+              name: profile.name || 'Mtumiaji Lupanulla' 
+            })
+          });
+        } else {
+          await refreshProfile(userCredential.user.uid);
+          setShowSignInModal(false);
+          setEmail('');
+          setPassword('');
+          setFullName('');
+        }
       } else {
         if (!fullName.trim()) {
           setAuthError('Tafadhali jaza jina lako kamili kuanza.');
@@ -289,14 +439,25 @@ export default function App() {
         }
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(userCredential.user, { displayName: fullName.trim() });
-        await ensureUserProfile(userCredential.user, fullName.trim());
+        
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        await ensureUserProfile(userCredential.user, fullName.trim(), { emailVerified: false, verificationCode: otpCode });
         await refreshProfile(userCredential.user.uid, fullName.trim());
-        setShowSignInModal(false);
+        
+        setUnverifiedEmail(email.trim());
+        setSimulatedOtp(otpCode);
+        setAuthTab('verify');
+        
+        await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: email.trim(), 
+            code: otpCode, 
+            name: fullName.trim() 
+          })
+        });
       }
-      // Reset fields
-      setEmail('');
-      setPassword('');
-      setFullName('');
     } catch (err: any) {
       console.error('Email Authentication Error:', err);
       let errorMsg = 'Mchakato wa uthibitishaji umeshindwa. Tafadhali thibitisha barua pepe na nenosiri.';
@@ -333,6 +494,8 @@ export default function App() {
         userProfile={userProfile}
         onSignInClick={() => {
           setAuthError(null);
+          setUnauthorizedDomainInfo(null);
+          setDomainCopied(false);
           setShowSignInModal(true);
         }}
         onSignOut={handleSignOut}
@@ -420,6 +583,8 @@ export default function App() {
               <DashboardView 
                 onNavigate={navigateTo} 
                 userProfile={userProfile} 
+                language={language}
+                onAwardPoints={handleAwardPoints}
               />
             )}
 
@@ -610,8 +775,7 @@ export default function App() {
           <div className="flex gap-4 font-bold">
             <a 
               href="#privacy-policy" 
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={() => {
                 setActivePolicyDoc('privacy');
               }} 
               className="hover:underline cursor-pointer text-slate-400 hover:text-cyan-400 transition-colors"
@@ -620,8 +784,7 @@ export default function App() {
             </a>
             <a 
               href="#terms-of-service" 
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={() => {
                 setActivePolicyDoc('terms');
               }} 
               className="hover:underline cursor-pointer text-slate-400 hover:text-cyan-400 transition-colors"
@@ -657,182 +820,333 @@ export default function App() {
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Kitovu cha Elimu ya Kidijitali Tanzania</p>
             </div>
 
-            <div className="flex border-b border-slate-100 gap-1 pb-px">
-              <button
-                onClick={() => {
-                  setAuthError(null);
-                  setAuthTab('login');
-                }}
-                className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
-                  authTab === 'login' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                Ingia (Login)
-              </button>
-              <button
-                onClick={() => {
-                  setAuthError(null);
-                  setAuthTab('signup');
-                }}
-                className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
-                  authTab === 'signup' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                Sajili (Sign Up)
-              </button>
-            </div>
+            {authTab !== 'verify' ? (
+              <>
+                <div className="flex border-b border-slate-100 gap-1 pb-px">
+                  <button
+                    onClick={() => {
+                      setAuthError(null);
+                      setAuthTab('login');
+                    }}
+                    className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
+                      authTab === 'login' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Ingia (Login)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAuthError(null);
+                      setAuthTab('signup');
+                    }}
+                    className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
+                      authTab === 'signup' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    Sajili (Sign Up)
+                  </button>
+                </div>
 
-            {authError && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
-                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-                <p>{authError}</p>
+                {authError && (
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <p>{authError}</p>
+                  </div>
+                )}
+
+                {unauthorizedDomainInfo && (
+                  <div className="bg-amber-50/95 border border-amber-200 rounded-2xl p-4.5 space-y-3.5 text-xs text-amber-900 animate-fade-in shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={18} />
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold uppercase tracking-tight text-amber-950 text-[11px] sm:text-xs">
+                          {language === 'sw' ? 'Uthibitisho wa Domain unahitajika' : 'Domain Authorization Required'}
+                        </h4>
+                        <p className="text-[11px] leading-relaxed text-amber-900/90 font-semibold">
+                          {language === 'sw' 
+                            ? 'Google Sign-In imeshindwa kwa sababu domain ya sasa haijaidhinishwa kwenye Firebase Console yako.'
+                            : 'Google Sign-In failed because the current domain is not yet authorized in your Firebase Console.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-100/40 rounded-xl p-3 border border-amber-200/50 space-y-2">
+                      <p className="text-[10px] font-black uppercase text-amber-950">
+                        {language === 'sw' ? 'Hatua za Kusuluhisha:' : 'Resolution Steps:'}
+                      </p>
+                      <ol className="list-decimal list-inside text-[11px] font-semibold space-y-1 text-amber-900/85">
+                        <li>
+                          {language === 'sw' ? 'Nakili jina la domain hapa chini.' : 'Copy the domain name below.'}
+                        </li>
+                        <li>
+                          <a 
+                            href={`https://console.firebase.google.com/project/${unauthorizedDomainInfo.projectId}/authentication/settings`}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-cyan-700 hover:text-cyan-800 underline font-extrabold"
+                          >
+                            {language === 'sw' ? 'Fungua Firebase Console (Bonyeza Hapa)' : 'Open Firebase Console (Click Here)'}
+                          </a>
+                        </li>
+                        <li>
+                          {language === 'sw' 
+                            ? "Nenda 'Settings' -> 'Authorized Domains', bonyeza 'Add Domain' kisha uweke domain hii." 
+                            : "Go to 'Settings' -> 'Authorized Domains', click 'Add Domain' and paste this domain."}
+                        </li>
+                        <li>
+                          {language === 'sw' ? 'Pakua upya ukurasa huu na uingie tena!' : 'Refresh this page and sign in again!'}
+                        </li>
+                      </ol>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <div className="bg-white border border-amber-200 px-3 py-2.5 rounded-xl text-center font-mono font-bold text-[10px] sm:text-[11px] select-all flex-grow w-full truncate text-slate-700">
+                        {unauthorizedDomainInfo.hostname}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(unauthorizedDomainInfo.hostname);
+                          setDomainCopied(true);
+                          setTimeout(() => setDomainCopied(false), 2000);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-sm w-full sm:w-auto text-center shrink-0"
+                      >
+                        {domainCopied ? (language === 'sw' ? 'Imenakiliwa!' : 'Copied!') : (language === 'sw' ? 'Nakili' : 'Copy')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={authLoading}
+                    className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:border-slate-300 rounded-xl py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:scale-[1.01]"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.15-.31-.27-.64-.35-.97z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                    <span>Endelea na Google</span>
+                  </button>
+
+                  <button
+                    onClick={handleGuestSignIn}
+                    disabled={authLoading}
+                    className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:border-emerald-300 rounded-xl py-3 text-xs font-bold text-emerald-800 shadow-sm transition-all hover:scale-[1.01]"
+                  >
+                    <UserIcon size={16} className="text-emerald-600" />
+                    <span>Ingia Haraka kama Mgeni (Demo Login)</span>
+                  </button>
+
+                  <div className="flex items-center">
+                    <div className="flex-grow border-t border-slate-100"></div>
+                    <span className="px-3 text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">au barua pepe</span>
+                    <div className="flex-grow border-t border-slate-100"></div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
+                  {authTab === 'signup' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <UserIcon size={12} className="text-slate-400" />
+                        Jina Kamili
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Jane Doe"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      Barua pepe (Email)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Lock size={12} className="text-slate-400" />
+                      Nenosiri (Password)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full mt-4 bg-slate-950 hover:bg-slate-800 disabled:bg-slate-300 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  >
+                    <LogIn size={14} />
+                    {authLoading ? 'Inaprosesi...' : authTab === 'login' ? 'Ingia Sasa' : 'Kamilisha Usajili'}
+                  </button>
+
+                  {authTab === 'signup' && (
+                    <p className="text-[10px] text-center text-slate-400 mt-3 leading-relaxed">
+                      {language === 'sw' ? (
+                        <>
+                          Kwa kujisajili, unakubaliana na{' '}
+                          <a 
+                            href="#terms-of-service" 
+                            onClick={() => {
+                              setActivePolicyDoc('terms');
+                            }}
+                            className="text-cyan-600 hover:underline font-extrabold transition-all"
+                          >
+                            Vigezo na Masharti
+                          </a>{' '}
+                          yetu na{' '}
+                          <a 
+                            href="#privacy-policy" 
+                            onClick={() => {
+                              setActivePolicyDoc('privacy');
+                            }}
+                            className="text-cyan-600 hover:underline font-extrabold transition-all"
+                          >
+                            Sera yetu ya Faragha
+                          </a>.
+                        </>
+                      ) : (
+                        <>
+                          By signing up, you agree to our{' '}
+                          <a 
+                            href="#terms-of-service" 
+                            onClick={() => {
+                              setActivePolicyDoc('terms');
+                            }}
+                            className="text-cyan-600 hover:underline font-extrabold transition-all"
+                          >
+                            Terms & Conditions
+                          </a>{' '}
+                          and our{' '}
+                          <a 
+                            href="#privacy-policy" 
+                            onClick={() => {
+                              setActivePolicyDoc('privacy');
+                            }}
+                            className="text-cyan-600 hover:underline font-extrabold transition-all"
+                          >
+                            Privacy Policy
+                          </a>.
+                        </>
+                      )}
+                    </p>
+                  )}
+                </form>
+              </>
+            ) : (
+              /* OTP VERIFICATION VIEW */
+              <div className="space-y-6 animate-fade-in">
+                <div className="text-center bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-1">
+                  <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">Msimbo Umetumwa Kwenye</p>
+                  <p className="text-xs font-bold text-slate-800 truncate">{unverifiedEmail}</p>
+                </div>
+
+                <div className="text-center space-y-1.5">
+                  <h3 className="font-display font-extrabold text-sm text-slate-800 uppercase tracking-wider">Ingiza Nambari ya Siri</h3>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Tafadhali ingiza nambari sita za siri (OTP) zilizotumwa kwenye barua pepe yako ili kuamilisha akaunti yako kikamilifu.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 flex gap-2 text-xs text-rose-700 font-semibold">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <p>{authError}</p>
+                  </div>
+                )}
+
+                {otpSuccessMessage && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex gap-2 text-xs text-emerald-800 font-semibold">
+                    <CheckCircle size={16} className="flex-shrink-0 mt-0.5 text-emerald-600" />
+                    <p>{otpSuccessMessage}</p>
+                  </div>
+                )}
+
+                {/* If SMTP is active or not configured, show simulated helper */}
+                {simulatedOtp && (
+                  <div className="bg-cyan-50/50 border border-cyan-150/80 rounded-2xl p-3 text-center space-y-0.5">
+                    <p className="text-[9px] text-cyan-600 font-black uppercase tracking-wider">Msimbo (Simulation / Console)</p>
+                    <p className="text-lg font-mono font-black text-cyan-800 tracking-[6px]">{simulatedOtp}</p>
+                    <p className="text-[8px] text-slate-400 font-semibold">Kama barua pepe bado haijafika, unaweza kutumia nambari hii kuendelea.</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      placeholder="000000"
+                      value={otpInput}
+                      onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 rounded-2xl py-3 text-center font-mono text-2xl font-black tracking-[12px] focus:outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-300"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 disabled:from-slate-300 disabled:to-slate-300 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  >
+                    {authLoading ? 'Inathibitisha...' : 'Thibitisha Nambari ya Siri'}
+                  </button>
+                </form>
+
+                <div className="flex flex-col gap-2 pt-2 text-center border-t border-slate-100">
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={otpResending}
+                    className="text-[11px] font-extrabold text-cyan-600 hover:text-cyan-700 hover:underline transition-colors disabled:text-slate-400"
+                  >
+                    {otpResending ? 'Inatuma upya...' : 'Tuma upya Nambari ya Siri'}
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      setAuthError(null);
+                      setOtpSuccessMessage(null);
+                      setOtpInput('');
+                      try {
+                        await auth.signOut();
+                      } catch (e) {
+                        console.error(e);
+                      }
+                      setAuthTab('login');
+                    }}
+                    className="text-[11px] font-extrabold text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    &larr; Anza upya (Log Out)
+                  </button>
+                </div>
               </div>
             )}
-
-            <div className="space-y-3">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:border-slate-300 rounded-xl py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:scale-[1.01]"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.15-.31-.27-.64-.35-.97z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Endelea na Google</span>
-              </button>
-
-              <button
-                onClick={handleGuestSignIn}
-                disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:border-emerald-300 rounded-xl py-3 text-xs font-bold text-emerald-800 shadow-sm transition-all hover:scale-[1.01]"
-              >
-                <UserIcon size={16} className="text-emerald-600" />
-                <span>Ingia Haraka kama Mgeni (Demo Login)</span>
-              </button>
-
-              <div className="flex items-center">
-                <div className="flex-grow border-t border-slate-100"></div>
-                <span className="px-3 text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">au barua pepe</span>
-                <div className="flex-grow border-t border-slate-100"></div>
-              </div>
-            </div>
-
-            <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
-              {authTab === 'signup' && (
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <UserIcon size={12} className="text-slate-400" />
-                    Jina Kamili
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Jane Doe"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Mail size={12} className="text-slate-400" />
-                  Barua pepe (Email)
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Lock size={12} className="text-slate-400" />
-                  Nenosiri (Password)
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={authLoading}
-                className="w-full mt-4 bg-slate-950 hover:bg-slate-800 disabled:bg-slate-300 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.01]"
-              >
-                <LogIn size={14} />
-                {authLoading ? 'Inaprosesi...' : authTab === 'login' ? 'Ingia Sasa' : 'Kamilisha Usajili'}
-              </button>
-
-              {authTab === 'signup' && (
-                <p className="text-[10px] text-center text-slate-400 mt-3 leading-relaxed">
-                  {language === 'sw' ? (
-                    <>
-                      Kwa kujisajili, unakubaliana na{' '}
-                      <a 
-                        href="#terms-of-service" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setActivePolicyDoc('terms');
-                        }}
-                        className="text-cyan-600 hover:underline font-extrabold transition-all"
-                      >
-                        Vigezo na Masharti
-                      </a>{' '}
-                      yetu na{' '}
-                      <a 
-                        href="#privacy-policy" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setActivePolicyDoc('privacy');
-                        }}
-                        className="text-cyan-600 hover:underline font-extrabold transition-all"
-                      >
-                        Sera yetu ya Faragha
-                      </a>.
-                    </>
-                  ) : (
-                    <>
-                      By signing up, you agree to our{' '}
-                      <a 
-                        href="#terms-of-service" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setActivePolicyDoc('terms');
-                        }}
-                        className="text-cyan-600 hover:underline font-extrabold transition-all"
-                      >
-                        Terms & Conditions
-                      </a>{' '}
-                      and our{' '}
-                      <a 
-                        href="#privacy-policy" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setActivePolicyDoc('privacy');
-                        }}
-                        className="text-cyan-600 hover:underline font-extrabold transition-all"
-                      >
-                        Privacy Policy
-                      </a>.
-                    </>
-                  )}
-                </p>
-              )}
-            </form>
           </div>
         </div>
       )}

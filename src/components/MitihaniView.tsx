@@ -139,6 +139,25 @@ export default function MitihaniView({
       type: 'Mock',
       sizeKB: 140,
       accent: 'border-purple-400'
+    },
+    {
+      id: 'mock-bio-f4-2026',
+      title: 'Morogoro Region Regional Form Four Mock Examination 2026 - Biology 1',
+      description: 'Official regional mock examination paper for Biology 1. Features high-quality questions on physiology, classification, genetics, ecology, and evolution aligned with the latest NECTA syllabus.',
+      category: 'Science & Technology',
+      tags: ['Biology', 'Mock', 'Morogoro', '2026', 'Form IV'],
+      fileId: 'sample-drive-id-4',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now() - 3600000 * 24 * 1, // 1 day ago
+      views: 1845,
+      status: 'approved',
+      paperNo: 'Paper 1',
+      year: 2026,
+      type: 'Mock',
+      sizeKB: 295,
+      accent: 'border-emerald-400'
     }
   ];
 

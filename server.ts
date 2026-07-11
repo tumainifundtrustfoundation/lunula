@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
 // Load environment variables
 dotenv.config();
@@ -12,6 +13,124 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Helper to fetch the system integrations SMTP configuration from Firestore via ADC
+async function getSystemConfig(): Promise<any> {
+  try {
+    const authHelper = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    });
+    const accessToken = await authHelper.getAccessToken();
+    const projectId = "gen-lang-client-0775792411";
+    
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/system_configs/integrations`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Firestore REST API returned non-ok status: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const fields = data.fields || {};
+    const config: any = {};
+    for (const key of Object.keys(fields)) {
+      const valObj = fields[key];
+      if ('stringValue' in valObj) {
+        config[key] = valObj.stringValue;
+      } else if ('integerValue' in valObj) {
+        config[key] = parseInt(valObj.integerValue);
+      } else if ('booleanValue' in valObj) {
+        config[key] = valObj.booleanValue;
+      }
+    }
+    return config;
+  } catch (error) {
+    console.error('Error fetching system config via Service Account:', error);
+    return null;
+  }
+}
+
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { email, code, name } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Missing email or code' });
+  }
+
+  console.log(`[AUTH OTP] Code for ${email}: ${code}`);
+
+  try {
+    const config = await getSystemConfig();
+    const host = config?.emailSmtpHost || process.env.EMAIL_SMTP_HOST;
+    const port = parseInt(config?.emailSmtpPort || process.env.EMAIL_SMTP_PORT || '587');
+    const user = config?.emailSmtpUser || process.env.EMAIL_SMTP_USER;
+    const pass = config?.emailSmtpPass || process.env.EMAIL_SMTP_PASS;
+    const from = config?.emailSmtpUser || 'no-reply@lupanulla.co.tz';
+
+    if (host && user && pass) {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass }
+      });
+
+      const mailOptions = {
+        from: `"Lupanulla Elimu Hub" <${from}>`,
+        to: email,
+        subject: `Uthibitisho wa Barua Pepe - Lupanulla Elimu Hub [${code}]`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="color: #0f172a; margin: 0; text-transform: uppercase; font-size: 20px; letter-spacing: 1px;">Lupanulla Elimu Hub</h2>
+              <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Ukurasa Namba Moja wa Elimu Tanzania</p>
+            </div>
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; color: #334155;">
+              <p style="font-size: 15px; margin: 0 0 16px 0;">Habari <strong>${name || 'Mtumiaji'}</strong>,</p>
+              <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+                Asante kwa kujiandikisha na Lupanulla Elimu Hub. Ili kukamilisha usajili wa akaunti yako na kuanza kupata notisi, vitabu, mitihani na huduma zote, tafadhali tumia nambari ya siri ya uthibitisho (OTP) iliyo hapa chini:
+              </p>
+              <div style="text-align: center; margin: 30px 0; padding: 15px; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
+                <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #0284c7;">${code}</span>
+              </div>
+              <p style="font-size: 13px; color: #64748b; margin: 0 0 24px 0;">
+                Nambari hii ya siri itatumika mara moja tu. Tafadhali usimshirikishe mtu yeyote nambari hii kwa usalama wa akaunti yako.
+              </p>
+            </div>
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+              <p style="margin: 0 0 4px 0;">&copy; 2026 Lupanulla Elimu Hub. Haki zote zimehifadhiwa.</p>
+              <p style="margin: 0;">Msaada: <a href="mailto:lupanulla.co.tz@hotmail.com" style="color: #0284c7; text-decoration: none;">lupanulla.co.tz@hotmail.com</a></p>
+            </div>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`[AUTH OTP] Email successfully sent to ${email}`);
+      return res.json({ success: true, method: 'smtp' });
+    } else {
+      console.warn(`[AUTH OTP] SMTP is not configured in Firestore/Env. Printing code: ${code}`);
+      return res.json({ 
+        success: true, 
+        method: 'simulation',
+        message: 'SMTP haijasanidiwa. Tumia nambari hii inayojionyesha kwa majaribio.',
+        code: code 
+      });
+    }
+  } catch (err: any) {
+    console.error('[AUTH OTP] Error sending email:', err);
+    return res.json({ 
+      success: true, 
+      method: 'fallback_logs', 
+      message: 'Imeshindwa kutuma barua pepe kupitia SMTP, lakini siri imeandikwa kwenye kumbukumbu za mfumo au hapa chini kwa majaribio.',
+      code: code
+    });
+  }
+});
 
 // Helper to get OAuth2 client from request header
 function getOAuth2Client(req: express.Request) {
