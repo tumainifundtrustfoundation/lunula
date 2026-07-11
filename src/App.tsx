@@ -51,6 +51,7 @@ import WorkspaceView from './components/WorkspaceView';
 import UploadView from './components/UploadView';
 import ReaderView from './components/ReaderView';
 import PremiumView from './components/PremiumView';
+import LibraryView from './components/LibraryView';
 
 import ForumView from './components/ForumView';
 import LiveClassesView from './components/LiveClassesView';
@@ -138,7 +139,7 @@ export default function App() {
           'portal', 'dashboard', 'masomo', 'mitihani', 'duka', 
           'fisimaji', 'videos', 'calculator', 'kamusi', 'mikoa', 
           'ajira', 'matangazo', 'upload', 'premium', 'workspace',
-          'forum', 'live', 'certificates', 'leaderboard', 'resources'
+          'forum', 'live', 'certificates', 'leaderboard', 'resources', 'library'
         ];
         if (validViews.includes(cleanView)) {
           setActiveView(cleanView);
@@ -423,6 +424,13 @@ export default function App() {
 
             {activeView === 'duka' && (
               <DukaView 
+                onNavigate={navigateTo} 
+                userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'library' && (
+              <LibraryView 
                 onNavigate={navigateTo} 
                 userProfile={userProfile} 
               />

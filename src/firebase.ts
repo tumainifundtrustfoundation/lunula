@@ -37,7 +37,7 @@ export const auth = getAuth(app);
 // Use initializeFirestore with force long polling settings to ensure stable Firestore connection in the sandboxed preview iframe/network environment
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-lupanullaelimuhu-abc7a195-7e19-4695-b20a-82e818d9a037'); /* CRITICAL: The app will break without this line */
+}, (firebaseConfig as any).firestoreDatabaseId || '(default)'); /* CRITICAL: Connects to the live default database */
 
 // --- Firestore Error Handling (Skill Requirement) ---
 export enum OperationType {
@@ -188,11 +188,12 @@ export const submitFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt'
  * Helper to ensure a profile exists in Firestore for the authenticated user
  */
 export const ensureUserProfile = async (user: User, displayName: string): Promise<UserProfile> => {
+  const isSuperAdmin = user.uid === 'a9wJ0DcKpkN9I9iyO2yQzcI7VlT2' || user.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com';
   const profile: UserProfile = {
     uid: user.uid,
     name: displayName,
     email: user.email || '',
-    role: 'student',
+    role: isSuperAdmin ? 'super_admin' : 'student',
     subscription: 'premium',
     createdAt: Date.now()
   };

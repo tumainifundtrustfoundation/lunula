@@ -108,11 +108,12 @@ export default function Navbar({
   const primaryMenuItems = [
     { id: 'portal', label: 'Nyumbani', icon: BookOpen },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'library', label: 'Maktaba Kuu', icon: Library },
     { id: 'masomo', label: 'Masomo', icon: Book },
     { id: 'mitihani', label: 'Mitihani (Past Papers)', icon: FileText },
     { id: 'duka', label: 'Duka (Books)', icon: Store },
     { id: 'fisimaji', label: 'Lupanulla AI', icon: Bot, highlight: true },
-    { id: 'workspace', label: 'Maktaba ya Google', icon: Library },
+    { id: 'workspace', label: 'Maktaba ya Google', icon: Globe },
     { id: 'videos', label: 'Lupa+ Videos', icon: Play },
   ];
 

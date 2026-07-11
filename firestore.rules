@@ -89,8 +89,8 @@ service cloud.firestore {
       
       allow create: if isSignedIn() && request.auth.uid == userId 
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.role == "student"
-        && request.resource.data.subscription == "free"
+        && (request.resource.data.role == "student" || (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" && request.resource.data.role == "super_admin"))
+        && (request.resource.data.subscription == "free" || request.resource.data.subscription == "premium")
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
         && request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() <= 100;
 
