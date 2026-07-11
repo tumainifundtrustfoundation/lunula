@@ -106,6 +106,14 @@ export default function App() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup'>('login');
   const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
+
+  const closePolicyDoc = () => {
+    setActivePolicyDoc(null);
+    const hash = window.location.hash;
+    if (hash === '#privacy' || hash === '#privacy-policy' || hash === '#terms' || hash === '#terms-of-service') {
+      window.history.pushState("", document.title, window.location.pathname + window.location.search);
+    }
+  };
   
   // Credentials
   const [email, setEmail] = useState<string>('');
@@ -121,6 +129,15 @@ export default function App() {
       if (!hash) {
         setActiveView('portal');
         setActiveDocumentId(null);
+        return;
+      }
+
+      if (hash === '#privacy' || hash === '#privacy-policy') {
+        setActivePolicyDoc('privacy');
+        return;
+      }
+      if (hash === '#terms' || hash === '#terms-of-service') {
+        setActivePolicyDoc('terms');
         return;
       }
 
@@ -590,9 +607,27 @@ export default function App() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-900 pt-6 mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px]">
           <p>© 2026 Lupanulla Foundation. Haki zote zimehifadhiwa.</p>
-          <div className="flex gap-4">
-            <span onClick={() => setActivePolicyDoc('privacy')} className="hover:underline cursor-pointer hover:text-cyan-400 transition-colors">Sera ya Faragha</span>
-            <span onClick={() => setActivePolicyDoc('terms')} className="hover:underline cursor-pointer hover:text-cyan-400 transition-colors">Vigezo na Masharti</span>
+          <div className="flex gap-4 font-bold">
+            <a 
+              href="#privacy-policy" 
+              onClick={(e) => {
+                e.preventDefault();
+                setActivePolicyDoc('privacy');
+              }} 
+              className="hover:underline cursor-pointer text-slate-400 hover:text-cyan-400 transition-colors"
+            >
+              {language === 'sw' ? 'Sera ya Faragha' : 'Privacy Policy'}
+            </a>
+            <a 
+              href="#terms-of-service" 
+              onClick={(e) => {
+                e.preventDefault();
+                setActivePolicyDoc('terms');
+              }} 
+              className="hover:underline cursor-pointer text-slate-400 hover:text-cyan-400 transition-colors"
+            >
+              {language === 'sw' ? 'Vigezo na Masharti' : 'Terms & Conditions'}
+            </a>
           </div>
         </div>
       </footer>
@@ -741,6 +776,62 @@ export default function App() {
                 <LogIn size={14} />
                 {authLoading ? 'Inaprosesi...' : authTab === 'login' ? 'Ingia Sasa' : 'Kamilisha Usajili'}
               </button>
+
+              {authTab === 'signup' && (
+                <p className="text-[10px] text-center text-slate-400 mt-3 leading-relaxed">
+                  {language === 'sw' ? (
+                    <>
+                      Kwa kujisajili, unakubaliana na{' '}
+                      <a 
+                        href="#terms-of-service" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActivePolicyDoc('terms');
+                        }}
+                        className="text-cyan-600 hover:underline font-extrabold transition-all"
+                      >
+                        Vigezo na Masharti
+                      </a>{' '}
+                      yetu na{' '}
+                      <a 
+                        href="#privacy-policy" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActivePolicyDoc('privacy');
+                        }}
+                        className="text-cyan-600 hover:underline font-extrabold transition-all"
+                      >
+                        Sera yetu ya Faragha
+                      </a>.
+                    </>
+                  ) : (
+                    <>
+                      By signing up, you agree to our{' '}
+                      <a 
+                        href="#terms-of-service" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActivePolicyDoc('terms');
+                        }}
+                        className="text-cyan-600 hover:underline font-extrabold transition-all"
+                      >
+                        Terms & Conditions
+                      </a>{' '}
+                      and our{' '}
+                      <a 
+                        href="#privacy-policy" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActivePolicyDoc('privacy');
+                        }}
+                        className="text-cyan-600 hover:underline font-extrabold transition-all"
+                      >
+                        Privacy Policy
+                      </a>.
+                    </>
+                  )}
+                </p>
+              )}
             </form>
           </div>
         </div>
@@ -751,7 +842,7 @@ export default function App() {
         <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
           <div 
             className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
-            onClick={() => setActivePolicyDoc(null)}
+            onClick={closePolicyDoc}
           ></div>
           
           <div className="relative bg-white border border-slate-100 w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-fade-in z-[190] text-slate-800">
@@ -774,7 +865,7 @@ export default function App() {
                 </div>
               </div>
               <button
-                onClick={() => setActivePolicyDoc(null)}
+                onClick={closePolicyDoc}
                 className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
               >
                 <X size={20} />
@@ -989,7 +1080,7 @@ export default function App() {
             {/* Footer buttons of Modal */}
             <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
               <button
-                onClick={() => setActivePolicyDoc(null)}
+                onClick={closePolicyDoc}
                 className="px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs tracking-tight transition-all cursor-pointer shadow-md"
               >
                 {language === 'sw' ? 'Nimeelewa na Kukubali' : 'I Understand & Accept'}
