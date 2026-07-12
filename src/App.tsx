@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -37,31 +37,73 @@ import {
 
 import Navbar from './components/Navbar';
 import Logo from './components/Logo';
-import PortalView from './components/PortalView';
-import DashboardView from './components/DashboardView';
-import MasomoView from './components/MasomoView';
-import MitihaniView from './components/MitihaniView';
-import DukaView from './components/DukaView';
-import FisiMajiView from './components/FisiMajiView';
-import VideosView from './components/VideosView';
-import CalculatorView from './components/CalculatorView';
-import KamusiView from './components/KamusiView';
-import MikoaView from './components/MikoaView';
-import AjiraView from './components/AjiraView';
-import MatangazoView from './components/MatangazoView';
-import FeedbackModal from './components/FeedbackModal';
-import WorkspaceView from './components/WorkspaceView';
-import UploadView from './components/UploadView';
-import ReaderView from './components/ReaderView';
-import PremiumView from './components/PremiumView';
-import LibraryView from './components/LibraryView';
 
-import ForumView from './components/ForumView';
-import LiveClassesView from './components/LiveClassesView';
-import CertificatesView from './components/CertificatesView';
-import LeaderboardView from './components/LeaderboardView';
-import AdminView from './components/AdminView';
-import ResourcesView from './components/ResourcesView';
+// Lazy Loaded View Components for Optimized Initial Bundle Size and Faster LCP
+const PortalView = lazy(() => import('./components/PortalView'));
+const DashboardView = lazy(() => import('./components/DashboardView'));
+const MasomoView = lazy(() => import('./components/MasomoView'));
+const MitihaniView = lazy(() => import('./components/MitihaniView'));
+const DukaView = lazy(() => import('./components/DukaView'));
+const FisiMajiView = lazy(() => import('./components/FisiMajiView'));
+const VideosView = lazy(() => import('./components/VideosView'));
+const CalculatorView = lazy(() => import('./components/CalculatorView'));
+const KamusiView = lazy(() => import('./components/KamusiView'));
+const MikoaView = lazy(() => import('./components/MikoaView'));
+const AjiraView = lazy(() => import('./components/AjiraView'));
+const MatangazoView = lazy(() => import('./components/MatangazoView'));
+const FeedbackModal = lazy(() => import('./components/FeedbackModal'));
+const WorkspaceView = lazy(() => import('./components/WorkspaceView'));
+const UploadView = lazy(() => import('./components/UploadView'));
+const ReaderView = lazy(() => import('./components/ReaderView'));
+const PremiumView = lazy(() => import('./components/PremiumView'));
+const LibraryView = lazy(() => import('./components/LibraryView'));
+const ForumView = lazy(() => import('./components/ForumView'));
+const LiveClassesView = lazy(() => import('./components/LiveClassesView'));
+const CertificatesView = lazy(() => import('./components/CertificatesView'));
+const LeaderboardView = lazy(() => import('./components/LeaderboardView'));
+const AdminView = lazy(() => import('./components/AdminView'));
+const ResourcesView = lazy(() => import('./components/ResourcesView'));
+
+// Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
+const ViewLoadingSkeleton = () => (
+  <div className="w-full space-y-8 py-8 animate-pulse" id="lupanulla-view-skeleton">
+    <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+      <div className="space-y-2 w-full md:w-auto">
+        <div className="h-9 bg-slate-200 rounded-2xl w-48 animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-xl w-72 animate-pulse"></div>
+      </div>
+      <div className="h-10 bg-slate-200 rounded-2xl w-full md:w-36 animate-pulse"></div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 space-y-4">
+        <div className="h-5 bg-slate-200 rounded-lg w-1/2 animate-pulse"></div>
+        <div className="h-12 bg-slate-200 rounded-2xl animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-5/6 animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-2/3 animate-pulse"></div>
+      </div>
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 space-y-4">
+        <div className="h-5 bg-slate-200 rounded-lg w-1/3 animate-pulse"></div>
+        <div className="h-12 bg-slate-200 rounded-2xl animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-4/5 animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-1/2 animate-pulse"></div>
+      </div>
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 space-y-4">
+        <div className="h-5 bg-slate-200 rounded-lg w-1/4 animate-pulse"></div>
+        <div className="h-12 bg-slate-200 rounded-2xl animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-3/4 animate-pulse"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-3/4 animate-pulse"></div>
+      </div>
+    </div>
+
+    <div className="bg-white rounded-3xl p-8 border border-slate-100 space-y-5 h-48">
+      <div className="h-5 bg-slate-200 rounded-lg w-1/4 animate-pulse"></div>
+      <div className="h-4 bg-slate-200 rounded-lg w-3/4 animate-pulse"></div>
+      <div className="h-4 bg-slate-200 rounded-lg w-5/6 animate-pulse"></div>
+      <div className="h-4 bg-slate-200 rounded-lg w-2/3 animate-pulse"></div>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -571,7 +613,7 @@ export default function App() {
             </button>
           </div>
         ) : (
-          <>
+          <Suspense fallback={<ViewLoadingSkeleton />}>
             {activeView === 'portal' && (
               <PortalView 
                 onNavigate={navigateTo} 
@@ -720,7 +762,7 @@ export default function App() {
                 userProfile={userProfile} 
               />
             )}
-          </>
+          </Suspense>
         )}
 
       </main>

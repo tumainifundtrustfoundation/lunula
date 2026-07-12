@@ -99,6 +99,7 @@ export interface DocumentMetadata {
   type?: string;
   sizeKB?: number;
   accent?: string;
+  subject?: string;
 }
 
 export interface Comment {

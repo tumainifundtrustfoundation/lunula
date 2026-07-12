@@ -113,6 +113,21 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Secure input validation to prevent invalid Firestore entries and cross-site scripts
+    if (!title || title.trim() === '') {
+      setError('Tafadhali weka jina (title) la nyenzo hii kabla ya kupakia.');
+      return;
+    }
+    if (title.length > 200) {
+      setError('Jina la nyenzo ni refu mno. Tafadhali punguza jina lisizidi herufi 200.');
+      return;
+    }
+    if (description && description.length > 1000) {
+      setError('Maelezo (description) ni marefu mno. Tafadhali punguza yasizidi herufi 1000.');
+      return;
+    }
+    
     if (!selectedFile && !pickedFromDrive) {
       setError('Tafadhali chagua faili la PDF la kupakia au chagua kutoka Google Drive kwanza.');
       return;

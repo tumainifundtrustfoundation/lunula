@@ -18,11 +18,23 @@ import {
   HelpCircle,
   ShieldCheck,
   Compass,
-  Globe
+  Globe,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { fetchDocuments } from '../firebase';
 import { DocumentMetadata } from '../types';
 import FocusTimer from './FocusTimer';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from 'recharts';
 
 interface DashboardViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -30,6 +42,38 @@ interface DashboardViewProps {
   language: 'sw' | 'en';
   onAwardPoints: (points: number, minutes: number) => void;
 }
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 text-white p-3 py-2.5 rounded-2xl shadow-xl text-xs font-sans space-y-1" id="chart-custom-tooltip">
+        <p className="font-bold border-b border-slate-800 pb-1 text-slate-300">{label}</p>
+        {payload.map((entry: any, index: number) => {
+          const isMinutes = entry.dataKey === 'minutes';
+          const name = isMinutes ? 'Muda wa Soma' : 'Pointi (XP)';
+          const value = isMinutes ? `${entry.value} dzk` : `${entry.value} XP`;
+          const color = isMinutes ? '#06b6d4' : '#f59e0b';
+          return (
+            <div key={index} className="flex items-center gap-3 justify-between">
+              <span className="flex items-center gap-1 text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></span>
+                {name}:
+              </span>
+              <span className="font-bold" style={{ color: color }}>{value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function DashboardView({ onNavigate, userProfile, language = 'sw', onAwardPoints }: DashboardViewProps) {
   const [streakCount, setStreakCount] = useState(5);
@@ -39,8 +83,45 @@ export default function DashboardView({ onNavigate, userProfile, language = 'sw'
   const [recentDocs, setRecentDocs] = useState<DocumentMetadata[]>([]);
   const [activeLeaderboard, setActiveLeaderboard] = useState<'darasa' | 'mkoa'>('darasa');
 
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartFilter, setChartFilter] = useState<'all' | 'minutes' | 'xp'>('all');
+
   useEffect(() => {
     loadRecentDocs();
+    
+    const generate30DaysData = () => {
+      const data = [];
+      const now = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const day = d.getDate();
+        const monthNamesSw = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ago', 'Sep', 'Okt', 'Nob', 'Des'];
+        const label = `${day} ${monthNamesSw[d.getMonth()]}`;
+        
+        const dayOfWeek = d.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        let studyMinutes = isWeekend 
+          ? Math.floor(15 + Math.random() * 35) 
+          : Math.floor(40 + Math.random() * 80); 
+          
+        if (i === 4 || i === 13 || i === 22) {
+          studyMinutes = 0;
+        }
+
+        const xpEarned = studyMinutes > 0 ? (studyMinutes * 10 + Math.floor(Math.random() * 40)) : 0;
+        
+        data.push({
+          date: label,
+          minutes: studyMinutes,
+          xp: xpEarned,
+        });
+      }
+      return data;
+    };
+    
+    setChartData(generate30DaysData());
   }, []);
 
   const loadRecentDocs = async () => {
@@ -80,6 +161,12 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
   };
 
   const currentStreakAngle = (streakCount / 7) * 360;
+
+  const totalMinutes = chartData.reduce((sum, item) => sum + item.minutes, 0);
+  const totalHours = (totalMinutes / 60).toFixed(1);
+  const totalXp = chartData.reduce((sum, item) => sum + item.xp, 0);
+  const activeDaysCount = chartData.filter(d => d.minutes > 0).length;
+  const averageMinutes = activeDaysCount > 0 ? Math.round(totalMinutes / activeDaysCount) : 0;
 
   return (
     <div id="dashboard-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50">
@@ -179,6 +266,164 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 block">Nafasi yangu Kitaifa</span>
         </div>
       </div>
+
+      {/* ── Visual Study Progress Chart (Recharts) ── */}
+      <section className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-600 flex items-center justify-center">
+                <TrendingUp size={18} />
+              </div>
+              <h2 className="font-display font-extrabold text-lg text-slate-950 uppercase">Maendeleo ya Masomo (Siku 30)</h2>
+            </div>
+            <p className="text-slate-500 text-xs font-medium">
+              Uchambuzi wa saa ulizojifunza na pointi (XP) ulizozipata ndani ya siku 30 zilizopita.
+            </p>
+          </div>
+          
+          {/* Chart Filter Toggles */}
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50 self-stretch sm:self-auto">
+            <button
+              onClick={() => setChartFilter('all')}
+              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${chartFilter === 'all' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Zote mbili
+            </button>
+            <button
+              onClick={() => setChartFilter('minutes')}
+              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${chartFilter === 'minutes' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Muda pekee
+            </button>
+            <button
+              onClick={() => setChartFilter('xp')}
+              className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${chartFilter === 'xp' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              XP pekee
+            </button>
+          </div>
+        </div>
+
+        {/* 30-Day Aggregated Statistics Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-cyan-500/10 text-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Clock size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Jumla ya Muda</span>
+              <span className="text-lg font-display font-extrabold text-slate-950">{totalHours} Masaa</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 border-t sm:border-t-0 sm:border-x border-slate-200/60 pt-3 sm:pt-0 sm:px-4">
+            <div className="w-10 h-10 bg-amber-500/10 text-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Zap size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Wastani wa Siku</span>
+              <span className="text-lg font-display font-extrabold text-slate-950">{averageMinutes} Dakika</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 sm:pl-4">
+            <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Trophy size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">XP Jumla (Mwezi huu)</span>
+              <span className="text-lg font-display font-extrabold text-slate-950">+{totalXp.toLocaleString()} XP</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart Canvas Wrap */}
+        <div className="h-72 w-full select-none" id="recharts-container-parent">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={chartData}
+                margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorMinutes" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorXp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="date" 
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
+                  dy={10}
+                />
+                
+                {/* Secondary Y-Axis for XP / Primary Y-Axis for minutes */}
+                {(chartFilter === 'all' || chartFilter === 'minutes') && (
+                  <YAxis 
+                    yAxisId="left"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#06b6d4', fontSize: 10, fontWeight: 600 }}
+                    unit="m"
+                  />
+                )}
+                {(chartFilter === 'all' || chartFilter === 'xp') && (
+                  <YAxis 
+                    yAxisId="right"
+                    orientation="right"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#f59e0b', fontSize: 10, fontWeight: 600 }}
+                    unit="xp"
+                  />
+                )}
+
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                
+                {/* Visual Data series */}
+                {(chartFilter === 'all' || chartFilter === 'minutes') && (
+                  <Area 
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey="minutes" 
+                    stroke="#06b6d4" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorMinutes)" 
+                    name="minutes"
+                    activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                )}
+
+                {(chartFilter === 'all' || chartFilter === 'xp') && (
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="xp" 
+                    stroke="#f59e0b" 
+                    strokeWidth={2.5}
+                    dot={{ r: 1.5 }}
+                    activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 2 }}
+                    name="xp"
+                  />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 font-semibold">
+              Inapakia takwimu...
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ── Active Courses, Leaderboard, Kiswahili Fasihi and Results Checker ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -426,90 +426,278 @@ async function callGeminiWithRetry(fn: () => Promise<any>, retries = 3, delay = 
 // Fisi Maji AI / Lupanulla AI endpoint (compatible with client request to /api/claude.php)
 app.post('/api/claude.php', async (req, res) => {
   try {
-    const { system, messages } = req.body;
+    const { system, messages, modelChoice, thinking, grounding } = req.body;
     
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: 'Invalid messages array' });
       return;
     }
 
-    // Map roles: 'assistant' -> 'model', 'user' -> 'user'
-    const contents = messages.map((m: any) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-
-    // Call Gemini API using modern SDK with built-in retry logic
-    // Using gemini-3.5-flash as recommended by latest guidelines
-    const interaction = await callGeminiWithRetry(() => ai.interactions.create({
-      model: 'gemini-3.5-flash',
-      input: contents.length > 0 ? contents[contents.length - 1].parts[0].text : 'Habari',
-      // If we want to support multi-turn history with Interactions API, we'd need to manage session IDs.
-      // For now, we'll use the simplified single-turn interaction pattern as shown in skill.
-      system_instruction: system || 'Wewe ni msaidizi wa masomo Tanzania unayeitwa Fisi Maji AI. Unawasaidia wanafunzi wa Lupanulla kufaulu mitihani yao kwa kutoa notisi, maelezo, na majibu ya maswali ya kitaaluma.',
-      generation_config: {
-        temperature: 0.7,
-      }
-    }));
-
-    // Extract text output from Interaction Response
-    let fullOutput = "";
-    for (const step of interaction.steps) {
-      if (step.type === 'model_output') {
-        const textContent = step.content?.find((c: any) => c.type === 'text');
-        if (textContent && textContent.text) {
-          fullOutput += textContent.text;
-        }
-      }
+    // Check if API Key is missing or default placeholder before attempting call
+    const key = process.env.GEMINI_API_KEY;
+    const isApiKeyMissing = !key || key === 'MY_GEMINI_API_KEY' || key.trim() === '';
+    
+    if (isApiKeyMissing) {
+      return res.status(401).json({
+        error: 'Authentication Error',
+        message: 'Samahani! Ufunguo wa Gemini AI (`GEMINI_API_KEY`) haujasanidiwa kwenye mfumo. Tafadhali nenda kwenye jopo la **Settings > Secrets** (upande wa juu kulia wa AI Studio) na uongeze siri mpya inayoitwa **GEMINI_API_KEY** kisha uweke ufunguo wako halali wa Gemini API ili kuwezesha huduma hii ya AI.'
+      });
     }
 
-    const reply = fullOutput || 'Samahani, sikuweza kupata jibu sahihi wakati huu.';
+    // Map roles & build multimodal/parts structure
+    const contents = messages.map((m: any, idx: number) => {
+      const isLast = idx === messages.length - 1;
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      
+      // If there are attachments, map them as standard GenAI parts
+      if (m.attachments && m.attachments.length > 0) {
+        const parts: any[] = [];
+        
+        m.attachments.forEach((att: any) => {
+          if (att.mimeType && att.base64Data) {
+            let cleanBase64 = att.base64Data;
+            if (cleanBase64.includes(';base64,')) {
+              cleanBase64 = cleanBase64.split(';base64,')[1];
+            }
+            parts.push({
+              inlineData: {
+                mimeType: att.mimeType,
+                data: cleanBase64
+              }
+            });
+          }
+        });
+        
+        if (m.content) {
+          parts.push({ text: m.content });
+        } else {
+          parts.push({ text: "Chambua faili hili la media." });
+        }
+        
+        return { role, parts };
+      }
+      
+      return { role, parts: [{ text: m.content || "" }] };
+    });
+
+    // Model selection based on features and user preference
+    let selectedModel = 'gemini-3.5-flash';
+    if (thinking) {
+      selectedModel = 'gemini-3.1-pro-preview';
+    } else if (modelChoice === 'pro') {
+      selectedModel = 'gemini-3.1-pro-preview';
+    } else if (modelChoice === 'lite') {
+      selectedModel = 'gemini-3.1-flash-lite';
+    } else if (modelChoice === 'flash') {
+      selectedModel = 'gemini-3.5-flash';
+    }
+
+    const config: any = {
+      systemInstruction: system || 'Wewe ni msaidizi wa masomo Tanzania unayeitwa Fisi Maji AI. Unawasaidia wanafunzi wa Lupanulla kufaulu mitihani yao kwa kutoa notisi, maelezo, na majibu ya maswali ya kitaaluma.',
+      temperature: 0.7,
+    };
+
+    // Set thinking level to HIGH on gemini-3.1-pro-preview if thinking is enabled
+    if (thinking) {
+      config.thinkingConfig = {
+        thinkingBudget: 2048,
+        thinkingLevel: "HIGH"
+      };
+      // Do not set maxOutputTokens
+    }
+
+    // Set search or maps grounding if selected
+    if (grounding === 'search') {
+      config.tools = [{ googleSearch: {} }];
+    } else if (grounding === 'maps') {
+      config.tools = [{ googleMaps: {} }];
+    }
+
+    // Call Gemini API using modern SDK with built-in retry logic
+    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+      model: selectedModel,
+      contents: contents,
+      config: config
+    }));
+
+    const reply = response.text || 'Samahani, sikuweza kupata jibu sahihi wakati huu.';
     res.json({ reply });
   } catch (error: any) {
     console.error('Gemini API Error:', error);
-    const isHighDemand = error.status === 503 || (error.message && (error.message.includes('503') || error.message.includes('high demand') || error.message.includes('UNAVAILABLE')));
-    const friendlyMessage = isHighDemand
-      ? 'Fisi Maji AI kwa sasa anakabiliwa na idadi kubwa sana ya wanafunzi wanaojifunza. Tafadhali subiri kidogo kisha ujaribu tena hivi punde (sekunde chache).'
-      : (error.message || String(error));
-    res.status(isHighDemand ? 503 : 500).json({ 
+    const errStr = String(error.message || error);
+    const isHighDemand = error.status === 503 || errStr.includes('503') || errStr.includes('high demand') || errStr.includes('UNAVAILABLE');
+    
+    const isAuthError = 
+      error.status === 401 ||
+      error.status === 403 ||
+      error.status === 400 ||
+      errStr.includes('ACCESS_TOKEN_TYPE_UNSUPPORTED') ||
+      errStr.includes('UNAUTHENTICATED') ||
+      errStr.includes('API_KEY_INVALID') ||
+      errStr.includes('API key') ||
+      errStr.includes('credentials') ||
+      errStr.includes('PERMISSION_DENIED');
+
+    let friendlyMessage = '';
+    if (isAuthError) {
+      friendlyMessage = 'Samahani! Ufunguo wa Gemini AI (`GEMINI_API_KEY`) haujasanidiwa vizuri au hauko sahihi. Tafadhali nenda kwenye jopo la **Settings > Secrets** (upande wa juu kulia wa AI Studio) na uhakikishe siri ya **GEMINI_API_KEY** ina ufunguo wako halali wa Gemini API.';
+    } else if (isHighDemand) {
+      friendlyMessage = 'Fisi Maji AI kwa sasa anakabiliwa na idadi kubwa sana ya wanafunzi wanaojifunza. Tafadhali subiri kidogo kisha ujaribu tena hivi punde (sekunde chache).';
+    } else {
+      friendlyMessage = errStr;
+    }
+
+    res.status(isAuthError ? 401 : (isHighDemand ? 503 : 500)).json({ 
       error: 'Failed to process AI request', 
       message: friendlyMessage 
     });
   }
 });
 
+// Audio transcription endpoint (using gemini-3.5-flash)
+app.post('/api/ai/transcribe', async (req, res) => {
+  try {
+    const { base64Data, mimeType } = req.body;
+    if (!base64Data) {
+      return res.status(400).json({ error: 'Missing audio base64Data' });
+    }
+
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key === 'MY_GEMINI_API_KEY' || key.trim() === '') {
+      return res.status(401).json({ error: 'API key not configured' });
+    }
+
+    let cleanBase64 = base64Data;
+    if (cleanBase64.includes(';base64,')) {
+      cleanBase64 = cleanBase64.split(';base64,')[1];
+    }
+
+    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType || 'audio/webm',
+            data: cleanBase64
+          }
+        },
+        'Katika Kiswahili au Kiingereza (kulingana na lugha iliyotumika), andika maneno yanayosemwa kwenye rekodi hii ya sauti kwa usahihi wa hali ya juu bila kuongeza maelezo au maoni yoyote ya ziada. Ikiwa sauti haieleweki kabisa au haina maneno, andika tu "(Sauti haieleweki)".'
+      ]
+    }));
+
+    res.json({ text: (response.text || '').trim() });
+  } catch (error: any) {
+    console.error('Transcription API Error:', error);
+    res.status(500).json({ error: error.message || 'Shida ilitokea wakati wa kunakili sauti.' });
+  }
+});
+
+// Image Generation and Aspect Ratio endpoint (using gemini-3.1-flash-image-preview or gemini-3-pro-image-preview)
+app.post('/api/ai/generate-image', async (req, res) => {
+  try {
+    const { prompt, aspectRatio, quality } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'Missing prompt' });
+    }
+
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key === 'MY_GEMINI_API_KEY' || key.trim() === '') {
+      return res.status(401).json({ error: 'API key not configured' });
+    }
+
+    // gemini-3.1-flash-image-preview for general, gemini-3-pro-image-preview for studio quality
+    const selectedModel = quality === 'studio' ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image-preview';
+
+    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+      model: selectedModel,
+      contents: {
+        parts: [{ text: prompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: aspectRatio || '1:1',
+          imageSize: '1K'
+        }
+      }
+    }));
+
+    let base64Data = '';
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData && part.inlineData.data) {
+        base64Data = part.inlineData.data;
+        break;
+      }
+    }
+
+    if (!base64Data) {
+      throw new Error('No image was returned by the generation model.');
+    }
+
+    const imageUrl = `data:image/png;base64,${base64Data}`;
+    res.json({ imageUrl });
+  } catch (error: any) {
+    console.error('Image Generation API Error:', error);
+    res.status(500).json({ error: error.message || 'Shida ilitokea wakati wa kutengeneza picha.' });
+  }
+});
+
 app.post('/api/chat', async (req, res) => {
   try {
     const { system, messages } = req.body;
+
+    // Check if API Key is missing or default placeholder before attempting call
+    const key = process.env.GEMINI_API_KEY;
+    const isApiKeyMissing = !key || key === 'MY_GEMINI_API_KEY' || key.trim() === '';
+    
+    if (isApiKeyMissing) {
+      return res.status(401).json({
+        error: 'Authentication Error',
+        message: 'Samahani! Ufunguo wa Gemini AI (`GEMINI_API_KEY`) haujasanidiwa kwenye mfumo. Tafadhali nenda kwenye jopo la **Settings > Secrets** (upande wa juu kulia wa AI Studio) na uongeze siri mpya inayoitwa **GEMINI_API_KEY** kisha uweke ufunguo wako halali wa Gemini API ili kuwezesha huduma hii ya AI.'
+      });
+    }
+
     const contents = messages.map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }));
 
-    const interaction = await callGeminiWithRetry(() => ai.interactions.create({
+    const response = await callGeminiWithRetry(() => ai.models.generateContent({
       model: 'gemini-3.5-flash',
-      input: contents.length > 0 ? contents[contents.length - 1].parts[0].text : 'Habari',
-      system_instruction: system,
+      contents: contents,
+      config: {
+        systemInstruction: system,
+        temperature: 0.7,
+      }
     }));
 
-    let fullOutput = "";
-    for (const step of interaction.steps) {
-      if (step.type === 'model_output') {
-        const textContent = step.content?.find((c: any) => c.type === 'text');
-        if (textContent && textContent.text) {
-          fullOutput += textContent.text;
-        }
-      }
-    }
-
-    res.json({ reply: fullOutput });
+    res.json({ reply: response.text || '' });
   } catch (error: any) {
     console.error('Gemini API Error:', error);
-    const isHighDemand = error.status === 503 || (error.message && (error.message.includes('503') || error.message.includes('high demand') || error.message.includes('UNAVAILABLE')));
-    const friendlyMessage = isHighDemand
-      ? 'Mfumo wa AI kwa sasa una shughuli nyingi sana. Tafadhali subiri kidogo kisha ubonyeze tena.'
-      : (error.message || String(error));
-    res.status(isHighDemand ? 503 : 500).json({ 
+    const errStr = String(error.message || error);
+    const isHighDemand = error.status === 503 || errStr.includes('503') || errStr.includes('high demand') || errStr.includes('UNAVAILABLE');
+    
+    const isAuthError = 
+      error.status === 401 ||
+      error.status === 403 ||
+      error.status === 400 ||
+      errStr.includes('ACCESS_TOKEN_TYPE_UNSUPPORTED') ||
+      errStr.includes('UNAUTHENTICATED') ||
+      errStr.includes('API_KEY_INVALID') ||
+      errStr.includes('API key') ||
+      errStr.includes('credentials') ||
+      errStr.includes('PERMISSION_DENIED');
+
+    let friendlyMessage = '';
+    if (isAuthError) {
+      friendlyMessage = 'Samahani! Ufunguo wa Gemini AI (`GEMINI_API_KEY`) haujasanidiwa vizuri au hauko sahihi. Tafadhali nenda kwenye jopo la **Settings > Secrets** (upande wa juu kulia wa AI Studio) na uhakikishe siri ya **GEMINI_API_KEY** ina ufunguo wako halali wa Gemini API.';
+    } else if (isHighDemand) {
+      friendlyMessage = 'Mfumo wa AI kwa sasa una shughuli nyingi sana. Tafadhali subiri kidogo kisha ubonyeze tena.';
+    } else {
+      friendlyMessage = errStr;
+    }
+
+    res.status(isAuthError ? 401 : (isHighDemand ? 503 : 500)).json({ 
       error: 'Failed to process AI request',
       message: friendlyMessage 
     });
