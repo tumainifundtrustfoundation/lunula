@@ -176,6 +176,24 @@ export default function App() {
   const [domainCopied, setDomainCopied] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
+  // Global event listeners to open Login and Signup Modals
+  useEffect(() => {
+    const handleOpenLogin = () => {
+      setShowSignInModal(true);
+      setAuthTab('login');
+    };
+    const handleOpenSignup = () => {
+      setShowSignInModal(true);
+      setAuthTab('signup');
+    };
+    window.addEventListener('open-login-modal', handleOpenLogin);
+    window.addEventListener('open-signup-modal', handleOpenSignup);
+    return () => {
+      window.removeEventListener('open-login-modal', handleOpenLogin);
+      window.removeEventListener('open-signup-modal', handleOpenSignup);
+    };
+  }, []);
+
   // Sync URL hash routing on load & navigation
   useEffect(() => {
     const handleHashRoute = () => {

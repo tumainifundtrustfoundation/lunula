@@ -22,7 +22,28 @@ interface UploadViewProps {
   userProfile: any;
 }
 
+export function extractGoogleDriveId(url: string): string | null {
+  if (!url) return null;
+  const regD = /\/d\/([a-zA-Z0-9-_]+)/;
+  const matchD = url.match(regD);
+  if (matchD && matchD[1]) {
+    return matchD[1];
+  }
+  const regId = /[?&]id=([a-zA-Z0-9-_]+)/;
+  const matchId = url.match(regId);
+  if (matchId && matchId[1]) {
+    return matchId[1];
+  }
+  if (/^[a-zA-Z0-9-_]{20,100}$/.test(url.trim())) {
+    return url.trim();
+  }
+  return null;
+}
+
 export default function UploadView({ onNavigate, userProfile }: UploadViewProps) {
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'link'>('file');
+  const [driveUrlInput, setDriveUrlInput] = useState('');
+
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pickedFromDrive, setPickedFromDrive] = useState<PickedFile | null>(null);
@@ -42,6 +63,38 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
   const [uploadedDocId, setUploadedDocId] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!userProfile) {
+    return (
+      <div className="max-w-md mx-auto my-12 bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-sm space-y-6 animate-fade-in">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+          <ShieldAlert size={32} />
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-display font-extrabold text-xl text-slate-900 uppercase">Ulinzi wa Firebase Auth</h3>
+          <p className="text-slate-500 text-xs sm:text-sm leading-relaxed font-semibold">
+            Ili kuhifadhi au kuweka notisi, vitabu vya masomo, na nyaraka salama kwenye Lupanulla Elimu Hub, unapaswa kujiunga au kuingia kwenye akaunti yako.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+            className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all uppercase cursor-pointer"
+          >
+            Ingia kwenye Akaunti (Sign In)
+          </button>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-signup-modal'))}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all uppercase cursor-pointer"
+          >
+            Tengeneza Akaunti Mpya (Sign Up)
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handlePickFromDrive = async () => {
     try {
@@ -128,9 +181,21 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       return;
     }
     
-    if (!selectedFile && !pickedFromDrive) {
-      setError('Tafadhali chagua faili la PDF la kupakia au chagua kutoka Google Drive kwanza.');
-      return;
+    if (uploadMethod === 'file') {
+      if (!selectedFile && !pickedFromDrive) {
+        setError('Tafadhali chagua faili la PDF la kupakia au chagua kutoka Google Drive kwanza.');
+        return;
+      }
+    } else {
+      if (!driveUrlInput || driveUrlInput.trim() === '') {
+        setError('Tafadhali weka kiungo halali cha Google Drive.');
+        return;
+      }
+      const parsedId = extractGoogleDriveId(driveUrlInput);
+      if (!parsedId) {
+        setError('Imeshindikana kupata kitambulisho cha faili kutoka kwenye kiungo hicho. Tafadhali hakikisha ni kiungo sahihi cha Google Drive au Google Docs.');
+        return;
+      }
     }
 
     try {
@@ -141,14 +206,22 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       let driveUrl = '';
       let sizeKB = 0;
 
-      if (pickedFromDrive) {
-        fileId = pickedFromDrive.id;
-        driveUrl = pickedFromDrive.url;
-        sizeKB = pickedFromDrive.sizeBytes ? Math.round(pickedFromDrive.sizeBytes / 1024) : 120;
-      } else if (selectedFile) {
-        sizeKB = Math.round(selectedFile.size / 1024);
-        fileId = 'drive-file-' + Math.random().toString(36).substring(2, 11);
-        driveUrl = 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true';
+      if (uploadMethod === 'file') {
+        if (pickedFromDrive) {
+          fileId = pickedFromDrive.id;
+          driveUrl = pickedFromDrive.url;
+          sizeKB = pickedFromDrive.sizeBytes ? Math.round(pickedFromDrive.sizeBytes / 1024) : 120;
+        } else if (selectedFile) {
+          sizeKB = Math.round(selectedFile.size / 1024);
+          fileId = 'drive-file-' + Math.random().toString(36).substring(2, 11);
+          driveUrl = 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true';
+        }
+      } else {
+        const parsedId = extractGoogleDriveId(driveUrlInput)!;
+        fileId = parsedId;
+        // Directly construct standard Google Drive embedded URL for secure reading in iframe
+        driveUrl = `https://drive.google.com/file/d/${parsedId}/preview`;
+        sizeKB = 1536; // Generic document size estimate in KB
       }
 
       const tagsArray = tagsInput
@@ -183,6 +256,7 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setSuccess(true);
       setSelectedFile(null);
       setPickedFromDrive(null);
+      setDriveUrlInput('');
       setTitle('');
       setDescription('');
       setTagsInput('');
@@ -335,106 +409,164 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
             </div>
           </div>
 
-          {/* Form right Column select drag-and-drop file */}
+          {/* Form right Column select drag-and-drop file / Paste Link */}
           <div className="md:col-span-1 space-y-6">
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-              <h3 className="font-display font-bold text-slate-950 text-sm uppercase">Chagua Faili la PDF</h3>
               
-              <input 
-                ref={fileInputRef}
-                type="file" 
-                accept=".pdf"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-
-              {pickedFromDrive ? (
-                <div className="border-2 border-cyan-200 bg-cyan-50/20 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10 relative">
-                  <div className="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center shadow-inner">
-                    <FileText size={24} />
-                  </div>
-                  <div className="space-y-1">
-                    <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[9px] font-extrabold uppercase tracking-wider">
-                      Google Drive (Picked)
-                    </span>
-                    <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{pickedFromDrive.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">PDF Faili la Google Drive</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setPickedFromDrive(null);
-                    }}
-                    className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
-                  >
-                    <Trash size={12} /> Ondoa Faili
-                  </button>
-                </div>
-              ) : selectedFile ? (
-                <div 
-                  className="border-2 border-green-500 bg-green-500/5 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10"
+              {/* Method Tabs */}
+              <div className="flex border-b border-slate-100 pb-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUploadMethod('file')}
+                  className={`flex-1 pb-2 text-center text-xs font-bold transition-all border-b-2 ${
+                    uploadMethod === 'file'
+                      ? 'border-cyan-500 text-cyan-600 font-extrabold'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
                 >
-                  <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
-                    <FileText size={24} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{selectedFile.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB &bull; PDF</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveFile();
-                    }}
-                    className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
-                  >
-                    <Trash size={12} /> Ondoa Faili
-                  </button>
-                </div>
+                  Pakia Faili (PDF)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMethod('link')}
+                  className={`flex-1 pb-2 text-center text-xs font-bold transition-all border-b-2 ${
+                    uploadMethod === 'link'
+                      ? 'border-cyan-500 text-cyan-600 font-extrabold'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Kiungo cha Drive
+                </button>
+              </div>
+
+              {uploadMethod === 'file' ? (
+                <>
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+
+                  {pickedFromDrive ? (
+                    <div className="border-2 border-cyan-200 bg-cyan-50/20 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10 relative">
+                      <div className="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center shadow-inner">
+                        <FileText size={24} />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[9px] font-extrabold uppercase tracking-wider">
+                          Google Drive (Picked)
+                        </span>
+                        <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{pickedFromDrive.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">PDF Faili la Google Drive</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setPickedFromDrive(null);
+                        }}
+                        className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
+                      >
+                        <Trash size={12} /> Ondoa Faili
+                      </button>
+                    </div>
+                  ) : selectedFile ? (
+                    <div 
+                      className="border-2 border-green-500 bg-green-500/5 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 py-10"
+                    >
+                      <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
+                        <FileText size={24} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-bold text-slate-900 text-xs truncate max-w-[150px]">{selectedFile.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB &bull; PDF</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFile();
+                        }}
+                        className="text-red-500 hover:text-red-600 font-bold text-[10px] uppercase mt-2 inline-flex items-center gap-0.5"
+                      >
+                        <Trash size={12} /> Ondoa Faili
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div 
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-10 ${
+                          dragActive 
+                            ? 'border-cyan-500 bg-cyan-500/5' 
+                            : 'border-slate-250 hover:border-cyan-400 hover:bg-slate-50'
+                        }`}
+                        onClick={handleButtonClick}
+                      >
+                        <div className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-400 rounded-full flex items-center justify-center">
+                          <Upload size={24} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-xs">Vuta faili hapa</p>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">au bofya kuchagua kwenye kifaa chako</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="h-px bg-slate-200 flex-1" />
+                        <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">au tumia Drive</span>
+                        <span className="h-px bg-slate-200 flex-1" />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handlePickFromDrive}
+                        className="w-full py-3 border border-cyan-150 bg-cyan-50/40 hover:bg-cyan-55 text-cyan-700 font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] uppercase tracking-wider shadow-sm"
+                      >
+                        <FolderOpen size={14} />
+                        <span>Chagua Kutoka Google Drive</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="space-y-4">
-                  <div 
-                    onDragEnter={handleDrag}
-                    onDragOver={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-10 ${
-                      dragActive 
-                        ? 'border-cyan-500 bg-cyan-500/5' 
-                        : 'border-slate-250 hover:border-cyan-400 hover:bg-slate-50'
-                    }`}
-                    onClick={handleButtonClick}
-                  >
-                    <div className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-400 rounded-full flex items-center justify-center">
-                      <Upload size={24} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 text-xs">Vuta faili hapa</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">au bofya kuchagua kwenye kifaa chako</p>
-                    </div>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kiungo cha Google Drive au Google Doc</label>
+                    <input 
+                      type="url" 
+                      required
+                      value={driveUrlInput}
+                      onChange={(e) => {
+                        setDriveUrlInput(e.target.value);
+                        const docId = extractGoogleDriveId(e.target.value);
+                        if (docId && !title) {
+                          setTitle(`Google Drive Nyaraka (${docId.substring(0, 8)})`);
+                        }
+                      }}
+                      placeholder="https://drive.google.com/file/d/.../view" 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
+                    />
                   </div>
-
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="h-px bg-slate-200 flex-1" />
-                    <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">au tumia Drive</span>
-                    <span className="h-px bg-slate-200 flex-1" />
+                  
+                  <div className="p-3 bg-cyan-50/30 rounded-xl border border-dashed border-cyan-200/50 space-y-1 text-left">
+                    <p className="text-[10px] text-cyan-800 font-extrabold uppercase">Maelekezo ya Ushiriki:</p>
+                    <p className="text-[9.5px] text-slate-600 font-semibold leading-relaxed">
+                      1. Fungua faili lako kwenye Google Drive.<br />
+                      2. Bofya <strong>Share</strong> na uweke ruhusa kuwa <strong>"Anyone with the link can view"</strong> (Yeyote aliye na kiungo anaweza kusoma).<br />
+                      3. Nakili kiungo hicho cha ushiriki na ubandike hapa juu.
+                    </p>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handlePickFromDrive}
-                    className="w-full py-3 border border-cyan-150 bg-cyan-50/40 hover:bg-cyan-55 text-cyan-700 font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 text-[10px] uppercase tracking-wider shadow-sm"
-                  >
-                    <FolderOpen size={14} />
-                    <span>Chagua Kutoka Google Drive</span>
-                  </button>
                 </div>
               )}
 
               <button 
                 type="submit"
-                disabled={uploading || (!selectedFile && !pickedFromDrive)}
+                disabled={uploading || (uploadMethod === 'file' ? (!selectedFile && !pickedFromDrive) : !driveUrlInput)}
                 className="w-full py-3 text-xs text-center font-extrabold bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-150 disabled:text-slate-400 text-slate-950 rounded-xl transition-all shadow-md shadow-cyan-500/10 uppercase flex items-center justify-center gap-1.5"
               >
                 {uploading ? (

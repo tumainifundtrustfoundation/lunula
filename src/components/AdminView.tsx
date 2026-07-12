@@ -36,7 +36,8 @@ import {
   Sliders,
   X,
   Newspaper,
-  Library
+  Library,
+  Tv
 } from 'lucide-react';
 import {
   AreaChart,
@@ -50,7 +51,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -84,7 +85,11 @@ import {
   saveWebsiteNews,
   fetchEducationalResources,
   updateEducationalResource,
-  deleteEducationalResource
+  deleteEducationalResource,
+  fetchVideos,
+  saveVideo,
+  updateVideo,
+  deleteVideo
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -230,6 +235,19 @@ export default function AdminView({
   const [newClass, setNewClass] = useState<string>('');
   const [newCategory, setNewCategory] = useState<string>('');
 
+  // --- NEW: Video class management states ---
+  const [dbVideos, setDbVideos] = useState<Video[]>([]);
+  const [videoSearch, setVideoSearch] = useState<string>('');
+  const [isVideoFormOpen, setIsVideoFormOpen] = useState<boolean>(false);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [videoTitle, setVideoTitle] = useState<string>('');
+  const [videoSubject, setVideoSubject] = useState<string>('Physics');
+  const [videoLevel, setVideoLevel] = useState<string>('O-Level');
+  const [videoTeacher, setVideoTeacher] = useState<string>('');
+  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [videoDuration, setVideoDuration] = useState<string>('15:00');
+  const [isVideoSaving, setIsVideoSaving] = useState<boolean>(false);
+
   useEffect(() => {
     const verifyUserRoleAndLoad = async () => {
       if (!userProfile?.uid) {
@@ -351,6 +369,9 @@ export default function AdminView({
       } else if (activeTab === 'news') {
         const news = await fetchWebsiteNews();
         setDbNews(news);
+      } else if (activeTab === 'videos') {
+        const vList = await fetchVideos();
+        setDbVideos(vList);
       }
     } catch (err) {
       console.error('Error loading admin dashboard datasets:', err);
@@ -699,6 +720,106 @@ export default function AdminView({
     } catch (err) {
       console.error('Failed to delete resource:', err);
       alert('Imeshindwa kufuta rasilimali.');
+    }
+  };
+
+  // --- NEW: Video Class Management Handlers ---
+  const extractYouTubeId = (url: string): string | null => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return match[2];
+    }
+    if (url.trim().length === 11) {
+      return url.trim();
+    }
+    return null;
+  };
+
+  const handleOpenAddVideo = () => {
+    setEditingVideo(null);
+    setVideoTitle('');
+    setVideoSubject('Physics');
+    setVideoLevel('O-Level');
+    setVideoTeacher(userProfile?.name || '');
+    setVideoUrl('');
+    setVideoDuration('15:00');
+    setIsVideoFormOpen(true);
+  };
+
+  const handleOpenEditVideo = (video: Video) => {
+    setEditingVideo(video);
+    setVideoTitle(video.title);
+    setVideoSubject(video.subject || 'Physics');
+    setVideoLevel(video.level || 'O-Level');
+    setVideoTeacher(video.teacher || '');
+    setVideoUrl(`https://www.youtube.com/watch?v=${video.youtubeId}`);
+    setVideoDuration(video.duration || '15:00');
+    setIsVideoFormOpen(true);
+  };
+
+  const handleSaveVideoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoTitle.trim()) {
+      alert('Tafadhali weka kichwa/mada ya video.');
+      return;
+    }
+    const ytId = extractYouTubeId(videoUrl);
+    if (!ytId) {
+      alert('Kiungo cha YouTube si sahihi au umbizo lake halikutambuliwa.');
+      return;
+    }
+
+    setIsVideoSaving(true);
+    try {
+      const thumbnail = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+      const payload = {
+        title: videoTitle.trim(),
+        subject: videoSubject,
+        level: videoLevel,
+        teacher: videoTeacher.trim() || userProfile?.name || 'Mwl. Mwema',
+        duration: videoDuration || '15:00',
+        youtubeId: ytId,
+        thumbnailUrl: thumbnail,
+        views: editingVideo ? (editingVideo.views || 0) : 0
+      };
+
+      if (editingVideo) {
+        await updateVideo(editingVideo.id, payload);
+        await logAdminAction('update_video', editingVideo.id, videoTitle.trim(), 'Updated video class item details');
+        alert('Mabadiliko ya video yamehifadhiwa kikamilifu!');
+      } else {
+        const id = await saveVideo(payload);
+        await logAdminAction('create_video', id, videoTitle.trim(), 'Added new video class item directly to library');
+        alert('Video mpya imehifadhiwa kikamilifu!');
+      }
+
+      setIsVideoFormOpen(false);
+      setEditingVideo(null);
+      // reload
+      const vList = await fetchVideos();
+      setDbVideos(vList);
+    } catch (err: any) {
+      console.error(err);
+      alert('Imeshindwa kuhifadhi video: ' + (err.message || err));
+    } finally {
+      setIsVideoSaving(false);
+    }
+  };
+
+  const handleDeleteVideoClick = async (id: string, currentTitle: string) => {
+    const confirmed = window.confirm(`Je, una uhakika unataka kufuta kabisa video hii: "${currentTitle}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteVideo(id);
+      setDbVideos(prev => prev.filter(v => v.id !== id));
+      await logAdminAction('delete_video', id, currentTitle, `Deleted video class item from library: ${currentTitle}`);
+      alert('Video imefutwa kikamilifu.');
+    } catch (err) {
+      console.error('Failed to delete video:', err);
+      alert('Imeshindwa kufuta video.');
     }
   };
 
@@ -1533,6 +1654,17 @@ export default function AdminView({
               {dbResources.filter(r => !r.isVerified).length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab('videos')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'videos'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <Tv size={16} />
+          Kusimamia Video
         </button>
         <button
           onClick={() => setActiveTab('adsense')}
@@ -4221,6 +4353,254 @@ export default function AdminView({
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* TAB: VIDEO CLASS MANAGEMENT */}
+          {activeTab === 'videos' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-left">
+                  <h2 className="text-lg font-sans font-extrabold text-gray-900">Kusimamia Madarasa ya Video</h2>
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                    Ongeza, hariri, au futa video za masomo kutoka YouTube ili kuonekana kote kwenye jukwaa
+                  </p>
+                </div>
+                <button
+                  onClick={handleOpenAddVideo}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl transition-all uppercase flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                >
+                  <Plus size={16} /> Ongeza Video Mpya
+                </button>
+              </div>
+
+              {/* Videos search bar */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <Search size={16} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tafuta video kwa jina, somo, mwalimu, au maelezo..."
+                  value={videoSearch}
+                  onChange={(e) => setVideoSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 text-sm text-gray-800 border border-gray-200 rounded-xl outline-none font-semibold"
+                />
+              </div>
+
+              {/* Videos Table */}
+              <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-400 uppercase font-bold bg-gray-50/50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">Picha &amp; Kichwa cha Video</th>
+                      <th scope="col" className="px-4 py-3">Somo (Subject)</th>
+                      <th scope="col" className="px-4 py-3">Kiwango (Level)</th>
+                      <th scope="col" className="px-4 py-3">Mwalimu &amp; Muda</th>
+                      <th scope="col" className="px-4 py-3 text-right">Vitendo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dbVideos.filter(v => 
+                      v.title.toLowerCase().includes(videoSearch.toLowerCase()) ||
+                      (v.subject || '').toLowerCase().includes(videoSearch.toLowerCase()) ||
+                      (v.teacher || '').toLowerCase().includes(videoSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-xs text-gray-400 font-medium">
+                          Hakuna video zilizopatikana kwenye mfumo kwa sasa.
+                        </td>
+                      </tr>
+                    ) : (
+                      dbVideos.filter(v => 
+                        v.title.toLowerCase().includes(videoSearch.toLowerCase()) ||
+                        (v.subject || '').toLowerCase().includes(videoSearch.toLowerCase()) ||
+                        (v.teacher || '').toLowerCase().includes(videoSearch.toLowerCase())
+                      ).map((video) => (
+                        <tr key={video.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={video.thumbnailUrl} 
+                                alt={video.title} 
+                                className="w-20 h-12 object-cover rounded-lg shadow-sm border border-slate-100 shrink-0" 
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="flex flex-col text-left max-w-md">
+                                <span className="font-extrabold text-gray-800 line-clamp-2">{video.title}</span>
+                                <span className="text-[10px] text-gray-400 font-mono mt-0.5">YouTube ID: {video.youtubeId}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold text-gray-700 text-left">
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded-md">{video.subject}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-semibold text-gray-500 text-left">
+                            {video.level || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-left">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-700">{video.teacher}</span>
+                              <span className="text-gray-400 font-medium text-[10px] uppercase">{video.duration} mns</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenEditVideo(video)}
+                                className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-lg cursor-pointer transition-all"
+                                title="Hariri video hii"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteVideoClick(video.id, video.title)}
+                                className="p-2 hover:bg-red-50 text-red-500 hover:text-red-600 rounded-lg cursor-pointer transition-all"
+                                title="Futa video hii"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Video Add/Edit Modal */}
+              {isVideoFormOpen && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm" onClick={() => setIsVideoFormOpen(false)}></div>
+                  <div className="relative bg-white border border-gray-100 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col z-[310] animate-fade-in text-gray-800">
+                    <button 
+                      onClick={() => setIsVideoFormOpen(false)}
+                      className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all z-20 cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
+
+                    <div className="p-5 border-b border-gray-100 bg-red-50/50 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+                        <Tv size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-sans font-extrabold text-sm text-gray-900 uppercase tracking-tight">
+                          {editingVideo ? 'Hariri Video ya Somo' : 'Sajili Video Mpya'}
+                        </h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                          Uhariri wa video za YouTube kwa ajili ya Lupanulla Video Class
+                        </p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSaveVideoSubmit} className="p-6 space-y-4">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Kichwa cha Video / Mada (Title)</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={videoTitle}
+                          onChange={(e) => setVideoTitle(e.target.value)}
+                          placeholder="Mfano: Newton's Laws of Motion - Form 3 Solved Problems" 
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Somo (Subject)</label>
+                          <select 
+                            value={videoSubject}
+                            onChange={(e) => setVideoSubject(e.target.value)}
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 cursor-pointer"
+                          >
+                            <option value="Physics">Physics</option>
+                            <option value="Chemistry">Chemistry</option>
+                            <option value="Biology">Biology</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Advanced Mathematics">Advanced Mathematics</option>
+                            <option value="Geography">Geography</option>
+                            <option value="History">History</option>
+                            <option value="English">English</option>
+                            <option value="Kiswahili">Kiswahili</option>
+                            <option value="Civics">Civics</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Ngazi ya Elimu (Level)</label>
+                          <select 
+                            value={videoLevel}
+                            onChange={(e) => setVideoLevel(e.target.value)}
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 cursor-pointer"
+                          >
+                            <option value="Primary">Primary</option>
+                            <option value="O-Level">O-Level (Form 1-4)</option>
+                            <option value="A-Level">A-Level (Form 5-6)</option>
+                            <option value="University">Chuo Kikuu</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Jina la Mwalimu</label>
+                          <input 
+                            type="text" 
+                            value={videoTeacher}
+                            onChange={(e) => setVideoTeacher(e.target.value)}
+                            placeholder="Mwl. Joshua" 
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Muda wa Video (Mins)</label>
+                          <input 
+                            type="text" 
+                            required
+                            value={videoDuration}
+                            onChange={(e) => setVideoDuration(e.target.value)}
+                            placeholder="15:00" 
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Kiungo cha YouTube (YouTube Link)</label>
+                        <input 
+                          type="url" 
+                          required
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..." 
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button 
+                          type="button"
+                          onClick={() => setIsVideoFormOpen(false)}
+                          className="px-4 py-2 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl uppercase hover:bg-slate-50 cursor-pointer"
+                        >
+                          Ghairi
+                        </button>
+                        <button 
+                          type="submit"
+                          disabled={isVideoSaving}
+                          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl uppercase flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          {isVideoSaving ? 'Inahifadhi...' : (editingVideo ? 'Hifadhi Mabadiliko' : 'Sajili Video')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
