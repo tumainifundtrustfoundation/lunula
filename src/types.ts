@@ -308,6 +308,18 @@ export interface HighlightAnnotation {
   createdAt: number;
 }
 
+export interface WebsiteNews {
+  id: string;
+  title: string;
+  source: string;
+  content: string;
+  url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  relevanceExplanation?: string;
+  imageUrl?: string;
+}
+
 
 
 

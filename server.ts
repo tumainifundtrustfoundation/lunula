@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -639,6 +639,72 @@ app.post('/api/ai/generate-image', async (req, res) => {
   } catch (error: any) {
     console.error('Image Generation API Error:', error);
     res.status(500).json({ error: error.message || 'Shida ilitokea wakati wa kutengeneza picha.' });
+  }
+});
+
+// AI News Crawler with Search Grounding to aggregate Tanzanian educational updates
+app.post('/api/ai/crawl-news', async (req, res) => {
+  try {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key === 'MY_GEMINI_API_KEY' || key.trim() === '') {
+      return res.status(401).json({ error: 'API key not configured' });
+    }
+
+    const response = await callGeminiWithRetry(() => ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: 'Tafuta habari mpya, za kuaminika na za hivi karibuni (ndani ya miezi michache iliyopita) zinazohusu sekta ya elimu Tanzania, ratiba au matangazo ya NECTA (Baraza la Mitihani la Tanzania), mtaala mpya wa TIE (Taasisi ya Elimu Tanzania), bodi ya mikopo HESLB, au habari zozote za kielimu zinazohusu Lupanulla Hub. Lengo letu ni kukusanya habari hizi na kuziweka hadharani kwa wanafunzi na walimu kwenye Lupanulla Elimu Hub. Tafadhali andika habari hizi zote kwa lugha ya Kiswahili fasaha na yenye kuvutia sana.',
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          description: "Orodha ya habari za hivi karibuni za elimu nchini Tanzania",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { 
+                type: Type.STRING, 
+                description: "Kichwa cha habari kirefu na rasmi (kwa Kiswahili)." 
+              },
+              source: { 
+                type: Type.STRING, 
+                description: "Chanzo cha habari hii, mfano: Baraza la Mitihani (NECTA), Taasisi ya Elimu (TIE), Bodi ya Mikopo (HESLB), au Lupanulla Media." 
+              },
+              content: { 
+                type: Type.STRING, 
+                description: "Muhtasari wa habari wa aya mbili hadi tatu kwa Kiswahili ukiwa na maelezo kamili ya kutosha." 
+              },
+              url: { 
+                type: Type.STRING, 
+                description: "URL halisi ya habari hiyo iliyopatikana kwenye Google Search au tovuti husika kama necta.go.tz." 
+              },
+              relevanceExplanation: { 
+                type: Type.STRING, 
+                description: "Maelezo mafupi kwanini habari hii ni muhimu kwa watumiaji na wanafunzi wanaosoma Lupanulla Hub." 
+              }
+            },
+            required: ["title", "source", "content", "relevanceExplanation"]
+          }
+        }
+      }
+    }));
+
+    const text = response.text || '[]';
+    let newsItems = [];
+    try {
+      newsItems = JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse Gemini news JSON:', text);
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        newsItems = JSON.parse(match[0]);
+      }
+    }
+
+    res.json({ news: newsItems });
+  } catch (error: any) {
+    console.error('Crawl News API Error:', error);
+    res.status(500).json({ error: error.message || 'Shida ilitokea wakati wa kukusanya habari.' });
   }
 });
 

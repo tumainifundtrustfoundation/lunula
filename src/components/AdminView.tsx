@@ -34,7 +34,8 @@ import {
   Shield,
   Pencil,
   Sliders,
-  X
+  X,
+  Newspaper
 } from 'lucide-react';
 import {
   AreaChart,
@@ -48,7 +49,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -75,7 +76,11 @@ import {
   fetchLibraryConfig,
   saveLibraryConfig,
   LibraryConfig,
-  DEFAULT_LIBRARY_CONFIG
+  DEFAULT_LIBRARY_CONFIG,
+  fetchWebsiteNews,
+  updateWebsiteNews,
+  deleteWebsiteNews,
+  saveWebsiteNews
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -196,6 +201,21 @@ export default function AdminView({
   const [isDocSaving, setIsDocSaving] = useState<boolean>(false);
   const [adminDocSearch, setAdminDocSearch] = useState<string>('');
 
+  // --- NEW: News states ---
+  const [dbNews, setDbNews] = useState<WebsiteNews[]>([]);
+  const [isCrawling, setIsCrawling] = useState<boolean>(false);
+  const [crawledNews, setCrawledNews] = useState<any[]>([]);
+  const [isNewsFormOpen, setIsNewsFormOpen] = useState<boolean>(false);
+  const [editingNews, setEditingNews] = useState<WebsiteNews | null>(null);
+  const [newsSearch, setNewsSearch] = useState<string>('');
+
+  // News Form states
+  const [newsTitle, setNewsTitle] = useState<string>('');
+  const [newsSource, setNewsSource] = useState<string>('');
+  const [newsContent, setNewsContent] = useState<string>('');
+  const [newsUrl, setNewsUrl] = useState<string>('');
+  const [newsRelevance, setNewsRelevance] = useState<string>('');
+
   // Configuration adding helpers
   const [newSubject, setNewSubject] = useState<string>('');
   const [newClass, setNewClass] = useState<string>('');
@@ -308,6 +328,9 @@ export default function AdminView({
             cloudflareWafZoneId: '',
           });
         }
+      } else if (activeTab === 'news') {
+        const news = await fetchWebsiteNews();
+        setDbNews(news);
       }
     } catch (err) {
       console.error('Error loading admin dashboard datasets:', err);
@@ -478,6 +501,173 @@ export default function AdminView({
     } catch (err) {
       console.error('Failed to delete exam result:', err);
     }
+  };
+
+  // --- NEW: News management handlers ---
+
+  const handleCrawlNewsWithAI = async () => {
+    setIsCrawling(true);
+    setCrawledNews([]);
+    try {
+      const response = await fetch('/api/ai/crawl-news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Hitilafu ya seva ilitokea.');
+      }
+      const data = await response.json();
+      if (data.news && data.news.length > 0) {
+        setCrawledNews(data.news);
+        alert(`Hongera! Mfumo umekusanya habari mpya ${data.news.length} kutoka vyanzo vya elimu Tanzania kwa kutumia Gemini AI.`);
+      } else {
+        alert('Hakuna habari mpya zilizopatikana wakati huu. Tafadhali jaribu tena baadae.');
+      }
+    } catch (err: any) {
+      console.error('Failed to crawl news:', err);
+      alert(`Imeshindwa kukusanya habari: ${err.message || err}`);
+    } finally {
+      setIsCrawling(false);
+    }
+  };
+
+  const handleSaveCrawledNewsItem = async (crawledItem: any, approveImmediately = false) => {
+    try {
+      const payload = {
+        title: crawledItem.title,
+        source: crawledItem.source,
+        content: crawledItem.content,
+        url: crawledItem.url || '',
+        relevanceExplanation: crawledItem.relevanceExplanation || '',
+        status: (approveImmediately ? 'approved' : 'pending') as 'pending' | 'approved'
+      };
+
+      const docId = await saveWebsiteNews(payload);
+      
+      // Update UI state
+      const newNews: WebsiteNews = {
+        id: docId,
+        ...payload,
+        createdAt: Date.now()
+      };
+      setDbNews(prev => [newNews, ...prev]);
+      
+      // Remove from temporary crawled list
+      setCrawledNews(prev => prev.filter(item => item.title !== crawledItem.title));
+
+      await logAdminAction(
+        approveImmediately ? 'approve_news' : 'create_news_pending', 
+        docId, 
+        crawledItem.title, 
+        `Added crawled news item with status: ${approveImmediately ? 'approved' : 'pending'}`
+      );
+
+      alert(approveImmediately ? 'Habari imehifadhiwa na kuidhinishwa papo hapo!' : 'Habari imehifadhiwa kama pendekezo (Pending).');
+    } catch (err) {
+      console.error('Failed to save crawled news:', err);
+      alert('Imeshindwa kuhifadhi habari.');
+    }
+  };
+
+  const handleManualNewsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsTitle || !newsSource || !newsContent) {
+      alert('Tafadhali jaza taarifa zote muhimu (Kichwa, Chanzo, na Maelezo).');
+      return;
+    }
+
+    try {
+      const payload = {
+        title: newsTitle,
+        source: newsSource,
+        content: newsContent,
+        url: newsUrl,
+        relevanceExplanation: newsRelevance,
+        status: (editingNews ? editingNews.status : 'pending') as 'pending' | 'approved' | 'rejected'
+      };
+
+      if (editingNews) {
+        await updateWebsiteNews(editingNews.id, payload);
+        setDbNews(prev => prev.map(n => n.id === editingNews.id ? { ...n, ...payload } : n));
+        await logAdminAction('update_news', editingNews.id, newsTitle, 'Updated manually edited news details');
+        alert('Mabadiliko ya habari yamehifadhiwa kikamilifu!');
+      } else {
+        const id = await saveWebsiteNews(payload);
+        const newNews: WebsiteNews = {
+          id,
+          ...payload,
+          createdAt: Date.now()
+        };
+        setDbNews(prev => [newNews, ...prev]);
+        await logAdminAction('create_news_manual', id, newsTitle, 'Created new website news manually as pending');
+        alert('Habari mpya imesajiliwa kama Pendekezo (Pending)!');
+      }
+
+      // Reset form & close modal
+      setNewsTitle('');
+      setNewsSource('');
+      setNewsContent('');
+      setNewsUrl('');
+      setNewsRelevance('');
+      setEditingNews(null);
+      setIsNewsFormOpen(false);
+    } catch (err) {
+      console.error('Failed to save manual news:', err);
+      alert('Hitilafu ilitokea wakati wa kuhifadhi habari.');
+    }
+  };
+
+  const handleUpdateNewsStatusClick = async (id: string, currentTitle: string, status: 'approved' | 'rejected') => {
+    try {
+      await updateWebsiteNews(id, { status });
+      setDbNews(prev => prev.map(n => n.id === id ? { ...n, status } : n));
+      await logAdminAction(
+        status === 'approved' ? 'approve_news' : 'reject_news', 
+        id, 
+        currentTitle, 
+        `Updated news verification status to: ${status}`
+      );
+      alert(status === 'approved' ? 'Habari imeidhinishwa na sasa ipo wazi kwa wasomaji!' : 'Habari imekataliwa.');
+    } catch (err) {
+      console.error('Failed to update news status:', err);
+      alert('Imeshindwa kusasisha hali ya habari.');
+    }
+  };
+
+  const handleDeleteNewsClick = async (id: string, currentTitle: string) => {
+    const confirmed = window.confirm(`Je, una uhakika unataka kufuta kabisa habari hii: "${currentTitle}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteWebsiteNews(id);
+      setDbNews(prev => prev.filter(n => n.id !== id));
+      await logAdminAction('delete_news', id, currentTitle, 'Deleted news item from database');
+      alert('Habari imefutwa kwenye mfumo yetu.');
+    } catch (err) {
+      console.error('Failed to delete news:', err);
+      alert('Imeshindwa kufuta habari.');
+    }
+  };
+
+  const handleOpenEditNews = (newsItem: WebsiteNews) => {
+    setEditingNews(newsItem);
+    setNewsTitle(newsItem.title);
+    setNewsSource(newsItem.source);
+    setNewsContent(newsItem.content);
+    setNewsUrl(newsItem.url || '');
+    setNewsRelevance(newsItem.relevanceExplanation || '');
+    setIsNewsFormOpen(true);
+  };
+
+  const handleOpenAddNews = () => {
+    setEditingNews(null);
+    setNewsTitle('');
+    setNewsSource('');
+    setNewsContent('');
+    setNewsUrl('');
+    setNewsRelevance('');
+    setIsNewsFormOpen(true);
   };
 
   const handleSaveAdsenseSettings = async (e: React.FormEvent) => {
@@ -1259,6 +1449,22 @@ export default function AdminView({
         >
           <Award size={16} />
           Uhakiki &amp; Vyeti
+        </button>
+        <button
+          onClick={() => setActiveTab('news')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'news'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <Newspaper size={16} />
+          Kusimamia Habari
+          {dbNews.filter(n => n.status === 'pending').length > 0 && (
+            <span className="bg-amber-400 text-amber-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              {dbNews.filter(n => n.status === 'pending').length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('adsense')}
@@ -3529,6 +3735,308 @@ export default function AdminView({
                   </div>
 
                 </form>
+              )}
+            </div>
+          )}
+
+          {/* TAB: NEWS MANAGEMENT */}
+          {activeTab === 'news' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-50">
+                <div>
+                  <h2 className="text-lg font-sans font-extrabold text-gray-900">Usimamizi wa Habari za Tovuti</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Kusanya habari kutoka vyanzo vya elimu Tanzania na zithibitishe hapa kabla ya kuziweka hadharani.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCrawlNewsWithAI}
+                    disabled={isCrawling}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-650 hover:bg-indigo-700 disabled:bg-indigo-300 rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <Cpu size={14} className={isCrawling ? "animate-spin" : ""} />
+                    {isCrawling ? 'Kukusanya na AI...' : 'Kusanya Habari na AI (Gemini)'}
+                  </button>
+                  <button
+                    onClick={handleOpenAddNews}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <PlusCircle size={14} />
+                    Ongeza kwa Mkono
+                  </button>
+                </div>
+              </div>
+
+              {/* Crawl with AI Loading placeholder */}
+              {isCrawling && (
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center space-y-3 animate-pulse">
+                  <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto animate-duration-1000"></div>
+                  <p className="text-sm font-bold text-gray-700">Gemini AI inakagua na kukusanya habari za elimu Tanzania...</p>
+                  <p className="text-xs text-gray-400">Inatafuta matangazo mapya ya NECTA, mabadiliko ya mitaala TIE, na updates za bodi ya mikopo HESLB.</p>
+                </div>
+              )}
+
+              {/* Temporary Crawled News List (Drafts) */}
+              {crawledNews.length > 0 && (
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-extrabold text-indigo-900 flex items-center gap-1.5">
+                      <Cpu size={16} />
+                      Habari Zilizogunduliwa na AI (Bado Hazijahifadhiwa)
+                    </h3>
+                    <button
+                      onClick={() => setCrawledNews([])}
+                      className="text-xs font-bold text-indigo-700 hover:underline cursor-pointer"
+                    >
+                      Futa Orodha Hii
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {crawledNews.map((item, index) => (
+                      <div key={index} className="bg-white border border-indigo-100 rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-3">
+                        <div className="space-y-2 text-left">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                              Kutoka: {item.source}
+                            </span>
+                            {item.url && (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-indigo-600 hover:underline flex items-center gap-0.5"
+                              >
+                                Tovuti <ArrowUpRight size={12} />
+                              </a>
+                            )}
+                          </div>
+                          <h4 className="font-extrabold text-sm text-gray-900">{item.title}</h4>
+                          <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{item.content}</p>
+                          {item.relevanceExplanation && (
+                            <div className="bg-amber-50/70 border border-amber-100 rounded-lg p-2 text-[11px] text-amber-800">
+                              <span className="font-extrabold">Umuhimu kwa Lupanulla: </span>
+                              {item.relevanceExplanation}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => handleSaveCrawledNewsItem(item, true)}
+                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-lg transition-all cursor-pointer"
+                          >
+                            Hifadhi &amp; Idhinisha
+                          </button>
+                          <button
+                            onClick={() => handleSaveCrawledNewsItem(item, false)}
+                            className="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-lg transition-all cursor-pointer"
+                          >
+                            Hifadhi (Draft)
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Main News Catalog Section */}
+              <div className="space-y-4">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                    <Search size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Tafuta habari kwa kichwa au chanzo..."
+                    value={newsSearch}
+                    onChange={(e) => setNewsSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50/50 text-sm text-gray-800 border border-gray-200 rounded-xl outline-none font-semibold"
+                  />
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                  <table className="w-full text-sm text-left text-gray-500">
+                    <thead className="text-xs text-gray-400 uppercase font-bold bg-gray-50/50">
+                      <tr>
+                        <th scope="col" className="px-4 py-3">Kichwa cha Habari</th>
+                        <th scope="col" className="px-4 py-3">Chanzo</th>
+                        <th scope="col" className="px-4 py-3">Muda wa Kusajili</th>
+                        <th scope="col" className="px-4 py-3">Hali (Status)</th>
+                        <th scope="col" className="px-4 py-3 text-right">Vitendo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {dbNews.filter(n => 
+                        n.title.toLowerCase().includes(newsSearch.toLowerCase()) ||
+                        n.source.toLowerCase().includes(newsSearch.toLowerCase())
+                      ).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-xs text-gray-400 font-medium">
+                            Hakuna habari zilizopatikana kwenye mfumo kwa sasa. Tumia AI crawler juu kukusanya habari mpya!
+                          </td>
+                        </tr>
+                      ) : (
+                        dbNews.filter(n => 
+                          n.title.toLowerCase().includes(newsSearch.toLowerCase()) ||
+                          n.source.toLowerCase().includes(newsSearch.toLowerCase())
+                        ).map((news) => (
+                          <tr key={news.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col max-w-md text-left">
+                                <span className="font-extrabold text-gray-800">{news.title}</span>
+                                {news.relevanceExplanation && (
+                                  <span className="text-[10px] text-amber-600 mt-0.5 italic font-bold">{news.relevanceExplanation}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-xs font-bold text-gray-700 text-left">{news.source}</td>
+                            <td className="px-4 py-3 text-xs text-gray-500 text-left">
+                              {new Date(news.createdAt).toLocaleDateString('sw-TZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="px-4 py-3 text-xs font-bold text-left">
+                              {news.status === 'approved' ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5">Approved</span>
+                              ) : news.status === 'pending' ? (
+                                <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5">Pending</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-100 rounded-md px-2 py-0.5">Rejected</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {news.status !== 'approved' && (
+                                  <button
+                                    onClick={() => handleUpdateNewsStatusClick(news.id, news.title, 'approved')}
+                                    className="p-1 hover:bg-emerald-50 text-emerald-600 rounded cursor-pointer"
+                                    title="Idhinisha (Make Public)"
+                                  >
+                                    <CheckCircle size={14} />
+                                  </button>
+                                )}
+                                {news.status !== 'rejected' && (
+                                  <button
+                                    onClick={() => handleUpdateNewsStatusClick(news.id, news.title, 'rejected')}
+                                    className="p-1 hover:bg-red-50 text-red-600 rounded cursor-pointer"
+                                    title="Kataa (Reject)"
+                                  >
+                                    <XCircle size={14} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleOpenEditNews(news)}
+                                  className="p-1 hover:bg-indigo-50 text-indigo-600 rounded cursor-pointer"
+                                  title="Hariri Maelezo"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNewsClick(news.id, news.title)}
+                                  className="p-1 hover:bg-red-50 text-red-500 rounded cursor-pointer"
+                                  title="Futa Kabisa"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* MANUAL NEWS ENTRY / EDIT MODAL */}
+              {isNewsFormOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in animate-duration-150">
+                  <div className="bg-white border border-gray-100 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center bg-indigo-650 px-6 py-4 text-white">
+                      <h3 className="font-sans font-extrabold text-base">
+                        {editingNews ? 'Hariri Habari za Tovuti' : 'Sajili Habari Mpya'}
+                      </h3>
+                      <button onClick={() => setIsNewsFormOpen(false)} className="text-white hover:bg-white/10 p-1.5 rounded-full cursor-pointer">
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleManualNewsSubmit} className="p-6 space-y-4 text-left">
+                      <div className="space-y-1 text-left">
+                        <label className="text-xs font-bold text-gray-600">Kichwa cha Habari (Title) *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ingiza kichwa rasmi cha habari"
+                          value={newsTitle}
+                          onChange={(e) => setNewsTitle(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-gray-800 font-semibold bg-white"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-left">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-600">Chanzo (Source) *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Mfano: NECTA, TIE"
+                            value={newsSource}
+                            onChange={(e) => setNewsSource(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-gray-800 font-semibold bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-600">Kiungo cha Chanzo (URL - Optional)</label>
+                          <input
+                            type="url"
+                            placeholder="https://tovuti.com/habari"
+                            value={newsUrl}
+                            onChange={(e) => setNewsUrl(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-gray-800 font-semibold bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-left">
+                        <label className="text-xs font-bold text-gray-600">Maelezo Kamili ya Habari *</label>
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="Andika muhtasari au maelezo kamili ya habari hii..."
+                          value={newsContent}
+                          onChange={(e) => setNewsContent(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-gray-800 font-semibold bg-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1 text-left">
+                        <label className="text-xs font-bold text-gray-600">Sababu ya Umuhimu kwa Lupanulla (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="Mfano: Inawasaidia wanafunzi kujiandaa na mitihani ya kitaifa"
+                          value={newsRelevance}
+                          onChange={(e) => setNewsRelevance(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-gray-800 font-semibold bg-white"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsNewsFormOpen(false)}
+                          className="px-4 py-2 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl uppercase hover:bg-slate-50 cursor-pointer"
+                        >
+                          Ghairi
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl uppercase cursor-pointer"
+                        >
+                          {editingNews ? 'Hifadhi Mabadiliko' : 'Sajili Habari'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
               )}
             </div>
           )}

@@ -29,7 +29,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -1157,6 +1157,65 @@ export const saveLibraryConfig = async (config: LibraryConfig): Promise<void> =>
     await setDoc(docRef, config);
   } catch (err: any) {
     handleFirestoreError(err, OperationType.WRITE, 'system_configs/library_settings');
+  }
+};
+
+/**
+ * Website News Helpers (Kukusanya Habari & Idhini ya Admin)
+ */
+export const fetchWebsiteNews = async (filters?: { status?: 'pending' | 'approved' | 'rejected' }): Promise<WebsiteNews[]> => {
+  const path = 'website_news';
+  try {
+    const colRef = collection(db, path);
+    let q = query(colRef);
+    if (filters?.status) {
+      q = query(q, where('status', '==', filters.status));
+    }
+    const snap = await getDocs(q);
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as WebsiteNews));
+    // Sort by createdAt desc in-memory to prevent "missing index" Firestore errors
+    return list.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (error) {
+    console.error('Error fetching website news:', error);
+    return [];
+  }
+};
+
+export const saveWebsiteNews = async (newsData: Omit<WebsiteNews, 'id' | 'createdAt'>): Promise<string> => {
+  const path = 'website_news';
+  try {
+    const colRef = collection(db, path);
+    const payload = {
+      ...newsData,
+      createdAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, payload);
+    return docRef.id;
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const updateWebsiteNews = async (id: string, updates: Partial<WebsiteNews>): Promise<void> => {
+  const path = `website_news/${id}`;
+  try {
+    const docRef = doc(db, 'website_news', id);
+    await updateDoc(docRef, updates);
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+    throw error;
+  }
+};
+
+export const deleteWebsiteNews = async (id: string): Promise<void> => {
+  const path = `website_news/${id}`;
+  try {
+    const docRef = doc(db, 'website_news', id);
+    await deleteDoc(docRef);
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 };
 
