@@ -51,223 +51,319 @@ const CATEGORIES_LIST = [
 // Seed resources in case database is initially empty
 const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
   {
-    title: 'NECTA Examination Portal',
-    description: 'Tovuti rasmi ya Baraza la Mitihani la Tanzania (NECTA) kwa ajili ya kutazama matokeo ya mitihani ya kitaifa (FTNA, CSEE, ACSEE) na ratiba za mitihani.',
-    url: 'https://necta.go.tz',
+    title: 'Maktaba Tetea: Standard 1-4',
+    description: 'Nyenzo rasmi za kujifunzia, mitihani ya zamani (Past Papers), na mazoezi kwa wanafunzi wa shule za msingi nchini Tanzania, ngazi ya Darasa la Kwanza hadi la Nne.',
+    url: 'https://maktaba.tetea.org/resources/standard-1-4/',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 310,
+    recommendationsCount: 88,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 50000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['Standard 1-4', 'Darasa la 1-4', 'Mitihani', 'Notes', 'Primary']
+  },
+  {
+    title: 'Maktaba Tetea: Standard 5-7',
+    description: 'Mitihani ya taifa iliyopita, majaribio ya kanda (Mock Exams), na miongozo ya masomo yote kwa wanafunzi wa Darasa la Tano hadi la Saba (ikiwemo PSLE).',
+    url: 'https://maktaba.tetea.org/resources/standard-5-7/',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 295,
+    recommendationsCount: 74,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 100000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['Standard 5-7', 'Darasa la 7', 'Past Papers', 'Tanzania', 'Primary']
+  },
+  {
+    title: 'Maktaba Tetea: Form 1-2',
+    description: 'Notisi za kidato cha kwanza na cha pili, miongozo ya mitaala, mitihani ya shule na ya kitaifa ya kidato cha pili (FTNA) kwa ajili ya maandalizi mazuri.',
+    url: 'https://maktaba.tetea.org/resources/form-1-2/',
     category: 'examinations',
     isVerified: true,
-    clicksCount: 154,
-    recommendationsCount: 42,
+    clicksCount: 420,
+    recommendationsCount: 110,
     recommendedByUsers: [],
-    createdAt: Date.now() - 1000000,
+    createdAt: Date.now() - 150000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    institution: 'Tetea Foundation',
     region: 'Tanzania',
-    tags: ['NECTA', 'Matokeo', 'Past Papers', 'Tanzania']
+    tags: ['Form 1', 'Form 2', 'FTNA', 'O-Level', 'Notes']
   },
   {
-    title: 'Wizara ya Elimu, Sayansi na Teknolojia (MoEST)',
-    description: 'Portal rasmi ya Wizara ya Elimu nchini Tanzania inayotoa miongozo ya mitaala, sera za elimu, na taarifa rasmi za maendeleo ya sekta ya elimu.',
-    url: 'https://www.education.go.tz',
-    category: 'government',
+    title: 'Maktaba Tetea Exam Results',
+    description: 'Ukurasa thabiti wa kuangalia matokeo ya mitihani ya kitaifa ya miaka yote ya NECTA: ACSEE (Kidato cha Sita), CSEE (Kidato cha Nne), la saba, la nne na mengineyo.',
+    url: 'https://maktaba.tetea.org/results/',
+    category: 'examinations',
     isVerified: true,
-    clicksCount: 98,
-    recommendationsCount: 19,
+    clicksCount: 540,
+    recommendationsCount: 195,
     recommendedByUsers: [],
-    createdAt: Date.now() - 2000000,
+    createdAt: Date.now() - 200000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Wizara ya Elimu (MoEST)',
+    institution: 'Tetea Foundation',
     region: 'Tanzania',
-    tags: ['Sera', 'Mitaala', 'Wizara', 'Serikali']
+    tags: ['Results', 'Matokeo', 'CSEE', 'ACSEE', 'NECTA', 'Form 4', 'Form 6']
   },
   {
-    title: 'Bodi ya Mikopo ya Wanafunzi wa Elimu ya Juu (HESLB)',
-    description: 'Mfumo wa mtandaoni wa kuomba na kufuatilia mikopo ya elimu ya juu (HESLB SLMS) kwa wanafunzi wa vyuo vikuu nchini Tanzania.',
-    url: 'https://slms.heslb.go.tz',
-    category: 'government',
-    isVerified: true,
-    clicksCount: 231,
-    recommendationsCount: 61,
-    recommendedByUsers: [],
-    createdAt: Date.now() - 3000000,
-    createdBy: 'system',
-    createdByName: 'Lupanulla Admin',
-    institution: 'Bodi ya Mikopo (HESLB)',
-    region: 'Tanzania',
-    tags: ['HESLB', 'Mikopo', 'Vyuo Vikuu', 'Tanzania']
-  },
-  {
-    title: 'MIT OpenCourseWare',
-    description: 'Syllabus rasmi, nyenzo, na hotuba za video za kozi karibu zote zinazofundishwa katika Chuo Kikuu cha MIT nchini Marekani, zinazopatikana bure kwa kila mtu.',
-    url: 'https://ocw.mit.edu',
+    title: 'Waza Elimu Portal',
+    description: 'Notisi bora za Sekondari (O-Level & A-Level), mitihani ya kanda na majaribio (Mock Exams), pamoja na miongozo na habari mbalimbali za kitaaluma Tanzania.',
+    url: 'https://wazaelimu.com',
     category: 'open_education',
     isVerified: true,
-    clicksCount: 88,
-    recommendationsCount: 35,
+    clicksCount: 380,
+    recommendationsCount: 92,
     recommendedByUsers: [],
-    createdAt: Date.now() - 4000000,
+    createdAt: Date.now() - 250000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Massachusetts Institute of Technology (MIT)',
-    region: 'International',
-    tags: ['MIT', 'Sainsi', 'Engineering', 'Free Courses']
+    institution: 'Waza Elimu Group',
+    region: 'Tanzania',
+    tags: ['Waza Elimu', 'Notes', 'Mock Exams', 'O-Level', 'A-Level']
   },
   {
-    title: 'Khan Academy',
-    description: 'Jukwaa huru linalotoa masomo, mazoezi, na video za elimu kuanzia hisabati, sayansi, historia, hadi programu za kompyuta kwa ngazi zote za masomo.',
+    title: 'Msomi Bora Educational Hub',
+    description: 'Jukwaa pana la elimu linalotoa nyenzo za masomo, mitihani ya zamani ya shule za msingi na sekondari, mitaala, na habari za udahili wa vyuo vikuu.',
+    url: 'https://msomibora.com',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 340,
+    recommendationsCount: 81,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 300000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Msomi Bora Team',
+    region: 'Tanzania',
+    tags: ['Msomi Bora', 'Exam Papers', 'Notes', 'Admissions']
+  },
+  {
+    title: 'Learning Hub Tanzania',
+    description: 'Tovuti ya kitaalamu inayosaidia wanafunzi kusoma kwa ufanisi zaidi kupitia notisi fupi, miongozo ya walimu, mitihani ya majaribio, na mazoezi kwa Kiswahili na Kiingereza.',
+    url: 'https://learninghub.co.tz',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 280,
+    recommendationsCount: 65,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 350000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Learning Hub Inc.',
+    region: 'Tanzania',
+    tags: ['Learninghub', 'Secondary', 'Notes', 'Practicals']
+  },
+  {
+    title: 'Scribd Global Library',
+    description: 'Jukwaa la kimataifa linaloruhusu watumiaji kushiriki na kupata mamilioni ya vitabu, notisi za kitaaluma, machapisho ya kisayansi, na majarida ya kila aina.',
+    url: 'https://www.scribd.com',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 220,
+    recommendationsCount: 50,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 400000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Scribd Inc.',
+    region: 'International',
+    tags: ['Scribd', 'Documents', 'Ebooks', 'Research', 'Global']
+  },
+  {
+    title: 'Khan Academy Swahili & Global',
+    description: 'Jukwaa la kimataifa lisilo la kifaida linalotoa mafunzo na mazoezi ya mwingiliano katika Hisabati, Sayansi ya kompyuta, Fizikia, Kemia, na historia kwa ngazi zote.',
     url: 'https://www.khanacademy.org',
     category: 'open_education',
     isVerified: true,
-    clicksCount: 112,
-    recommendationsCount: 47,
+    clicksCount: 460,
+    recommendationsCount: 142,
     recommendedByUsers: [],
-    createdAt: Date.now() - 5000000,
+    createdAt: Date.now() - 450000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
     institution: 'Khan Academy Foundation',
     region: 'International',
-    tags: ['Hisabati', 'Sayansi', 'Physics', 'Interactive']
+    tags: ['Khan Academy', 'Mathematics', 'Science', 'Physics', 'Free Courses']
   },
   {
-    title: 'Tume ya Vyuo Vikuu Tanzania (TCU)',
-    description: 'Chombo kinachosimamia ubora wa elimu ya juu nchini Tanzania, miongozo ya udahili wa wanafunzi wa mwaka wa kwanza na ithibati ya kozi.',
-    url: 'https://www.tcu.go.tz',
-    category: 'universities',
+    title: 'NECTA Official Examination Portal',
+    description: 'Tovuti rasmi ya Baraza la Mitihani la Tanzania (NECTA). Pata ratiba za mitihani, miongozo ya usahihishaji, na matokeo rasmi ya mitihani yote ya kitaifa.',
+    url: 'https://necta.go.tz',
+    category: 'examinations',
     isVerified: true,
-    clicksCount: 145,
-    recommendationsCount: 29,
+    clicksCount: 590,
+    recommendationsCount: 180,
     recommendedByUsers: [],
-    createdAt: Date.now() - 6000000,
+    createdAt: Date.now() - 500000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Tume ya Vyuo Vikuu (TCU)',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
     region: 'Tanzania',
-    tags: ['TCU', 'Admission', 'Vyuo Vikuu', 'Ithibati']
+    tags: ['NECTA', 'Results', 'Matokeo', 'Timetable']
   },
   {
-    title: 'National Central Library of Tanzania (TLSB)',
-    description: 'Bodi ya Huduma za Maktaba nchini Tanzania (TLSB). Inatoa huduma za maktaba za taifa, vitabu vya kiada, na nyaraka za kitamaduni na kihistoria.',
-    url: 'https://www.tlsb.or.tz',
-    category: 'libraries',
-    isVerified: true,
-    clicksCount: 67,
-    recommendationsCount: 14,
-    recommendedByUsers: [],
-    createdAt: Date.now() - 7000000,
-    createdBy: 'system',
-    createdByName: 'Lupanulla Admin',
-    institution: 'Tanzania Library Services Board (TLSB)',
-    region: 'Tanzania',
-    tags: ['Maktaba', 'Vitabu', 'TLSB', 'Nyaraka']
-  },
-  {
-    title: 'Taasisi ya Elimu Tanzania (TIE)',
-    description: 'Tovuti rasmi ya Taasisi ya Elimu Tanzania (TIE) inayohusika na uandishi wa vitabu vya mitaala ya shule za msingi na sekondari pamoja na kutoa maktaba ya kidijitali (TIE Online Library).',
-    url: 'https://www.tie.go.tz',
+    title: 'Wizara ya Elimu (MoEST) Portal',
+    description: 'Tovuti rasmi ya Wizara ya Elimu, Sayansi na Teknolojia ya Jamhuri ya Muungano wa Tanzania inayotoa miongozo ya kielimu, sera na habari muhimu.',
+    url: 'https://www.education.go.tz',
     category: 'government',
     isVerified: true,
-    clicksCount: 195,
-    recommendationsCount: 52,
+    clicksCount: 250,
+    recommendationsCount: 45,
     recommendedByUsers: [],
-    createdAt: Date.now() - 7500000,
+    createdAt: Date.now() - 550000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Wizara ya Elimu (MoEST)',
+    region: 'Tanzania',
+    tags: ['Government', 'Wizara', 'Sera', 'Mitaala']
+  },
+  {
+    title: 'TIE Online Library',
+    description: 'Maktaba ya mtandaoni ya Taasisi ya Elimu Tanzania (TIE) inayotoa vitabu halisi vya kiada, miongozo ya walimu, na masomo ya kidijitali kwa shule za msingi na sekondari.',
+    url: 'https://www.tie.go.tz',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 390,
+    recommendationsCount: 95,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 600000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
     institution: 'Taasisi ya Elimu Tanzania (TIE)',
     region: 'Tanzania',
-    tags: ['TIE', 'Vitabu vya Kiada', 'Mitaala', 'Nyaraka']
+    tags: ['TIE', 'Vitabu vya Kiada', 'Primary', 'Secondary', 'Library']
   },
   {
-    title: 'NACTVET Portal',
-    description: 'Baraza la Taifa la Elimu ya Ufundi na Mafunzo ya Ufundi Stadi (NACTVET) - kwa ajili ya miongozo ya udahili wa kozi za stashahada (Diploma) na vyeti (Certificate).',
-    url: 'https://www.nactvet.go.tz',
+    title: 'HESLB SLMS Loan Portal',
+    description: 'Mfumo rasmi wa Bodi ya Mikopo ya Wanafunzi wa Elimu ya Juu (HESLB) kwa ajili ya maombi ya mikopo ya elimu ya juu na kufuatilia malipo na mrejesho.',
+    url: 'https://slms.heslb.go.tz',
     category: 'government',
     isVerified: true,
-    clicksCount: 134,
-    recommendationsCount: 28,
+    clicksCount: 480,
+    recommendationsCount: 115,
     recommendedByUsers: [],
-    createdAt: Date.now() - 7800000,
+    createdAt: Date.now() - 650000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Baraza la Elimu ya Ufundi (NACTVET)',
+    institution: 'Bodi ya Mikopo (HESLB)',
     region: 'Tanzania',
-    tags: ['NACTVET', 'Diploma', 'Admission', 'Vyeti']
+    tags: ['HESLB', 'Mikopo', 'University', 'SLMS']
   },
   {
-    title: 'Shule Direct',
-    description: 'Jukwaa la kujifunzia mtandaoni nchini Tanzania linalotoa notisi na mazoezi kwa wanafunzi wa sekondari kulingana na mtaala wa taifa.',
+    title: 'TCU Higher Education System',
+    description: 'Tovuti ya Tume ya Vyuo Vikuu Tanzania (TCU) inayodhibiti ubora wa vyuo vikuu nchini, kutoa miongozo ya udahili wa pamoja na kutambua vyeti vya nje.',
+    url: 'https://www.tcu.go.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 290,
+    recommendationsCount: 52,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 700000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tume ya Vyuo Vikuu (TCU)',
+    region: 'Tanzania',
+    tags: ['TCU', 'Admission', 'University', 'Accreditation']
+  },
+  {
+    title: 'Shule Direct Interactive Portal',
+    description: 'Jukwaa kubwa la elimu shirikishi nchini Tanzania lenye notisi, maswali na majibu kwa wanafunzi wa kidato cha kwanza hadi cha nne nchini.',
     url: 'https://www.shuledirect.co.tz',
     category: 'open_education',
     isVerified: true,
-    clicksCount: 167,
-    recommendationsCount: 41,
+    clicksCount: 370,
+    recommendationsCount: 84,
     recommendedByUsers: [],
-    createdAt: Date.now() - 7900000,
+    createdAt: Date.now() - 750000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
     institution: 'Shule Direct Foundation',
     region: 'Tanzania',
-    tags: ['Shule Direct', 'O-Level', 'A-Level', 'Notes']
+    tags: ['Shule Direct', 'O-Level', 'Revision', 'Notes']
+  },
+  {
+    title: 'TLSB National Central Library',
+    description: 'Bodi ya Huduma za Maktaba nchini (TLSB). Inatoa maktaba ya taifa, uandishi, uhifadhi wa machapisho ya kitaifa, na huduma za kukuza utamaduni wa kusoma.',
+    url: 'https://www.tlsb.or.tz',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 160,
+    recommendationsCount: 31,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 800000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tanzania Library Services Board (TLSB)',
+    region: 'Tanzania',
+    tags: ['Maktaba', 'TLSB', 'National Library', 'Archives']
+  },
+  {
+    title: 'NACTVET Admission Portal',
+    description: 'Tovuti rasmi ya Baraza la Taifa la Elimu ya Ufundi na Mafunzo ya Ufundi Stadi kwa ajili ya udahili wa kozi za stashahada (Diploma) na vyeti (Certificate).',
+    url: 'https://www.nactvet.go.tz',
+    category: 'government',
+    isVerified: true,
+    clicksCount: 320,
+    recommendationsCount: 63,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 850000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Elimu ya Ufundi (NACTVET)',
+    region: 'Tanzania',
+    tags: ['NACTVET', 'Diploma', 'Certificate', 'Ufundi']
   },
   {
     title: 'Chuo Kikuu cha Dar es Salaam (UDSM)',
-    description: 'Tovuti rasmi ya Chuo Kikuu cha Dar es Salaam, chuo kikongwe na kikubwa zaidi nchini Tanzania kinachotoa mafunzo na udahili kwa ngazi mbalimbali za masomo.',
+    description: 'Tovuti rasmi ya Chuo Kikuu kikongwe na kikubwa zaidi nchini Tanzania kinachotoa mafunzo ya shahada za awali na za juu katika fani mbalimbali.',
     url: 'https://www.udsm.ac.tz',
     category: 'universities',
     isVerified: true,
-    clicksCount: 210,
-    recommendationsCount: 58,
+    clicksCount: 450,
+    recommendationsCount: 110,
     recommendedByUsers: [],
-    createdAt: Date.now() - 8100000,
+    createdAt: Date.now() - 900000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Chuo Kikuu cha Dar es Salaam (UDSM)',
+    institution: 'UDSM',
     region: 'Tanzania',
-    tags: ['UDSM', 'University', 'Dar es Salaam', 'Tanzania']
+    tags: ['UDSM', 'University', 'Dar es Salaam']
   },
   {
-    title: 'Chuo Kikuu cha Kilimo Sokoine (SUA)',
-    description: 'Chuo Kikuu cha Kilimo Sokoine kilichopo Morogoro, kinachobobea katika sayansi za kilimo, misitu, ufugaji na sayansi husishi.',
+    title: 'Chuo Kikuu cha Kilimo cha Sokoine (SUA)',
+    description: 'Tovuti rasmi ya Chuo Kikuu kinachoongoza katika mafunzo na utafiti wa kilimo, misitu, mifugo, na sayansi za mazingira nchini Tanzania.',
     url: 'https://www.sua.ac.tz',
     category: 'universities',
     isVerified: true,
-    clicksCount: 125,
-    recommendationsCount: 30,
+    clicksCount: 230,
+    recommendationsCount: 49,
     recommendedByUsers: [],
-    createdAt: Date.now() - 8200000,
+    createdAt: Date.now() - 950000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
-    institution: 'Chuo Kikuu cha Sokoine (SUA)',
+    institution: 'SUA',
     region: 'Tanzania',
     tags: ['SUA', 'Kilimo', 'Morogoro', 'University']
   },
   {
-    title: 'Chuo Kikuu Mzumbe (MU)',
-    description: 'Tovuti rasmi ya Chuo Kikuu Mzumbe kinachofahamika kwa ubora wa kutoa mafunzo ya utawala, sheria, biashara, rasilimali watu na maendeleo.',
-    url: 'https://www.mzumbe.ac.tz',
-    category: 'universities',
-    isVerified: true,
-    clicksCount: 142,
-    recommendationsCount: 36,
-    recommendedByUsers: [],
-    createdAt: Date.now() - 8300000,
-    createdBy: 'system',
-    createdByName: 'Lupanulla Admin',
-    institution: 'Chuo Kikuu Mzumbe (MU)',
-    region: 'Tanzania',
-    tags: ['Mzumbe', 'MU', 'Law', 'Business', 'University']
-  },
-  {
     title: 'Chuo Kikuu Huria cha Tanzania (OUT)',
-    description: 'Chuo Kikuu Huria cha Tanzania kinachotoa fursa ya masomo kwa njia ya mtandao na masafa marefu kwa wanafunzi wa ndani na nje ya nchi.',
+    description: 'Chuo kikuu cha umma kinachotoa mafunzo kupitia masafa ya mbali na mtandao (Distance Learning), kikiruhusu usomaji usio na kikomo cha muda na umbali.',
     url: 'https://www.out.ac.tz',
     category: 'universities',
     isVerified: true,
-    clicksCount: 119,
-    recommendationsCount: 27,
+    clicksCount: 210,
+    recommendationsCount: 42,
     recommendedByUsers: [],
-    createdAt: Date.now() - 8400000,
+    createdAt: Date.now() - 1000000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
     institution: 'Chuo Kikuu Huria (OUT)',
@@ -275,20 +371,164 @@ const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
     tags: ['OUT', 'Open University', 'Distance Learning']
   },
   {
-    title: 'Chevening Scholarships (UK Government)',
-    description: 'Ufadhili wa masomo wa Serikali ya Uingereza kwa wanafunzi wenye uwezo wa uongozi kusoma Shahada ya Uzamili (Master\'s Degree) nchini Uingereza bure kabisa.',
+    title: 'Chuo Kikuu Mzumbe (MU)',
+    description: 'Tovuti rasmi ya Chuo Kikuu Mzumbe kinachosifika kwa utoaji bora wa mafunzo ya sheria, utawala, biashara na maendeleo nchini Tanzania.',
+    url: 'https://www.mzumbe.ac.tz',
+    category: 'universities',
+    isVerified: true,
+    clicksCount: 240,
+    recommendationsCount: 55,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1050000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Mzumbe University',
+    region: 'Tanzania',
+    tags: ['Mzumbe', 'MU', 'Law', 'Business', 'University']
+  },
+  {
+    title: 'Wikipedia Swahili (Elimu)',
+    description: 'Kamusi elezo huru ya Kiswahili inayoruhusu mtu yeyote kuchangia na kusoma elimu na maarifa ya kila aina kwa lugha rahisi na fasaha ya Kiswahili.',
+    url: 'https://sw.wikipedia.org',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 480,
+    recommendationsCount: 130,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1100000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Wikimedia Foundation',
+    region: 'International',
+    tags: ['Wikipedia', 'Swahili', 'Kiswahili', 'Free Resource', 'Encyclopedia']
+  },
+  {
+    title: 'Coursera Global Courses',
+    description: 'Jukwaa kubwa linaloshirikiana na vyuo vikuu vya kimataifa (Yale, Stanford, nk) kutoa kozi za bure na za kulipia, vyeti, na digrii za kidijitali.',
+    url: 'https://www.coursera.org',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 310,
+    recommendationsCount: 78,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1150000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Coursera Inc.',
+    region: 'International',
+    tags: ['Coursera', 'Online Courses', 'Certificates', 'Professional']
+  },
+  {
+    title: 'edX Open Learning',
+    description: 'Tovuti ya masomo ya kiwango cha juu ya vyuo vikuu vya kimataifa (Harvard, MIT, Boston, nk) inayotoa elimu huru kwa yeyote mwenye hamu ya kujifunza.',
+    url: 'https://www.edx.org',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 290,
+    recommendationsCount: 70,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1200000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: '2U Inc / edX',
+    region: 'International',
+    tags: ['edX', 'MIT', 'Harvard', 'Free Education']
+  },
+  {
+    title: 'Duolingo Language Platform',
+    description: 'Njia bunifu na ya bure kabisa ya kujifunza lugha mbalimbali za kigeni (Kiingereza, Kifaransa, Kichina, nk) kwa njia ya michezo na mazoezi rahisi.',
+    url: 'https://www.duolingo.com',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 350,
+    recommendationsCount: 82,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1250000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Duolingo Inc.',
+    region: 'International',
+    tags: ['Duolingo', 'Languages', 'Kiingereza', 'Free App']
+  },
+  {
+    title: 'TED-Ed Lessons Worth Sharing',
+    description: 'Tovuti inayotoa masomo bora kupitia video za uhuishaji (Animations) zenye kuvutia, yakielezea sayansi, falsafa, historia, na fumbo mbalimbali.',
+    url: 'https://ed.ted.com',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 260,
+    recommendationsCount: 68,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1300000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'TED Foundation',
+    region: 'International',
+    tags: ['TED-Ed', 'Animations', 'Science', 'History', 'Videos']
+  },
+  {
+    title: 'ResearchGate Academic Network',
+    description: 'Jukwaa kubwa la watafiti na wasomi wa kitaaluma duniani kushiriki machapisho yao ya tafiti, kushirikiana, na kujibu maswali ya kisayansi.',
+    url: 'https://www.researchgate.net',
+    category: 'research',
+    isVerified: true,
+    clicksCount: 190,
+    recommendationsCount: 42,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1350000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'ResearchGate GmbH',
+    region: 'International',
+    tags: ['Research', 'Science', 'Publications', 'Academic']
+  },
+  {
+    title: 'Google Scholar Search',
+    description: 'Mtambo maalum wa utafutaji wa Google unaolenga machapisho ya kitaaluma, tasnifu za vyuo vikuu, vitabu vya kiada, na nyaraka za kisheria duniani.',
+    url: 'https://scholar.google.com',
+    category: 'research',
+    isVerified: true,
+    clicksCount: 410,
+    recommendationsCount: 95,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1400000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Google LLC',
+    region: 'International',
+    tags: ['Google Scholar', 'Research', 'Articles', 'Papers']
+  },
+  {
+    title: 'Project Gutenberg Ebooks',
+    description: 'Maktaba ya vitabu vya kidijitali vya bure zaidi ya 70,000 ambavyo miliki yake imekwisha muda wake (Public Domain), ikijumuisha kazi za fasihi mashuhuri duniani.',
+    url: 'https://www.gutenberg.org',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 180,
+    recommendationsCount: 38,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1450000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Project Gutenberg Literary Archive',
+    region: 'International',
+    tags: ['Books', 'Literature', 'Free Ebooks', 'Classical']
+  },
+  {
+    title: 'Chevening Scholarships Portal',
+    description: 'Ufadhili kamili wa masomo ya Shahada ya Uzamili (Master\'s Degree) nchini Uingereza unaofadhiliwa na serikali ya UK kwa viongozi na wasomi wenye ushawishi.',
     url: 'https://www.chevening.org',
     category: 'scholarships',
     isVerified: true,
-    clicksCount: 184,
-    recommendationsCount: 53,
+    clicksCount: 390,
+    recommendationsCount: 112,
     recommendedByUsers: [],
-    createdAt: Date.now() - 8000000,
+    createdAt: Date.now() - 1500000,
     createdBy: 'system',
     createdByName: 'Lupanulla Admin',
     institution: 'UK Foreign, Commonwealth & Development Office',
     region: 'International',
-    tags: ['Chevening', 'Ufadhili', 'Masters', 'Uingereza']
+    tags: ['Chevening', 'Ufadhili', 'Masters', 'Scholarships']
   }
 ];
 
@@ -471,6 +711,21 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
     setIsFormOpen(true);
   };
 
+  // Open Suggest form for non-admins
+  const handleOpenSuggestForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setDescription('');
+    setUrl('');
+    setCategory('open_education');
+    setInstitution('');
+    setRegion('Tanzania');
+    setTagsInput('');
+    setIsVerified(false);
+    setFormError(null);
+    setIsFormOpen(true);
+  };
+
   // Open Edit form
   const handleOpenEditForm = (res: EducationalResource) => {
     setEditingId(res.id);
@@ -573,6 +828,11 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
         setResources(prev => [newResource, ...prev]);
       }
       setIsFormOpen(false);
+      if (!isAdmin) {
+        alert(language === 'sw' 
+          ? 'Asante! Pendekezo lako la kiungo limetumwa kwa mafanikio. Kiungo hiki kitakaguliwa na msimamizi kabla ya kuchapishwa.' 
+          : 'Thank you! Your suggested educational link has been submitted successfully and is awaiting review by administrators before going live.');
+      }
     } catch (err: any) {
       console.error('Error saving educational resource:', err);
       setFormError(language === 'sw' ? 'Imeshindwa kuhifadhi chanzo. Jaribu tena.' : 'Failed to save resource. Please try again.');
@@ -583,6 +843,11 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
 
   // Filter resources based on query, category, and country/region
   const filteredResources = resources.filter(res => {
+    // If the user is not an admin, they should ONLY see verified resources!
+    if (!isAdmin && !res.isVerified) {
+      return false;
+    }
+
     const matchesSearch = 
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -636,6 +901,16 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               >
                 <Plus size={15} />
                 {language === 'sw' ? 'Ongeza Chanzo' : 'Add New Link'}
+              </button>
+            )}
+
+            {!isAdmin && (
+              <button
+                onClick={handleOpenSuggestForm}
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs px-5 py-3 rounded-xl uppercase tracking-wider transition-all flex items-center gap-2 shadow-md hover:scale-[1.01]"
+              >
+                <Plus size={15} />
+                {language === 'sw' ? 'Pendekeza Kiungo Kipya' : 'Suggest New Link'}
               </button>
             )}
             
@@ -1086,10 +1361,16 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
 
             <div className="space-y-1">
               <h2 className="font-display font-extrabold text-lg text-slate-900 uppercase">
-                {editingId ? (language === 'sw' ? 'Hariri Chanzo cha Elimu' : 'Edit Educational Link') : (language === 'sw' ? 'Ongeza Chanzo Kipya cha Elimu' : 'Add New Educational Directory')}
+                {editingId 
+                  ? (language === 'sw' ? 'Hariri Chanzo cha Elimu' : 'Edit Educational Link') 
+                  : (isAdmin 
+                    ? (language === 'sw' ? 'Ongeza Chanzo Kipya' : 'Add New Educational Directory')
+                    : (language === 'sw' ? 'Pendekeza Kiungo Kipya' : 'Suggest New Educational Link'))}
               </h2>
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                {language === 'sw' ? 'Maelezo ya rasilimali yatatathminiwa na kupakiwa' : 'Input meta-information and validate url link'}
+                {isAdmin
+                  ? (language === 'sw' ? 'Sajili na uhakiki kiungo kipya cha elimu' : 'Input meta-information and validate url link')
+                  : (language === 'sw' ? 'Pendekeza tovuti au kiungo ambacho kina manufaa kwa wanafunzi' : 'Suggest a helpful educational portal or link for reviews')}
               </p>
             </div>
 
@@ -1216,27 +1497,29 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 </div>
               </div>
 
-              {/* Verified check */}
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-dashed border-slate-200 mt-2">
-                <div className="space-y-0.5">
-                  <p className="font-extrabold text-slate-850 flex items-center gap-1">
-                    <ShieldCheck size={14} className="text-emerald-600" />
-                    {language === 'sw' ? 'Weka beji iliyohakikiwa (Verified)' : 'Show Verified Shield Badge'}
-                  </p>
-                  <p className="text-[10px] text-slate-450 max-w-xs">
-                    {language === 'sw' ? 'Thibitisha kuwa kiungo hiki kiko salama na ni tovuti halali.' : 'Verify that this link is active, authentic and highly beneficial.'}
-                  </p>
+              {/* Verified check (Admin only) */}
+              {isAdmin && (
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-dashed border-slate-200 mt-2">
+                  <div className="space-y-0.5">
+                    <p className="font-extrabold text-slate-850 flex items-center gap-1">
+                      <ShieldCheck size={14} className="text-emerald-600" />
+                      {language === 'sw' ? 'Weka beji iliyohakikiwa (Verified)' : 'Show Verified Shield Badge'}
+                    </p>
+                    <p className="text-[10px] text-slate-450 max-w-xs">
+                      {language === 'sw' ? 'Thibitisha kuwa kiungo hiki kiko salama na ni tovuti halali.' : 'Verify that this link is active, authentic and highly beneficial.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsVerified(!isVerified)}
+                    className={`w-12 h-6 flex items-center rounded-full p-1 transition-all duration-350 ${
+                      isVerified ? 'bg-emerald-600 justify-end' : 'bg-gray-200 justify-start'
+                    }`}
+                  >
+                    <span className="w-4 h-4 bg-white rounded-full shadow-md" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsVerified(!isVerified)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-all duration-350 ${
-                    isVerified ? 'bg-emerald-600 justify-end' : 'bg-gray-200 justify-start'
-                  }`}
-                >
-                  <span className="w-4 h-4 bg-white rounded-full shadow-md" />
-                </button>
-              </div>
+              )}
 
               {/* Submit / Cancel Buttons */}
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">

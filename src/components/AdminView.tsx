@@ -35,7 +35,8 @@ import {
   Pencil,
   Sliders,
   X,
-  Newspaper
+  Newspaper,
+  Library
 } from 'lucide-react';
 import {
   AreaChart,
@@ -49,7 +50,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -80,7 +81,10 @@ import {
   fetchWebsiteNews,
   updateWebsiteNews,
   deleteWebsiteNews,
-  saveWebsiteNews
+  saveWebsiteNews,
+  fetchEducationalResources,
+  updateEducationalResource,
+  deleteEducationalResource
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -209,6 +213,11 @@ export default function AdminView({
   const [editingNews, setEditingNews] = useState<WebsiteNews | null>(null);
   const [newsSearch, setNewsSearch] = useState<string>('');
 
+  // --- NEW: Educational Resources states ---
+  const [dbResources, setDbResources] = useState<EducationalResource[]>([]);
+  const [resourcesSearch, setResourcesSearch] = useState<string>('');
+  const [resourcesLoading, setResourcesLoading] = useState<boolean>(false);
+
   // News Form states
   const [newsTitle, setNewsTitle] = useState<string>('');
   const [newsSource, setNewsSource] = useState<string>('');
@@ -255,6 +264,17 @@ export default function AdminView({
   const loadAdminData = async () => {
     try {
       setLoading(true);
+      
+      // Load educational resources for badge or management
+      if (activeTab === 'approvals' || activeTab === 'resources') {
+        try {
+          const resList = await fetchEducationalResources();
+          setDbResources(resList);
+        } catch (err) {
+          console.error('Error fetching educational resources in admin panel:', err);
+        }
+      }
+
       if (activeTab === 'approvals') {
         const pDocs = await fetchDocuments({ status: 'pending' });
         pDocs.sort((a, b) => b.createdAt - a.createdAt);
@@ -647,6 +667,38 @@ export default function AdminView({
     } catch (err) {
       console.error('Failed to delete news:', err);
       alert('Imeshindwa kufuta habari.');
+    }
+  };
+
+  const handleVerifyResourceClick = async (id: string, currentTitle: string) => {
+    try {
+      await updateEducationalResource(id, { isVerified: true });
+      setDbResources(prev => prev.map(r => r.id === id ? { ...r, isVerified: true } : r));
+      await logAdminAction(
+        'approve_resource', 
+        id, 
+        currentTitle, 
+        `Verified educational resource: ${currentTitle}`
+      );
+      alert('Rasilimali ya elimu imehakikiwa na sasa ipo wazi kwa wanafunzi wote!');
+    } catch (err) {
+      console.error('Failed to verify resource:', err);
+      alert('Imeshindwa kuhakiki rasilimali hii.');
+    }
+  };
+
+  const handleDeleteResourceClick = async (id: string, currentTitle: string) => {
+    const confirmed = window.confirm(`Je, una uhakika unataka kufuta kabisa rasilimali hii ya elimu: "${currentTitle}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteEducationalResource(id);
+      setDbResources(prev => prev.filter(r => r.id !== id));
+      await logAdminAction('delete_resource', id, currentTitle, `Deleted educational resource link: ${currentTitle}`);
+      alert('Rasilimali imefutwa kabisa kutoka kwenye mfumo wetu.');
+    } catch (err) {
+      console.error('Failed to delete resource:', err);
+      alert('Imeshindwa kufuta rasilimali.');
     }
   };
 
@@ -1463,6 +1515,22 @@ export default function AdminView({
           {dbNews.filter(n => n.status === 'pending').length > 0 && (
             <span className="bg-amber-400 text-amber-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
               {dbNews.filter(n => n.status === 'pending').length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'resources'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <Library size={16} />
+          Uhakiki wa Vyanzo
+          {dbResources.filter(r => !r.isVerified).length > 0 && (
+            <span className="bg-amber-400 text-amber-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              {dbResources.filter(r => !r.isVerified).length}
             </span>
           )}
         </button>
@@ -4038,6 +4106,121 @@ export default function AdminView({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: EDUCATIONAL RESOURCES VERIFICATION */}
+          {activeTab === 'resources' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-left">
+                  <h2 className="text-lg font-sans font-extrabold text-gray-900">Uhakiki wa Vyanzo vya Elimu</h2>
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                    Thibitisha na uruhusu viungo na rasilimali mpya zilizopendekezwa na wanafunzi au watumiaji
+                  </p>
+                </div>
+              </div>
+
+              {/* Resources search bar */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <Search size={16} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tafuta rasilimali kwa jina, maelezo, au taasisi..."
+                  value={resourcesSearch}
+                  onChange={(e) => setResourcesSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50/50 text-sm text-gray-800 border border-gray-200 rounded-xl outline-none font-semibold"
+                />
+              </div>
+
+              {/* Main table */}
+              <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-400 uppercase font-bold bg-gray-50/50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">Tovuti / Rasilimali</th>
+                      <th scope="col" className="px-4 py-3">Kundi (Category)</th>
+                      <th scope="col" className="px-4 py-3">Taasisi Inayosimamia</th>
+                      <th scope="col" className="px-4 py-3">Hali (Status)</th>
+                      <th scope="col" className="px-4 py-3 text-right">Vitendo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dbResources.filter(r => 
+                      r.title.toLowerCase().includes(resourcesSearch.toLowerCase()) ||
+                      r.description.toLowerCase().includes(resourcesSearch.toLowerCase()) ||
+                      r.institution?.toLowerCase().includes(resourcesSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-xs text-gray-400 font-medium">
+                          Hakuna vyanzo vya rasilimali vilivyopatikana kwa sasa.
+                        </td>
+                      </tr>
+                    ) : (
+                      dbResources.filter(r => 
+                        r.title.toLowerCase().includes(resourcesSearch.toLowerCase()) ||
+                        r.description.toLowerCase().includes(resourcesSearch.toLowerCase()) ||
+                        r.institution?.toLowerCase().includes(resourcesSearch.toLowerCase())
+                      ).map((res) => (
+                        <tr key={res.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col text-left max-w-md">
+                              <span className="font-extrabold text-gray-800">{res.title}</span>
+                              <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 mt-1">{res.description}</p>
+                              {res.url && (
+                                <a 
+                                  href={res.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] text-indigo-600 font-bold hover:underline mt-1 flex items-center gap-0.5"
+                                >
+                                  {res.url} <ArrowUpRight size={11} />
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold text-gray-700 text-left capitalize">
+                            {res.category.replace('_', ' ')}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 text-left font-semibold">
+                            {res.institution || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold text-left">
+                            {res.isVerified ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5">Verified</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 animate-pulse">Pending Review</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {!res.isVerified && (
+                                <button
+                                  onClick={() => handleVerifyResourceClick(res.id, res.title)}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                                  title="Thibitisha na fanya kuwa hai"
+                                >
+                                  <CheckCircle size={13} />
+                                  <span>Verify Link</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteResourceClick(res.id, res.title)}
+                                className="p-2 hover:bg-red-50 text-red-500 hover:text-red-600 rounded-lg cursor-pointer transition-all"
+                                title="Futa Kiungo hiki"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
