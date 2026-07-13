@@ -1680,7 +1680,7 @@ export default function AdminView({
               ScribdShare Admin Console
             </h1>
             <p className="text-sm text-gray-400 mt-1 font-medium">
-              Msimamizi: {userProfile.name} ({freshRole === 'super_admin' ? 'Super Admin' : 'Admin'}) • Idhinisha faili, dhibiti watumiaji, na tazama shajara za matendo.
+              Msimamizi: {userProfile?.name || 'Msimamizi'} ({freshRole === 'super_admin' ? 'Super Admin' : 'Admin'}) • Idhinisha faili, dhibiti watumiaji, na tazama shajara za matendo.
             </p>
           </div>
           {freshRole === 'super_admin' && (
