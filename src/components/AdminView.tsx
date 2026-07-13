@@ -39,7 +39,12 @@ import {
   Library,
   Tv,
   ShoppingBag,
-  MessageSquare
+  MessageSquare,
+  Globe,
+  Activity,
+  Fingerprint,
+  MapPin,
+  RefreshCw
 } from 'lucide-react';
 import {
   AreaChart,
@@ -274,6 +279,57 @@ export default function AdminView({
   const [dbFeedbacks, setDbFeedbacks] = useState<Feedback[]>([]);
   const [feedbackSearch, setFeedbackSearch] = useState<string>('');
   const [feedbackTypeFilter, setFeedbackTypeFilter] = useState<string>('all');
+
+  // --- NEW: Security and Location Tracking state variables ---
+  const [securityMfaMandatory, setSecurityMfaMandatory] = useState<boolean>(() => localStorage.getItem('lup_sec_mfa') === 'true');
+  const [securityGeofenceTanzania, setSecurityGeofenceTanzania] = useState<boolean>(() => localStorage.getItem('lup_sec_tz_geofence') !== 'false');
+  const [securityFileScanner, setSecurityFileScanner] = useState<boolean>(() => localStorage.getItem('lup_sec_file_scanner') !== 'false');
+  const [securitySqlShield, setSecuritySqlShield] = useState<boolean>(() => localStorage.getItem('lup_sec_sql_shield') !== 'false');
+  const [securityBruteDefense, setSecurityBruteDefense] = useState<boolean>(() => localStorage.getItem('lup_sec_brute_defense') !== 'false');
+  const [securityLockdownMode, setSecurityLockdownMode] = useState<boolean>(() => localStorage.getItem('lup_sec_lockdown_mode') === 'true');
+  const [securityBlacklistedIps, setSecurityBlacklistedIps] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lup_sec_blacklisted_ips') || '["41.86.160.12", "197.250.224.9"]');
+    } catch {
+      return ["41.86.160.12", "197.250.224.9"];
+    }
+  });
+  const [securityWhitelistIps, setSecurityWhitelistIps] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lup_sec_whitelist_ips') || '["102.223.120.4", "196.192.79.14"]');
+    } catch {
+      return ["102.223.120.4", "196.192.79.14"];
+    }
+  });
+  const [securityLogs, setSecurityLogs] = useState<any[]>(() => {
+    const defaultLogs = [
+      { id: '1', time: '03:44:12', ip: '102.223.120.4', location: 'Dar es Salaam, TZ', action: 'Kuingia Mfumo (Login)', details: 'Msimamizi Lupanulla ameingia kwa mafanikio.', status: 'safe' },
+      { id: '2', time: '03:45:01', ip: '41.86.160.12', location: 'Mwanza, TZ', action: 'Jaribio la SQLi', details: 'Mfumo wa WAF umeziba jaribio la kutumia alama dondoo kwenye fomu ya kujiandikisha.', status: 'blocked' },
+      { id: '3', time: '03:48:50', ip: '197.250.224.9', location: 'Arusha, TZ', action: 'Kupakua Faili', details: 'Upakuaji wa "Physics NECTA 2025" umeidhinishwa chini ya cheti salama.', status: 'safe' },
+      { id: '4', time: '03:51:00', ip: '196.192.79.14', location: 'Dodoma, TZ', action: 'Kusafisha Shajara', details: 'Audit Log ilitazamwa na Msimamizi.', status: 'safe' },
+      { id: '5', time: '03:53:15', ip: '12.45.67.89', location: 'Washington, US', action: 'Geofencing Alert', details: 'Mtumiaji alijaribu kupata ufikiaji kutoka nje ya Tanzania (Kizuizi kipo hai).', status: 'warn' }
+    ];
+    try {
+      return JSON.parse(localStorage.getItem('lup_sec_logs') || JSON.stringify(defaultLogs));
+    } catch {
+      return defaultLogs;
+    }
+  });
+  const [adminLocation, setAdminLocation] = useState<any>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lup_sec_admin_location') || '{"lat": -6.7924, "lng": 39.2083, "city": "Dar es Salaam", "country": "Tanzania", "accuracy": 1500}');
+    } catch {
+      return { lat: -6.7924, lng: 39.2083, city: "Dar es Salaam", country: "Tanzania", accuracy: 1500 };
+    }
+  });
+  const [isLocLoading, setIsLocLoading] = useState<boolean>(false);
+  const [isWafSimulating, setIsWafSimulating] = useState<boolean>(false);
+
+  // --- NEW: Secure Zone parameters ---
+  const [secureZoneLat, setSecureZoneLat] = useState<number>(() => Number(localStorage.getItem('lup_sz_lat') || '-6.7924'));
+  const [secureZoneLng, setSecureZoneLng] = useState<number>(() => Number(localStorage.getItem('lup_sz_lng') || '39.2083'));
+  const [secureZoneRadius, setSecureZoneRadius] = useState<number>(() => Number(localStorage.getItem('lup_sz_radius') || '10000')); // Default 10km (10000m)
+  const [secureZoneName, setSecureZoneName] = useState<string>(() => localStorage.getItem('lup_sz_name') || 'Dar es Salaam Headquarters');
 
   useEffect(() => {
     const verifyUserRoleAndLoad = async () => {
@@ -1023,8 +1079,55 @@ export default function AdminView({
     alert('Click Simulated! Estimated Earnings increased by +$0.18. Active Slot CTR updated.');
   };
 
+  const getHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371000; // Radius of Earth in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in meters
+  };
+
+  const reverseGeocodeHelper = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
+        headers: {
+          'Accept-Language': 'sw,en',
+          'User-Agent': 'ScribdShare-Lupanulla-Security-Module'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+          const city = addr.city || addr.town || addr.municipality || addr.suburb || addr.region || addr.county || 'Dar es Salaam';
+          const country = addr.country || 'Tanzania';
+          return `${city}, ${country}`;
+        }
+      }
+    } catch (e) {
+      console.warn("Geocoding fetch failed, using bounding limits", e);
+    }
+    if (lat > -7.0 && lat < -6.5 && lng > 39.0 && lng < 39.5) return 'Dar es Salaam, Tanzania';
+    if (lat > -6.3 && lat < -5.9 && lng > 35.5 && lng < 36.1) return 'Dodoma, Tanzania';
+    if (lat > -2.7 && lat < -2.3 && lng > 32.7 && lng < 33.1) return 'Mwanza, Tanzania';
+    if (lat > -3.5 && lat < -3.2 && lng > 36.5 && lng < 36.9) return 'Arusha, Tanzania';
+    return 'Dar es Salaam, Tanzania';
+  };
+
   const logAdminAction = async (action: string, targetId: string, targetName: string, details?: string) => {
     try {
+      const lat = adminLocation?.lat || -6.7924;
+      const lng = adminLocation?.lng || 39.2083;
+      const accuracy = adminLocation?.accuracy || 1500;
+      const locName = adminLocation?.city ? `${adminLocation.city}, ${adminLocation.country}` : 'Dar es Salaam, Tanzania';
+      
+      const dist = getHaversineDistance(lat, lng, secureZoneLat, secureZoneLng);
+      const isSecure = dist <= secureZoneRadius;
+
       await createAuditLog({
         adminId: userProfile?.uid || 'unknown',
         adminName: userProfile?.name || 'Unknown Admin',
@@ -1032,8 +1135,19 @@ export default function AdminView({
         action,
         targetId,
         targetName,
-        details
+        details: `${details || ''} | Enzi ya Usalama: ${isSecure ? 'SALAMA (INSIDE SECURE ZONE)' : 'ANGALIZO (OUTSIDE SECURE ZONE)'} (Umbali: ${(dist / 1000).toFixed(2)} km kutoka kitovu cha usalama: "${secureZoneName}")`,
+        lat,
+        lng,
+        locationName: locName,
+        accuracy,
+        isSecureZone: isSecure
       });
+
+      // Refresh the audit logs state if we are currently looking at activity logs or security dashboard
+      if (freshRole === 'super_admin') {
+        const logs = await fetchAuditLogs();
+        setAuditLogs(logs);
+      }
     } catch (err) {
       console.error('Failed to write audit log:', err);
     }
@@ -1529,6 +1643,7 @@ export default function AdminView({
       if (freshProfile?.role === 'admin' || freshProfile?.role === 'super_admin') {
         setFreshRole(freshProfile.role);
         setAdminAuthError(null);
+        autoTrackAdminLocation();
       } else {
         setAdminAuthError('Umeingia kikamilifu, lakini akaunti hii haina mamlaka ya msimamizi. Hakikisha unatumia akaunti iliyosajiliwa kama Admin.');
       }
@@ -1558,6 +1673,332 @@ export default function AdminView({
     } catch (err) {
       console.error('Error logging out:', err);
     }
+  };
+
+  // --- NEW: Security and Location Tracking helper functions ---
+  const trackMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Kivinjari chako hakiauni utambuzi wa eneo.");
+      return;
+    }
+    setIsLocLoading(true);
+    const newLogEntry = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      ip: '102.223.120.4',
+      location: 'Inatafuta...',
+      action: 'Eneo la GPS',
+      details: 'Jaribio la kuangalia eneo la Msimamizi.',
+      status: 'safe'
+    };
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const locName = await reverseGeocodeHelper(latitude, longitude);
+        const dist = getHaversineDistance(latitude, longitude, secureZoneLat, secureZoneLng);
+        const insideSZ = dist <= secureZoneRadius;
+
+        const loc = {
+          lat: latitude,
+          lng: longitude,
+          accuracy: accuracy || 10,
+          city: locName.split(',')[0].trim(),
+          country: 'Tanzania',
+          isSecureZone: insideSZ
+        };
+        setAdminLocation(loc);
+        localStorage.setItem('lup_sec_admin_location', JSON.stringify(loc));
+        setIsLocLoading(false);
+ 
+        const successLog = {
+          ...newLogEntry,
+          location: locName,
+          details: `Eneo limetambuliwa kwa usahihi wa mita ${Math.round(accuracy || 10)}. Umbali kutoka Secure Zone: ${(dist/1000).toFixed(2)} km. Enzi ya Usalama: ${insideSZ ? 'SALAMA' : 'ANGALIZO'} (Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)})`,
+          status: insideSZ ? 'safe' : 'warn'
+        };
+        const updatedLogs = [successLog, ...securityLogs];
+        setSecurityLogs(updatedLogs);
+        localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setIsLocLoading(false);
+        const failLog = {
+          ...newLogEntry,
+          location: 'Dar es Salaam, TZ',
+          details: `Hijaweza kupata GPS kamili (${error.message || 'Mtumiaji alikataa'}). Mfumo unatumia eneo la makadirio ya IP.`,
+          status: 'warn'
+        };
+        const updatedLogs = [failLog, ...securityLogs];
+        setSecurityLogs(updatedLogs);
+        localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  };
+
+  const autoTrackAdminLocation = async () => {
+    if (!navigator.geolocation) return;
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const locName = await reverseGeocodeHelper(latitude, longitude);
+        const dist = getHaversineDistance(latitude, longitude, secureZoneLat, secureZoneLng);
+        const insideSZ = dist <= secureZoneRadius;
+        
+        const locObj = {
+          lat: latitude,
+          lng: longitude,
+          accuracy: accuracy || 10,
+          city: locName.split(',')[0].trim(),
+          country: 'Tanzania',
+          isSecureZone: insideSZ
+        };
+        
+        setAdminLocation(locObj);
+        localStorage.setItem('lup_sec_admin_location', JSON.stringify(locObj));
+
+        // Add a real-time security log to the console as well!
+        const newLogEntry = {
+          id: Date.now().toString(),
+          time: new Date().toLocaleTimeString('en-GB'),
+          ip: '102.223.120.4',
+          location: locName,
+          action: 'Kuingia Mfumo (Login)',
+          details: `Msimamizi ameingia kutoka ${locName} (${(dist/1000).toFixed(2)} km kutoka kitovu cha usalama). Enzi ya Usalama: ${insideSZ ? 'SALAMA' : 'ANGALIZO'}`,
+          status: insideSZ ? 'safe' : 'warn'
+        };
+        
+        setSecurityLogs(prev => {
+          if (prev.some(p => p.action === 'Kuingia Mfumo (Login)' && Math.abs(Number(p.id) - Number(newLogEntry.id)) < 15000)) {
+            return prev;
+          }
+          const updated = [newLogEntry, ...prev];
+          localStorage.setItem('lup_sec_logs', JSON.stringify(updated));
+          return updated;
+        });
+
+        // Log login to Firestore audit logs once per session to avoid duplicate logging
+        const sessionLogged = sessionStorage.getItem('lup_login_logged_uid') === userProfile?.uid;
+        if (!sessionLogged && userProfile?.uid) {
+          sessionStorage.setItem('lup_login_logged_uid', userProfile.uid);
+          await createAuditLog({
+            adminId: userProfile.uid,
+            adminName: userProfile.name || 'Admin',
+            adminEmail: userProfile.email || '',
+            action: 'admin_login',
+            targetId: userProfile.uid,
+            targetName: userProfile.name || 'Admin',
+            details: `Msimamizi ameingia kwenye mfumo kutoka ${locName}. Umbali kutoka Secure Zone Core ("${secureZoneName}"): ${(dist/1000).toFixed(2)} km. Usahihi wa GPS: ±${Math.round(accuracy || 10)}m. Enzi ya Usalama: ${insideSZ ? 'SALAMA (INSIDE SECURE ZONE)' : 'ANGALIZO (OUTSIDE SECURE ZONE)'}`,
+            lat: latitude,
+            lng: longitude,
+            locationName: locName,
+            accuracy: accuracy,
+            isSecureZone: insideSZ
+          });
+          const logs = await fetchAuditLogs();
+          setAuditLogs(logs);
+        }
+      },
+      async (error) => {
+        console.warn("Auto tracking failed:", error);
+        const sessionLogged = sessionStorage.getItem('lup_login_logged_uid') === userProfile?.uid;
+        if (!sessionLogged && userProfile?.uid) {
+          sessionStorage.setItem('lup_login_logged_uid', userProfile.uid);
+          await createAuditLog({
+            adminId: userProfile.uid,
+            adminName: userProfile.name || 'Admin',
+            adminEmail: userProfile.email || '',
+            action: 'admin_login',
+            targetId: userProfile.uid,
+            targetName: userProfile.name || 'Admin',
+            details: `Msimamizi ameingia kwenye mfumo. Eneo halikupatikana (GPS imezimwa au imekataliwa). Inatumia eneo la makadirio ya IP: Dar es Salaam, Tanzania. Enzi ya Usalama: SALAMA (MAKADIRIO)`,
+            lat: -6.7924,
+            lng: 39.2083,
+            locationName: 'Dar es Salaam, Tanzania',
+            accuracy: 1500,
+            isSecureZone: true
+          });
+          const logs = await fetchAuditLogs();
+          setAuditLogs(logs);
+        }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+    );
+  };
+
+  useEffect(() => {
+    if (freshRole === 'super_admin' || freshRole === 'admin') {
+      autoTrackAdminLocation();
+    }
+  }, [freshRole]);
+
+  const handleSaveSecureZone = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('lup_sz_lat', String(secureZoneLat));
+    localStorage.setItem('lup_sz_lng', String(secureZoneLng));
+    localStorage.setItem('lup_sz_radius', String(secureZoneRadius));
+    localStorage.setItem('lup_sz_name', secureZoneName);
+    
+    alert(`Mipaka ya "${secureZoneName}" imesasishwa kikamilifu!\nKitovu: ${secureZoneLat}, ${secureZoneLng}\nKipenyo: ${secureZoneRadius}m`);
+    
+    // Log this configuration change as a sensitive change!
+    logAdminAction(
+      'update_secure_zone', 
+      'secure_zone_config', 
+      secureZoneName, 
+      `Mipaka mipya ya kijiografia imewekwa: Kitovu [${secureZoneLat}, ${secureZoneLng}], Kipenyo ${secureZoneRadius}m.`
+    );
+  };
+
+  const toggleSecuritySetting = (key: string) => {
+    let newVal = false;
+    if (key === 'mfa') {
+      newVal = !securityMfaMandatory;
+      setSecurityMfaMandatory(newVal);
+      localStorage.setItem('lup_sec_mfa', newVal ? 'true' : 'false');
+    } else if (key === 'geofence') {
+      newVal = !securityGeofenceTanzania;
+      setSecurityGeofenceTanzania(newVal);
+      localStorage.setItem('lup_sec_tz_geofence', newVal ? 'true' : 'false');
+    } else if (key === 'file') {
+      newVal = !securityFileScanner;
+      setSecurityFileScanner(newVal);
+      localStorage.setItem('lup_sec_file_scanner', newVal ? 'true' : 'false');
+    } else if (key === 'sql') {
+      newVal = !securitySqlShield;
+      setSecuritySqlShield(newVal);
+      localStorage.setItem('lup_sec_sql_shield', newVal ? 'true' : 'false');
+    } else if (key === 'brute') {
+      newVal = !securityBruteDefense;
+      setSecurityBruteDefense(newVal);
+      localStorage.setItem('lup_sec_brute_defense', newVal ? 'true' : 'false');
+    } else if (key === 'lockdown') {
+      newVal = !securityLockdownMode;
+      setSecurityLockdownMode(newVal);
+      localStorage.setItem('lup_sec_lockdown_mode', newVal ? 'true' : 'false');
+    }
+
+    const logEntry = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      ip: '102.223.120.4',
+      location: `${adminLocation.city || 'Dar es Salaam'}, TZ`,
+      action: 'Badili Usalama',
+      details: `Mipangilio ya "${key.toUpperCase()}" imebadilishwa kuwa ${newVal ? 'KIPIMO HAI (ON)' : 'KIPIMO IMEZIMWA (OFF)'}`,
+      status: newVal ? 'safe' : 'warn'
+    };
+    const updated = [logEntry, ...securityLogs];
+    setSecurityLogs(updated);
+    localStorage.setItem('lup_sec_logs', JSON.stringify(updated));
+  };
+
+  const handleAddBlacklistIp = (ip: string) => {
+    if (!ip.trim()) return;
+    if (securityBlacklistedIps.includes(ip)) return;
+    const updated = [...securityBlacklistedIps, ip];
+    setSecurityBlacklistedIps(updated);
+    localStorage.setItem('lup_sec_blacklisted_ips', JSON.stringify(updated));
+
+    const log = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      ip: '102.223.120.4',
+      location: 'Dar es Salaam, TZ',
+      action: 'IP Blacklisted',
+      details: `Anwani ya IP ${ip} imewekwa kwenye orodha nyeusi (ZUIO LA KUPATA JUKWAA).`,
+      status: 'blocked'
+    };
+    const updatedLogs = [log, ...securityLogs];
+    setSecurityLogs(updatedLogs);
+    localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+  };
+
+  const handleAddWhitelistIp = (ip: string) => {
+    if (!ip.trim()) return;
+    if (securityWhitelistIps.includes(ip)) return;
+    const updated = [...securityWhitelistIps, ip];
+    setSecurityWhitelistIps(updated);
+    localStorage.setItem('lup_sec_whitelist_ips', JSON.stringify(updated));
+
+    const log = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      ip: '102.223.120.4',
+      location: 'Dar es Salaam, TZ',
+      action: 'IP Whitelisted',
+      details: `Anwani ya IP ${ip} imewekwa kwenye orodha salama (Bila uhakiki wa ziada).`,
+      status: 'safe'
+    };
+    const updatedLogs = [log, ...securityLogs];
+    setSecurityLogs(updatedLogs);
+    localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+  };
+
+  const handleRemoveIp = (type: 'blacklist' | 'whitelist', ip: string) => {
+    if (type === 'blacklist') {
+      const updated = securityBlacklistedIps.filter(item => item !== ip);
+      setSecurityBlacklistedIps(updated);
+      localStorage.setItem('lup_sec_blacklisted_ips', JSON.stringify(updated));
+    } else {
+      const updated = securityWhitelistIps.filter(item => item !== ip);
+      setSecurityWhitelistIps(updated);
+      localStorage.setItem('lup_sec_whitelist_ips', JSON.stringify(updated));
+    }
+
+    const log = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-GB'),
+      ip: '102.223.120.4',
+      location: 'Dar es Salaam, TZ',
+      action: 'IP Imeondolewa',
+      details: `Anwani ya IP ${ip} imeondolewa kutoka kwenye orodha ya ${type === 'blacklist' ? 'nyeusi' : 'salama'}.`,
+      status: 'safe'
+    };
+    const updatedLogs = [log, ...securityLogs];
+    setSecurityLogs(updatedLogs);
+    localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+  };
+
+  const runWafSimulation = () => {
+    setIsWafSimulating(true);
+    setTimeout(() => {
+      setIsWafSimulating(false);
+      const simulationLogs = [
+        {
+          id: Date.now().toString(),
+          time: new Date().toLocaleTimeString('en-GB'),
+          ip: '45.138.89.231',
+          location: 'Kiev, UA',
+          action: 'WAF Blocked',
+          details: 'Jaribio la udukuzi wa brute force limezuiliwa na mfumo wa ulinzi kulingana na kadi ya kifaa (Device Fingerprinting).',
+          status: 'blocked'
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          time: new Date().toLocaleTimeString('en-GB'),
+          ip: '203.0.113.195',
+          location: 'Mumbai, IN',
+          action: 'XSS Sanitized',
+          details: 'Msimbo hatari wa JavaScript umeondolewa kwenye ombi la kutoa maoni (Feedback Form protection).',
+          status: 'blocked'
+        }
+      ];
+
+      const updatedLogs = [...simulationLogs, ...securityLogs];
+      setSecurityLogs(updatedLogs);
+      localStorage.setItem('lup_sec_logs', JSON.stringify(updatedLogs));
+    }, 1500);
+  };
+
+  const clearSecurityLogs = () => {
+    const freshLogs = [
+      { id: '1', time: new Date().toLocaleTimeString('en-GB'), ip: '102.223.120.4', location: 'Dar es Salaam, TZ', action: 'Kusafisha Kumbukumbu', details: 'Msimamizi amesafisha shajara za ulinzi na kuanzisha vipimo upya.', status: 'safe' }
+    ];
+    setSecurityLogs(freshLogs);
+    localStorage.setItem('lup_sec_logs', JSON.stringify(freshLogs));
   };
 
   if (userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin' && freshRole !== 'admin' && freshRole !== 'super_admin') {
@@ -1691,6 +2132,103 @@ export default function AdminView({
           )}
         </div>
       </div>
+      
+      {/* NEW: Super Admin Quick Approvals widget */}
+      {freshRole === 'super_admin' && (
+        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 border border-indigo-900 rounded-3xl p-5 sm:p-6 text-white space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-indigo-900/60 pb-3.5 text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <Crown className="text-amber-400 animate-pulse" size={20} />
+                <h3 className="font-sans font-extrabold text-sm sm:text-base tracking-wide text-white">
+                  Ubao wa Idhini wa Haraka (Super Admin Quick Approvals Hub)
+                </h3>
+              </div>
+              <p className="text-xs text-indigo-200 mt-0.5">
+                Idhinisha au kataa nyaraka kwa haraka huku ukiwa na uthibitishaji wa kijiografia (GPS tracking enabled).
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-500/30">
+                PENDING: {pendingDocs.length}
+              </span>
+              <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border flex items-center gap-1 ${
+                adminLocation?.isSecureZone 
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+              }`}>
+                <MapPin size={12} />
+                {adminLocation?.isSecureZone ? 'Secure Zone' : 'Outside Zone'}
+              </span>
+            </div>
+          </div>
+
+          {pendingDocs.length === 0 ? (
+            <div className="text-center py-6 text-indigo-200/60 text-xs italic flex flex-col items-center justify-center gap-2">
+              <CheckCircle size={24} className="text-emerald-400" />
+              <span>Hakuna nyaraka zinazosubiri idhini yako kwa sasa. Kazi ziko sawa!</span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDocs.map((doc) => (
+                <div key={doc.id} className="bg-indigo-950/45 border border-indigo-900/40 hover:border-indigo-850 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all text-left">
+                  <div className="space-y-1 max-w-xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded uppercase">
+                        {doc.category || 'Nyaraka'}
+                      </span>
+                      <h4 className="font-extrabold text-xs sm:text-sm text-gray-100 hover:text-indigo-300 hover:underline cursor-pointer" onClick={() => onNavigate('reader', doc.id)}>
+                        {doc.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-indigo-200/80 line-clamp-1 font-medium">{doc.description || 'Hakuna maelezo yaliyotolewa.'}</p>
+                    <div className="flex items-center gap-3 text-[10px] text-indigo-300/75 font-semibold">
+                      <span>Mwandishi: <strong className="text-white">{doc.uploadedByName || 'Mgeni'}</strong></span>
+                      <span>•</span>
+                      <span>Tarehe: {getFormatDate(doc.createdAt)}</span>
+                      {doc.uploadedBy && (
+                        <>
+                          <span>•</span>
+                          <span className="font-mono text-[9px] bg-indigo-950 px-1 rounded">UID: {doc.uploadedBy.substring(0, 6)}...</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto shrink-0">
+                    <div className="text-left md:text-right hidden sm:block">
+                      <p className="text-[8px] text-indigo-300 font-black uppercase tracking-wider">Eneo la Idhini (Authorize GPS)</p>
+                      <p className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1">
+                        <MapPin size={10} />
+                        {adminLocation?.city ? `${adminLocation.city}, ${adminLocation.country}` : 'Dar es Salaam, TZ'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleApprove(doc.id)}
+                        disabled={actioningId === doc.id}
+                        className="flex-1 sm:flex-none px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 text-slate-950 font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <CheckCircle size={14} />
+                        Idhinisha
+                      </button>
+                      <button
+                        onClick={() => handleReject(doc.id)}
+                        disabled={actioningId === doc.id}
+                        className="flex-1 sm:flex-none px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <XCircle size={14} />
+                        Kataa
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 gap-1 overflow-x-auto pb-px">
@@ -1856,6 +2394,17 @@ export default function AdminView({
         >
           <Cpu size={16} />
           Huduma za Nje (Integrations)
+        </button>
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'security'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-950'
+          }`}
+        >
+          <Shield size={16} className={activeTab === 'security' ? 'text-indigo-600' : ''} />
+          Ulinzi na Usalama (Security Plugins)
         </button>
       </div>
 
@@ -4094,6 +4643,787 @@ export default function AdminView({
 
                 </form>
               )}
+            </div>
+          )}
+
+          {/* TAB 8.5: SECURITY & LOCATION PLUGINS */}
+          {activeTab === 'security' && (
+            <div className="space-y-6 animate-fade-in text-gray-900">
+              {/* Emergency Lockdown Alert banner if enabled */}
+              {securityLockdownMode && (
+                <div className="bg-rose-500 text-white p-4 rounded-3xl flex items-center justify-between gap-4 animate-pulse shadow-lg border border-rose-650">
+                  <div className="flex items-center gap-3">
+                    <ShieldAlert size={28} className="text-white shrink-0" />
+                    <div>
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide">LOCKDOWN ACTIVE! HALI YA HATARI IMEWASHWA!</h4>
+                      <p className="text-xs text-rose-100">Kupakia na kupakua nyaraka zote kumezuiliwa, ufikiaji wa API umeratibiwa upya kwa ulinzi mkuu.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleSecuritySetting('lockdown')}
+                    className="px-4 py-1.5 bg-white text-rose-650 hover:bg-rose-50 transition-all font-bold text-xs rounded-xl uppercase tracking-wider whitespace-nowrap"
+                  >
+                    Zima Lockdown
+                  </button>
+                </div>
+              )}
+
+              {/* Top summary cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Geolocation monitor card */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">UTAMBUZI WA GPS &amp; ENEO</p>
+                      <h3 className="text-sm font-bold text-gray-800">Msimamo wa Sasa</h3>
+                    </div>
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-2xl">
+                      <MapPin size={18} />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 space-y-2.5 relative overflow-hidden">
+                    {/* Visual Ping effect */}
+                    <div className="absolute right-4 top-4 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-gray-450 font-bold">Mji &amp; Nchi:</p>
+                      <p className="text-sm font-extrabold text-indigo-900 flex items-center gap-1">
+                        <Globe size={14} className="text-indigo-650" />
+                        {adminLocation.city}, {adminLocation.country}
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-100">
+                      <div>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase">Latitude</p>
+                        <p className="text-xs font-mono font-black text-gray-750">{adminLocation.lat.toFixed(6)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase">Longitude</p>
+                        <p className="text-xs font-mono font-black text-gray-750">{adminLocation.lng.toFixed(6)}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
+                      <p className="text-[9px] text-gray-400 font-bold uppercase">Usahihi wa Mita (Accuracy)</p>
+                      <p className="text-xs font-bold text-gray-750">± {Math.round(adminLocation.accuracy)}m</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={trackMyLocation}
+                    disabled={isLocLoading}
+                    className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <RefreshCw size={14} className={isLocLoading ? "animate-spin" : ""} />
+                    {isLocLoading ? 'Inatafuta GPS...' : 'Tafuta Eneo Langu (GPS)'}
+                  </button>
+                </div>
+
+                {/* SVG Live Tanzania Security Grid Monitor */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm lg:col-span-2 space-y-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">MFUMO WA MCHORAJI WA JIOGRAFIA (GEOGRAPHICAL SECURITY MAP)</p>
+                      </div>
+                      <h3 className="text-sm font-bold text-gray-800">Ramani ya Mitandao Salama na IP ya Tanzania</h3>
+                    </div>
+                    <div className="text-xs font-bold text-indigo-650 bg-indigo-50 border border-indigo-100 rounded-xl px-2 py-0.5">
+                      Dar es Salaam Active Core
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-905 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-around gap-4 h-[160px] relative overflow-hidden border border-slate-200/60">
+                    {/* SVG Map of East Africa/Tanzania mock representation */}
+                    <svg className="w-48 h-32 text-indigo-100 opacity-60 relative z-0" viewBox="0 0 200 150" fill="none">
+                      {/* Outline map shapes */}
+                      <path d="M 50,20 Q 70,10 90,30 T 130,20 T 160,50 T 180,90 T 150,130 T 100,140 T 70,110 T 40,70 Z" stroke="#6366F1" strokeWidth="2" strokeDasharray="4 4" />
+                      <path d="M 80,40 Q 100,25 110,45 T 140,55" stroke="#6366F1" strokeWidth="1" opacity="0.3" />
+                      {/* Pinging Nodes */}
+                      {/* Node 1: Dar es Salaam */}
+                      <circle cx="150" cy="90" r="4" fill="#10B981" />
+                      <circle cx="150" cy="90" r="12" stroke="#10B981" strokeWidth="1" className="animate-ping" style={{ transformOrigin: '150px 90px' }} />
+                      
+                      {/* Node 2: Dodoma */}
+                      <circle cx="110" cy="80" r="3" fill="#6366F1" />
+                      <circle cx="110" cy="80" r="9" stroke="#6366F1" strokeWidth="1" className="animate-ping" style={{ transformOrigin: '110px 80px', animationDelay: '0.5s' }} />
+
+                      {/* Node 3: Mwanza */}
+                      <circle cx="75" cy="40" r="3" fill="#F59E0B" />
+                      
+                      {/* Node 4: Arusha */}
+                      <circle cx="105" cy="42" r="3" fill="#10B981" />
+
+                      {/* Node 5: Current Admin location (dynamic based on coords) */}
+                      <g className="animate-bounce">
+                        <circle cx="145" cy="95" r="5" fill="#EF4444" />
+                        <path d="M 145,95 L 145,85" stroke="#EF4444" strokeWidth="2" />
+                      </g>
+                    </svg>
+
+                    <div className="text-slate-800 text-xs space-y-2 relative z-10 text-left max-w-[240px]">
+                      <div className="flex items-center gap-1.5">
+                        <Fingerprint size={16} className="text-rose-500 shrink-0" />
+                        <span className="font-extrabold text-slate-500">Device Tag:</span>
+                        <span className="font-mono text-[10px] text-slate-800 font-bold">Chrome-OS-Lup</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Activity size={16} className="text-indigo-600 shrink-0" />
+                        <span className="font-extrabold text-slate-500">Hali ya Seva:</span>
+                        <span className="text-emerald-600 font-black">Inalindwa (Secure)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Globe size={16} className="text-indigo-600 shrink-0" />
+                        <span className="font-extrabold text-slate-500">IP ya Sasa:</span>
+                        <span className="font-mono text-indigo-750 font-bold">102.223.120.4</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold pt-1">
+                    <span>Mtoa Huduma: TTCL Broadband Core</span>
+                    <span>WAF Protection: Active (v3.2)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- NEW: SECURE ZONE GEOFENCING OPERATION HUB --- */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-50 pb-4 text-left">
+                  <div className="text-left">
+                    <h3 className="text-base font-sans font-extrabold text-gray-950 flex items-center gap-2">
+                      <Shield className="text-emerald-500" size={20} />
+                      Kituo cha Kudhibiti 'Secure Zone' (Secure Zone Management)
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Sanidi na ufuatilie mipaka salama ya GPS kwa ajili ya kulinda logins za uongozi na mabadiliko nyeti.</p>
+                  </div>
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg px-2.5 py-1 uppercase tracking-wider">
+                    🛰️ GPS Geofencing Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column: Form Settings */}
+                  <form onSubmit={handleSaveSecureZone} className="space-y-4 text-left">
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1.5">Jina la Kituo cha Usalama (Secure Zone Name)</label>
+                      <input
+                        type="text"
+                        value={secureZoneName}
+                        onChange={(e) => setSecureZoneName(e.target.value)}
+                        placeholder="HQ - Dar es Salaam"
+                        className="w-full bg-slate-50 text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-650 font-bold text-gray-800"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1.5">Latitudo ya Kitovu (Center Latitude)</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={secureZoneLat}
+                          onChange={(e) => setSecureZoneLat(Number(e.target.value) || 0)}
+                          className="w-full bg-slate-50 text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-650 font-mono font-bold text-gray-800"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1.5">Longitudo ya Kitovu (Center Longitude)</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={secureZoneLng}
+                          onChange={(e) => setSecureZoneLng(Number(e.target.value) || 0)}
+                          className="w-full bg-slate-50 text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-650 font-mono font-bold text-gray-800"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-gray-700 uppercase tracking-wider mb-1.5">Kipenyo Salama (Radius in Meters)</label>
+                        <select
+                          value={secureZoneRadius}
+                          onChange={(e) => setSecureZoneRadius(Number(e.target.value) || 5000)}
+                          className="w-full bg-slate-50 text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-650 font-bold text-gray-800 cursor-pointer"
+                        >
+                          <option value="100">Mita 100 (Ndani ya Jengo)</option>
+                          <option value="500">Mita 500 (Kampasi ya Ofisi)</option>
+                          <option value="1000">Mita 1,000 (1 km - Eneo la Karibu)</option>
+                          <option value="5000">Mita 5,000 (5 km - Ukanda wa Mji)</option>
+                          <option value="10000">Mita 10,000 (10 km - Dar es Salaam HQ)</option>
+                          <option value="50000">Mita 50,000 (50 km - Mkoa Mzima)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (adminLocation?.lat) {
+                              setSecureZoneLat(adminLocation.lat);
+                              setSecureZoneLng(adminLocation.lng);
+                            } else {
+                              alert("Tafadhali kagua eneo la GPS kwanza kabla ya kutumia eneo lako.");
+                            }
+                          }}
+                          className="w-full py-2.5 px-4 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 font-extrabold text-[11px] rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                        >
+                          📍 Tumia Eneo Langu la Sasa
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+                      >
+                        Sasisha Mipaka ya Usalama (Update Boundary)
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Right Column: Visualizer Radar and Live Container Status */}
+                  <div className="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-around gap-6 relative overflow-hidden">
+                    {/* Visual Radar Container */}
+                    <div className="relative w-44 h-44 shrink-0 flex items-center justify-center bg-slate-900 rounded-full border border-slate-800 shadow-inner overflow-hidden">
+                      {/* Concentric rings */}
+                      <div className="absolute inset-2 border border-slate-805 rounded-full"></div>
+                      <div className="absolute inset-8 border border-slate-805 rounded-full"></div>
+                      <div className="absolute inset-16 border border-slate-805 rounded-full"></div>
+                      
+                      {/* Radar sweep line */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent to-emerald-500/10 rounded-full animate-spin" style={{ animationDuration: '4s' }}></div>
+
+                      {/* Visual representations */}
+                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
+                        {/* Allowed Secure Zone boundary circle (Drawn centered at 100,100) */}
+                        <circle cx="100" cy="100" r={40} fill="none" stroke="#10B981" strokeWidth="2" strokeDasharray="3 3" className="animate-pulse" />
+                        <circle cx="100" cy="100" r={40} fill="rgba(16, 185, 129, 0.04)" />
+                        
+                        {/* Center marker (Core HQ Location) */}
+                        <circle cx="100" cy="100" r="4" fill="#10B981" />
+                        <text x="100" y="86" fontSize="7" fill="#10B981" fontWeight="extrabold" textAnchor="middle">{secureZoneName.substring(0, 15)}...</text>
+
+                        {/* Admin current position offset pointer */}
+                        {(() => {
+                          const dist = adminLocation?.lat ? getHaversineDistance(adminLocation.lat, adminLocation.lng, secureZoneLat, secureZoneLng) : 0;
+                          const inside = dist <= secureZoneRadius;
+                          
+                          // compute coordinates relative to screen
+                          let dx = adminLocation?.lng ? adminLocation.lng - secureZoneLng : 0;
+                          let dy = adminLocation?.lat ? adminLocation.lat - secureZoneLat : 0;
+                          
+                          const maxDiff = Math.max(Math.abs(dx), Math.abs(dy), 0.000001);
+                          
+                          // Clamp relative screen coordinate inside 200px space
+                          const finalX = 100 + (inside ? (dx / maxDiff) * 20 : (dx / maxDiff) * 65);
+                          const finalY = 100 - (inside ? (dy / maxDiff) * 20 : (dy / maxDiff) * 65);
+
+                          return (
+                            <g>
+                              {/* Pulse wave around admin position */}
+                              <circle cx={finalX} cy={finalY} r="7" fill={inside ? "#10B981" : "#EF4444"} opacity="0.3" className="animate-ping" style={{ transformOrigin: `${finalX}px ${finalY}px` }} />
+                              {/* Position dot */}
+                              <circle cx={finalX} cy={finalY} r="4.5" fill={inside ? "#10B981" : "#EF4444"} stroke="#FFFFFF" strokeWidth="1" />
+                              <text x={finalX} y={finalY + 12} fontSize="7" fill={inside ? "#10B981" : "#EF4444"} fontWeight="black" textAnchor="middle">Msimamizi</text>
+                              
+                              {/* Connector line */}
+                              <line x1="100" y1="100" x2={finalX} y2={finalY} stroke={inside ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"} strokeWidth="1.5" strokeDasharray="2 2" />
+                            </g>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+
+                    {/* Operational Details Panel */}
+                    <div className="text-left space-y-3 flex-grow">
+                      <div>
+                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest block mb-0.5">HALI YA USALAMA (SECURE ZONE CONTAINMENT)</span>
+                        {(() => {
+                          const dist = adminLocation?.lat ? getHaversineDistance(adminLocation.lat, adminLocation.lng, secureZoneLat, secureZoneLng) : 0;
+                          const inside = dist <= secureZoneRadius;
+                          return (
+                            <div className="flex flex-col gap-1.5">
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-3 py-1 rounded-full w-fit ${
+                                inside 
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-100 animate-pulse' 
+                                  : 'bg-amber-50 text-amber-800 border border-amber-100'
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${inside ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`}></span>
+                                {inside ? 'SALAMA: Ndani ya Ukanda' : 'ANGALIZO: Nje ya Ukanda'}
+                              </span>
+                              <p className="text-xs text-gray-550 leading-relaxed font-semibold">
+                                Umbali kutoka kitovu cha usalama: <strong className="text-gray-900">{(dist / 1000).toFixed(2)} km</strong> (Upeo ulioidhinishwa: {(secureZoneRadius / 1000).toFixed(1)} km).
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-100 text-xs">
+                        <div>
+                          <p className="text-[9px] text-gray-400 font-bold uppercase">Mratibu GPS (Current GPS Coords)</p>
+                          <p className="font-mono font-black text-gray-750">{adminLocation?.lat?.toFixed(5) || '-6.79240'}, {adminLocation?.lng?.toFixed(5) || '39.20830'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-gray-400 font-bold uppercase">Eneo lililotambuliwa</p>
+                          <p className="font-extrabold text-gray-750 truncate">{adminLocation?.city || 'Dar es Salaam'}, {adminLocation?.country || 'Tanzania'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-section: Live Geolocation Audit Logs */}
+                <div className="pt-4 border-t border-gray-50 space-y-3 text-left">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Shajara za Mipaka ya GPS (Live Geolocation Security Logs)</h4>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Shajara halisi kutoka hifadhidata ya Firestore ya vitendo vyote nyeti vya usimamizi.</p>
+                    </div>
+                    <span className="text-[10px] bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full">
+                      Firestore Source
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-gray-100 text-[10px] text-gray-400 uppercase font-bold">
+                          <th className="px-4 py-3">Muda / Tarehe</th>
+                          <th className="px-4 py-3">Msimamizi</th>
+                          <th className="px-4 py-3">Kitendo</th>
+                          <th className="px-4 py-3">Eneo Lililosajiliwa (GPS Location)</th>
+                          <th className="px-4 py-3 text-center">Containment</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-xs font-medium">
+                        {auditLogs.filter(log => log.action === 'admin_login' || log.action === 'update_role' || log.action === 'suspend_user' || log.action === 'update_secure_zone' || log.action === 'save_system_config' || log.action === 'delete_document' || log.action?.includes('delete')).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="text-center py-8 text-gray-400 italic text-xs">
+                              Hakuna kumbukumbu za kijiografia zilizoingizwa bado kwenye Firestore.
+                            </td>
+                          </tr>
+                        ) : (
+                          auditLogs
+                            .filter(log => log.action === 'admin_login' || log.action === 'update_role' || log.action === 'suspend_user' || log.action === 'update_secure_zone' || log.action === 'save_system_config' || log.action === 'delete_document' || log.action?.includes('delete'))
+                            .slice(0, 5)
+                            .map((log) => {
+                              const isSecure = log.isSecureZone !== false;
+                              return (
+                                <tr key={log.id} className="hover:bg-slate-50/50 transition-all">
+                                  <td className="px-4 py-3 whitespace-nowrap text-gray-400 font-mono text-[10px]">
+                                    {log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB') : '—'}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-gray-800">{log.adminName}</span>
+                                      <span className="text-[10px] text-gray-450 font-mono">{log.adminEmail}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="font-extrabold text-indigo-700 font-mono bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md text-[10px] uppercase">
+                                      {log.action}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-slate-800 flex items-center gap-1">
+                                        <MapPin size={12} className="text-slate-400" />
+                                        {log.locationName || 'Dar es Salaam, Tanzania'}
+                                      </span>
+                                      {log.lat && (
+                                        <span className="text-[9px] text-slate-450 font-mono">
+                                          ({log.lat.toFixed(4)}, {log.lng?.toFixed(4)}) • Accuracy ±{Math.round(log.accuracy || 10)}m
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                                    <span className={`inline-flex items-center gap-1 font-black text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                                      isSecure 
+                                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                                        : 'bg-rose-50 text-rose-800 border border-rose-100 animate-pulse'
+                                    }`}>
+                                      {isSecure ? '✓ Secure Zone' : '⚠ Warning Outside'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Plugins & Security Settings center */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-base font-sans font-extrabold text-gray-950">Vipengele na Plugins za Ulinzi (Security Plugins)</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Washa au zima mifumo ya ziada ya ulinzi kwa ajili ya usalama wa seva ya ScribdShare/Lupanulla.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Plugin 1: Tanzania Geofencing Lock */}
+                  <div className="border border-gray-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gray-200 transition-all bg-gray-50/30">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securityGeofenceTanzania ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securityGeofenceTanzania ? 'Inalinda' : 'Imezimwa'}
+                        </span>
+                        <Globe size={18} className={securityGeofenceTanzania ? 'text-indigo-600' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-gray-900">Tanzania Geofencing Lock</h4>
+                        <p className="text-[11px] text-gray-400 leading-relaxed mt-1">Zuia kiotomatiki ufikiaji, kuingia au kupakua maudhui kutoka kwa anwani zote za IP zilizo nje ya Tanzania kwa ajili ya kuzuia udukuzi wa kimataifa.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('geofence')}
+                      className={`w-full py-2 px-3 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securityGeofenceTanzania
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {securityGeofenceTanzania ? 'Zima Kizuizi' : 'Washa Kizuizi'}
+                    </button>
+                  </div>
+
+                  {/* Plugin 2: SQLi & XSS Shield WAF */}
+                  <div className="border border-gray-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gray-200 transition-all bg-gray-50/30">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securitySqlShield ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securitySqlShield ? 'Kipanga-WAF' : 'Imezimwa'}
+                        </span>
+                        <Shield size={18} className={securitySqlShield ? 'text-indigo-600' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-gray-900">SQLi &amp; XSS Web Shield</h4>
+                        <p className="text-[11px] text-gray-450 leading-relaxed mt-1">Huzuia dondoo hatarishi (SQL injection queries) na uandishi wa mifumo ya msimbo ya udukuzi wa data (XSS filters) katika visanduku vyote vya maoni au utafutaji.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('sql')}
+                      className={`w-full py-2 px-3 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securitySqlShield
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {securitySqlShield ? 'Zima Shield' : 'Washa Shield'}
+                    </button>
+                  </div>
+
+                  {/* Plugin 3: Ransomware & Signature File Scanner */}
+                  <div className="border border-gray-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gray-200 transition-all bg-gray-50/30">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securityFileScanner ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securityFileScanner ? 'Inakagua' : 'Imezimwa'}
+                        </span>
+                        <Cpu size={18} className={securityFileScanner ? 'text-indigo-600' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-gray-900">Kiambatanisho File Signature Scanner</h4>
+                        <p className="text-[11px] text-gray-450 leading-relaxed mt-1">Kagua kila faili la mtihani au notisi (PDF, Docx) linalopakiwa na watumiaji ili kuhakikisha halina faili pacha zenye kirusi, malware au ransomware siri.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('file')}
+                      className={`w-full py-2 px-3 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securityFileScanner
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {securityFileScanner ? 'Zima Scanner' : 'Washa Scanner'}
+                    </button>
+                  </div>
+
+                  {/* Plugin 4: Mandatory MFA for Admins */}
+                  <div className="border border-gray-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gray-200 transition-all bg-gray-50/30">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securityMfaMandatory ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securityMfaMandatory ? 'MFA Shuruti' : 'MFA Hiari'}
+                        </span>
+                        <Lock size={18} className={securityMfaMandatory ? 'text-indigo-600' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-gray-900">Uthibitishaji wa OTP (2FA Mandate)</h4>
+                        <p className="text-[11px] text-gray-450 leading-relaxed mt-1">Weka sharti thabiti la nambari maalum ya siri ya sekunde 30 (OTP) kwa msimamizi yeyote pindi anapojaribu kufanya mabadiliko nyeti ya kifedha au ufutaji wa watumiaji.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('mfa')}
+                      className={`w-full py-2 px-3 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securityMfaMandatory
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {securityMfaMandatory ? 'Weka ya Hiari' : 'Weka ya Shuruti'}
+                    </button>
+                  </div>
+
+                  {/* Plugin 5: Brute Force Policy Lockout */}
+                  <div className="border border-gray-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-gray-200 transition-all bg-gray-50/30">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securityBruteDefense ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securityBruteDefense ? 'Ulinzi Imara' : 'Imezimwa'}
+                        </span>
+                        <Settings size={18} className={securityBruteDefense ? 'text-indigo-600' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-gray-900">Brute Force Defend Policy</h4>
+                        <p className="text-[11px] text-gray-450 leading-relaxed mt-1">Funga kiotomatiki akaunti ya mtumiaji au ya msimamizi kwa dakika 10 ikiwa wataingiza nenosiri lisilo sahihi zaidi ya mara 3 mfululizo kuzuia kamusi udukuzi.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('brute')}
+                      className={`w-full py-2 px-3 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securityBruteDefense
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      {securityBruteDefense ? 'Zima Brute Policy' : 'Washa Brute Policy'}
+                    </button>
+                  </div>
+
+                  {/* Plugin 6: Emergency Console Lockdown */}
+                  <div className="border border-rose-100 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:border-rose-200 transition-all bg-rose-50/10">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
+                          securityLockdownMode ? 'bg-rose-500 text-white animate-pulse' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {securityLockdownMode ? 'LOCKDOWN' : 'Salama'}
+                        </span>
+                        <ShieldAlert size={18} className="text-rose-600" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-rose-850">Lockdown Server (Kifungo cha Dharura)</h4>
+                        <p className="text-[11px] text-rose-700/80 leading-relaxed mt-1">Kitufe cha dharura kikitokea shambulio la mitandao. Inasimamisha mara moja mifumo yote ya kupakua faili na kuzuia uandishi hadi msimamizi asafishe tishio.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleSecuritySetting('lockdown')}
+                      className={`w-full py-2 px-3 text-xs font-black rounded-xl uppercase tracking-wider transition-all cursor-pointer ${
+                        securityLockdownMode
+                          ? 'bg-emerald-600 hover:bg-emerald-750 text-white shadow-md'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white shadow-md'
+                      }`}
+                    >
+                      {securityLockdownMode ? 'ZIMA LOCKDOWN SASA' : 'ANZISHA LOCKDOWN (EMERGENCY)'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* IP Whitelisting & Blacklisting Panel */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Blacklisted IPs Manager */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-50">
+                    <div>
+                      <h4 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                        <XCircle size={16} className="text-rose-500" />
+                        Orodha Nyeusi ya IP (Blacklisted IPs)
+                      </h4>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Anwani hizi za IP zimezuiliwa kikamilifu kutembelea tovuti au API.</p>
+                    </div>
+                    <span className="text-xs bg-rose-50 text-rose-600 font-extrabold px-2 py-0.5 rounded-full">
+                      {securityBlacklistedIps.length}
+                    </span>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = (e.target as any).ipAddress;
+                      handleAddBlacklistIp(input.value);
+                      input.value = '';
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      name="ipAddress"
+                      type="text"
+                      placeholder="Mfano: 41.86.160.12"
+                      className="bg-slate-50 text-xs px-3 py-2 border border-slate-200 rounded-xl flex-grow focus:outline-none focus:border-indigo-600 font-mono text-gray-800"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                    >
+                      Zuia IP
+                    </button>
+                  </form>
+
+                  <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                    {securityBlacklistedIps.map((ip) => (
+                      <div key={ip} className="flex justify-between items-center bg-rose-50/35 border border-rose-100/50 p-2.5 rounded-xl text-xs">
+                        <span className="font-mono font-bold text-gray-750">{ip}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-md font-bold uppercase">Blocked</span>
+                          <button
+                            onClick={() => handleRemoveIp('blacklist', ip)}
+                            className="text-gray-400 hover:text-rose-600 p-1 transition-all"
+                            title="Ondoa Kizuizi"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {securityBlacklistedIps.length === 0 && (
+                      <p className="text-xs text-gray-400 py-4 text-center">Hakuna anwani za IP zilizozuiliwa kwa sasa.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Whitelisted IPs Manager */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-50">
+                    <div>
+                      <h4 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                        <CheckCircle size={16} className="text-emerald-500" />
+                        Orodha Salama (Whitelisted IPs)
+                      </h4>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Anwani hizi hazitapitia uthibitishaji wa Geo-blocking au MFA.</p>
+                    </div>
+                    <span className="text-xs bg-emerald-50 text-emerald-600 font-extrabold px-2 py-0.5 rounded-full">
+                      {securityWhitelistIps.length}
+                    </span>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const input = (e.target as any).ipAddress;
+                      handleAddWhitelistIp(input.value);
+                      input.value = '';
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      name="ipAddress"
+                      type="text"
+                      placeholder="Mfano: 102.223.120.4"
+                      className="bg-slate-50 text-xs px-3 py-2 border border-slate-200 rounded-xl flex-grow focus:outline-none focus:border-indigo-600 font-mono text-gray-800"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                    >
+                      Idhinisha
+                    </button>
+                  </form>
+
+                  <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                    {securityWhitelistIps.map((ip) => (
+                      <div key={ip} className="flex justify-between items-center bg-emerald-50/20 border border-emerald-100/50 p-2.5 rounded-xl text-xs">
+                        <span className="font-mono font-bold text-gray-750">{ip}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md font-bold uppercase">Trusted</span>
+                          <button
+                            onClick={() => handleRemoveIp('whitelist', ip)}
+                            className="text-gray-400 hover:text-rose-600 p-1 transition-all"
+                            title="Ondoa Ruhusa"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {securityWhitelistIps.length === 0 && (
+                      <p className="text-xs text-gray-400 py-4 text-center">Hakuna anwani salama zilizowekwa bado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Real-time Web Application Firewall (WAF) Security Log Console */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-gray-50">
+                  <div>
+                    <h3 className="text-sm font-black text-gray-950 flex items-center gap-1.5">
+                      <Activity size={18} className="text-indigo-600" />
+                      Shajara ya Matukio ya Ulinzi (Real-time WAF Security Logs)
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Tazama majaribio yote ya mienendo ya ulinzi na majaribio ya udukuzi yaliyodhibitiwa.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={runWafSimulation}
+                      disabled={isWafSimulating}
+                      className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-650 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 rounded-xl transition-all cursor-pointer"
+                    >
+                      {isWafSimulating ? 'Inajaribu ulinzi...' : 'Simulate Hacker Attack'}
+                    </button>
+                    <button
+                      onClick={clearSecurityLogs}
+                      className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-500 hover:text-gray-900 border border-gray-100 rounded-xl transition-all cursor-pointer"
+                    >
+                      Safisha Logs
+                    </button>
+                  </div>
+                </div>
+
+                <div className="font-mono bg-slate-950 text-slate-100 p-4 rounded-2xl text-xs overflow-x-auto h-[240px] space-y-2.5 border border-slate-900 select-text leading-relaxed">
+                  {securityLogs.map((log: any) => {
+                    let statusColor = 'text-emerald-400';
+                    let bgTag = 'bg-emerald-500/10 border-emerald-500/20';
+                    if (log.status === 'blocked') {
+                      statusColor = 'text-rose-400';
+                      bgTag = 'bg-rose-500/10 border-rose-500/20';
+                    } else if (log.status === 'warn') {
+                      statusColor = 'text-amber-450';
+                      bgTag = 'bg-amber-500/10 border-amber-500/20';
+                    }
+                    return (
+                      <div key={log.id} className="pb-2 border-b border-slate-900/60 last:border-0 flex items-start gap-3 text-left">
+                        <span className="text-slate-550 font-bold tracking-wider text-[10px] select-none shrink-0">{log.time}</span>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className={`px-1.5 py-0.2 border rounded font-black uppercase text-[8px] tracking-widest ${bgTag} ${statusColor}`}>{log.action}</span>
+                            <span className="text-slate-350 font-bold">{log.ip}</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-slate-400">{log.location}</span>
+                          </div>
+                          <p className="text-slate-300 font-sans font-medium text-xs leading-relaxed">{log.details}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

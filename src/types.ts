@@ -28,6 +28,11 @@ export interface AuditLog {
   targetName: string;
   details?: string;
   timestamp: number;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
+  accuracy?: number;
+  isSecureZone?: boolean;
 }
 
 export interface SystemConfig {
