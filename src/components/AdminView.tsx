@@ -157,6 +157,7 @@ export default function AdminView({
   const [dbResults, setDbResults] = useState<ExamResult[]>([]);
   const [dbTransactions, setDbTransactions] = useState<PaymentTransaction[]>([]);
   const [selectedStudentUid, setSelectedStudentUid] = useState<string>('');
+  const [selectedAuditLog, setSelectedAuditLog] = useState<AuditLog | null>(null);
   
   // Issue Certificate Form states
   const [certStudentName, setCertStudentName] = useState<string>('');
@@ -242,6 +243,9 @@ export default function AdminView({
   const [dbResources, setDbResources] = useState<EducationalResource[]>([]);
   const [resourcesSearch, setResourcesSearch] = useState<string>('');
   const [resourcesLoading, setResourcesLoading] = useState<boolean>(false);
+  const [auditActionFilter, setAuditActionFilter] = useState<string>('all');
+  const [auditIpFilter, setAuditIpFilter] = useState<string>('all');
+  const [auditLocationFilter, setAuditLocationFilter] = useState<string>('all');
 
   // News Form states
   const [newsTitle, setNewsTitle] = useState<string>('');
@@ -330,6 +334,24 @@ export default function AdminView({
   });
   const [isLocLoading, setIsLocLoading] = useState<boolean>(false);
   const [isWafSimulating, setIsWafSimulating] = useState<boolean>(false);
+  const [adminIpAddress, setAdminIpAddress] = useState<string>('102.223.120.4');
+
+  useEffect(() => {
+    const fetchRealIP = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ip) {
+            setAdminIpAddress(data.ip);
+          }
+        }
+      } catch (err) {
+        console.warn('Real IP lookup failed, using default simulated IP:', err);
+      }
+    };
+    fetchRealIP();
+  }, []);
 
   // --- NEW: Secure Zone parameters ---
   const [secureZoneLat, setSecureZoneLat] = useState<number>(() => Number(localStorage.getItem('lup_sz_lat') || '-6.7924'));
@@ -1128,6 +1150,39 @@ export default function AdminView({
     return R * c; // Distance in meters
   };
 
+  const parseUserAgent = (ua?: string) => {
+    if (!ua) return { browser: 'Unknown Browser', os: 'Unknown OS', isMobile: false };
+    const lower = ua.toLowerCase();
+    let browser = 'Unknown Browser';
+    let os = 'Unknown OS';
+    
+    if (lower.includes('firefox')) browser = 'Firefox';
+    else if (lower.includes('chrome') || lower.includes('chromium')) browser = 'Chrome';
+    else if (lower.includes('safari')) browser = 'Safari';
+    else if (lower.includes('edge')) browser = 'Edge';
+    else if (lower.includes('opera')) browser = 'Opera';
+    
+    if (lower.includes('windows')) os = 'Windows';
+    else if (lower.includes('macintosh') || lower.includes('mac os')) os = 'macOS';
+    else if (lower.includes('android')) os = 'Android';
+    else if (lower.includes('iphone') || lower.includes('ipad')) os = 'iOS';
+    else if (lower.includes('linux')) os = 'Linux';
+    
+    const isMobile = lower.includes('mobile') || lower.includes('android') || lower.includes('iphone');
+    
+    return { browser, os, isMobile };
+  };
+
+  const getIpCarrier = (ip?: string) => {
+    if (!ip) return 'Haijulikani';
+    if (ip.startsWith('102.')) return 'Vodacom Tanzania';
+    if (ip.startsWith('197.')) return 'Tigo Tanzania';
+    if (ip.startsWith('41.')) return 'Halotel Tanzania';
+    if (ip.startsWith('196.')) return 'Airtel Tanzania';
+    if (ip === '127.0.0.1' || ip === 'localhost') return 'Localhost Loopback';
+    return 'TTCL Corporation (TZ)';
+  };
+
   const reverseGeocodeHelper = async (lat: number, lng: number): Promise<string> => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`, {
@@ -1177,7 +1232,9 @@ export default function AdminView({
         lng,
         locationName: locName,
         accuracy,
-        isSecureZone: isSecure
+        isSecureZone: isSecure,
+        ipAddress: adminIpAddress,
+        userAgent: navigator.userAgent
       });
 
       // Refresh the audit logs state if we are currently looking at activity logs or security dashboard
@@ -1187,6 +1244,84 @@ export default function AdminView({
       }
     } catch (err) {
       console.error('Failed to write audit log:', err);
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      const headers = ['ID', 'Timestamp', 'Admin Name', 'Admin Email', 'Action', 'Target Name', 'Details', 'IP Address', 'Carrier', 'Location', 'Latitude', 'Longitude', 'Is Secure Zone'];
+      const rows = auditLogs.map(log => [
+        log.id,
+        log.timestamp ? new Date(log.timestamp).toISOString() : '',
+        log.adminName,
+        log.adminEmail,
+        log.action,
+        log.targetName,
+        log.details || '',
+        log.ipAddress || '102.223.120.4',
+        getIpCarrier(log.ipAddress),
+        log.locationName || 'Dar es Salaam, Tanzania',
+        log.lat || -6.7924,
+        log.lng || 39.2083,
+        log.isSecureZone ? 'TRUE' : 'FALSE'
+      ]);
+      
+      const csvContent = "data:text/csv;charset=utf-8," 
+        + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `lupanulla_audit_logs_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      alert('Imeshindwa kusafirisha CSV: ' + err.message);
+    }
+  };
+
+  const handleSimulateLogin = async () => {
+    if (!userProfile?.uid) {
+      alert('Tafadhali ingia kwenye mfumo kwanza.');
+      return;
+    }
+    
+    // Choose a random region
+    const regions = [
+      { city: 'Dodoma', lat: -6.1731, lng: 35.7419, ip: '196.192.79.14', details: 'IP ya Airtel Tanzania. Msimamizi ameingia kutoka makao makuu ya kiserikali.' },
+      { city: 'Mwanza', lat: -2.5164, lng: 32.9012, ip: '41.86.160.12', details: 'IP ya Halotel Tanzania. Kuingia salama kutoka Kanda ya Ziwa.' },
+      { city: 'Arusha', lat: -3.3731, lng: 36.6853, ip: '197.250.224.9', details: 'IP ya Tigo Tanzania. Msimamizi amejisajili kutoka kanda ya kaskazini.' },
+      { city: 'Mbeya', lat: -8.9094, lng: 33.4608, ip: '102.223.120.55', details: 'IP ya Vodacom Tanzania. Ufikiaji umeidhinishwa kutoka Nyanda za Juu Kusini.' }
+    ];
+    
+    const region = regions[Math.floor(Math.random() * regions.length)];
+    const dist = getHaversineDistance(region.lat, region.lng, secureZoneLat, secureZoneLng);
+    const isSecure = dist <= secureZoneRadius;
+    
+    try {
+      await createAuditLog({
+        adminId: userProfile.uid,
+        adminName: userProfile.name || 'Admin',
+        adminEmail: userProfile.email || '',
+        action: 'admin_login_simulated',
+        targetId: userProfile.uid,
+        targetName: userProfile.name || 'Admin',
+        details: `${region.details} | Enzi ya Usalama: ${isSecure ? 'SALAMA (INSIDE SECURE ZONE)' : 'ANGALIZO (OUTSIDE SECURE ZONE)'} (Umbali: ${(dist / 1000).toFixed(2)} km kutoka kitovu cha usalama: "${secureZoneName}")`,
+        lat: region.lat,
+        lng: region.lng,
+        locationName: `${region.city}, Tanzania`,
+        accuracy: 1200,
+        isSecureZone: isSecure,
+        ipAddress: region.ip,
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+      });
+      
+      const logs = await fetchAuditLogs();
+      setAuditLogs(logs);
+      alert(`Imefanikiwa kusimulia kuingia kwa msimamizi kutoka ${region.city}! Log imehifadhiwa Firestore.`);
+    } catch (err: any) {
+      alert('Imeshindwa kusimulia log ya kuingia: ' + err.message);
     }
   };
 
@@ -1833,7 +1968,9 @@ export default function AdminView({
             lng: longitude,
             locationName: locName,
             accuracy: accuracy,
-            isSecureZone: insideSZ
+            isSecureZone: insideSZ,
+            ipAddress: adminIpAddress,
+            userAgent: navigator.userAgent
           });
           const logs = await fetchAuditLogs();
           setAuditLogs(logs);
@@ -1856,7 +1993,9 @@ export default function AdminView({
             lng: 39.2083,
             locationName: 'Dar es Salaam, Tanzania',
             accuracy: 1500,
-            isSecureZone: true
+            isSecureZone: true,
+            ipAddress: adminIpAddress,
+            userAgent: navigator.userAgent
           });
           const logs = await fetchAuditLogs();
           setAuditLogs(logs);
@@ -4219,101 +4358,601 @@ export default function AdminView({
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-50 pb-4">
-                    <div>
-                      <h2 className="text-lg font-sans font-extrabold text-gray-900">Shajara za Matendo (System Audit Logs)</h2>
-                      <p className="text-xs text-gray-400 mt-0.5">Rekodi kamili za kiusalama za matendo ya usimamizi wa jukwaa.</p>
-                    </div>
-                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-1 uppercase tracking-wider">
-                      🔒 Super Admin Console
-                    </span>
-                  </div>
+              ) : (() => {
+                // Inline computations for stats and visuals
+                const totalActions = auditLogs.length;
+                
+                const uniqueIps = Array.from(new Set(auditLogs.map(log => log.ipAddress || '102.223.120.4')));
+                
+                const uniqueLocations = Array.from(new Set(auditLogs.map(log => {
+                  const name = log.locationName || 'Dar es Salaam, Tanzania';
+                  return name.split(',')[0].trim();
+                }))).filter(Boolean);
 
-                  {/* Search logs bar */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3.5 top-3 text-gray-400" size={14} />
-                      <input 
-                        type="text"
-                        value={resultSearch}
-                        onChange={(e) => setResultSearch(e.target.value)}
-                        placeholder="Tafuta kwa barua pepe ya msimamizi, jina la mtumiaji au kitendo..."
-                        className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-xs bg-slate-50 focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                // Group by location for Recharts Horizontal Bar Chart
+                const locationData = uniqueLocations.map(city => {
+                  const count = auditLogs.filter(log => (log.locationName || '').toLowerCase().includes(city.toLowerCase())).length;
+                  return { name: city, Actions: count };
+                }).sort((a, b) => b.Actions - a.Actions).slice(0, 5);
 
-                  {auditLogs.length === 0 ? (
-                    <div className="text-center py-12 text-gray-450 italic">
-                      No data available yet
+                // Group by IP address patterns
+                const ipPatterns = uniqueIps.map(ip => {
+                  const logsForIp = auditLogs.filter(log => (log.ipAddress || '102.223.120.4') === ip);
+                  const lastActivity = logsForIp[0]?.timestamp || Date.now();
+                  const isWhitelisted = securityWhitelistIps.includes(ip);
+                  const isBlacklisted = securityBlacklistedIps.includes(ip);
+                  
+                  let rating: 'safe' | 'warning' | 'danger' = 'warning';
+                  if (isWhitelisted) rating = 'safe';
+                  else if (isBlacklisted) rating = 'danger';
+
+                  return {
+                    ip,
+                    carrier: getIpCarrier(ip),
+                    actionsCount: logsForIp.length,
+                    lastActive: lastActivity,
+                    rating
+                  };
+                }).sort((a, b) => b.actionsCount - a.actionsCount).slice(0, 5);
+
+                const whitelistedAccesses = auditLogs.filter(log => securityWhitelistIps.includes(log.ipAddress || '')).length;
+                const safetyPercent = totalActions > 0 ? Math.round((whitelistedAccesses / totalActions) * 100) : 100;
+                let shieldStatus = 'EXCELLENT';
+                let shieldColor = 'text-emerald-600 bg-emerald-50 border-emerald-100';
+                if (safetyPercent < 50) {
+                  shieldStatus = 'HIGH RISK';
+                  shieldColor = 'text-rose-600 bg-rose-50 border-rose-100 animate-pulse';
+                } else if (safetyPercent < 85) {
+                  shieldStatus = 'MODERATE';
+                  shieldColor = 'text-amber-600 bg-amber-50 border-amber-100';
+                }
+
+                // Apply advanced filtering to logs list
+                const filteredAuditLogs = auditLogs.filter(log => {
+                  const q = resultSearch.toLowerCase();
+                  const matchesSearch = (
+                    log.adminEmail.toLowerCase().includes(q) ||
+                    log.adminName.toLowerCase().includes(q) ||
+                    log.action.toLowerCase().includes(q) ||
+                    log.targetName.toLowerCase().includes(q) ||
+                    (log.details && log.details.toLowerCase().includes(q))
+                  );
+                  
+                  let matchesAction = true;
+                  if (auditActionFilter !== 'all') {
+                    if (auditActionFilter === 'login') {
+                      matchesAction = log.action.includes('login');
+                    } else if (auditActionFilter === 'user') {
+                      matchesAction = log.action.includes('user') || log.action.includes('role') || log.action.includes('subscription');
+                    } else if (auditActionFilter === 'content') {
+                      matchesAction = log.action.includes('document') || log.action.includes('news') || log.action.includes('video') || log.action.includes('product');
+                    } else if (auditActionFilter === 'settings') {
+                      matchesAction = log.action.includes('config') || log.action.includes('secure') || log.action.includes('integrations') || log.action.includes('adsense');
+                    }
+                  }
+                  
+                  const matchesIp = auditIpFilter === 'all' || (log.ipAddress || '102.223.120.4') === auditIpFilter;
+                  
+                  const matchesLocation = auditLocationFilter === 'all' || (log.locationName || '').toLowerCase().includes(auditLocationFilter.toLowerCase());
+                  
+                  return matchesSearch && matchesAction && matchesIp && matchesLocation;
+                });
+
+                const CustomChartTooltip = ({ active, payload }: any) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-slate-900 text-white text-[10px] p-2 rounded-xl shadow-lg border border-slate-800 font-sans">
+                        <p className="font-extrabold">{payload[0].payload.name}</p>
+                        <p className="font-mono mt-0.5">Matendo: {payload[0].value}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {/* Header Controls with Simulation & Export */}
+                    <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="bg-rose-50 text-rose-600 text-[10px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider border border-rose-100">
+                            🔒 Super Admin Security Console
+                          </span>
+                        </div>
+                        <h2 className="text-xl font-sans font-black text-gray-900 mt-2">Dhibiti na Uhakiki Shajara za Usalama</h2>
+                        <p className="text-xs text-gray-400 mt-0.5">Uchunguzi kamili wa maeneo ya ufikiaji (Login Locations) na Mifumo ya IP kwa wasimamizi wote.</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                        <button
+                          onClick={handleSimulateLogin}
+                          className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all"
+                          title="Simulate Admin Login from different TZ regions"
+                        >
+                          <Globe size={13} />
+                          <span>Simulate Login</span>
+                        </button>
+                        
+                        <button
+                          onClick={handleExportCSV}
+                          className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-sm"
+                          title="Export all recorded audit logs to a CSV spreadsheet"
+                        >
+                          <Download size={13} />
+                          <span>Hamisha CSV</span>
+                        </button>
+
+                        <button
+                          onClick={loadAdminData}
+                          className="flex items-center justify-center p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 transition-all"
+                          title="Refresh system logs directly from Firestore"
+                        >
+                          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left text-gray-500">
-                        <thead className="text-xs text-gray-400 uppercase font-bold bg-gray-50/50">
-                          <tr>
-                            <th scope="col" className="px-4 py-3">Muda / Tarehe</th>
-                            <th scope="col" className="px-4 py-3">Msimamizi</th>
-                            <th scope="col" className="px-4 py-3">Kitendo</th>
-                            <th scope="col" className="px-4 py-3">Mlengo wa Kitendo</th>
-                            <th scope="col" className="px-4 py-3">Maelezo Kamili</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-xs">
-                          {auditLogs
-                            .filter(log => {
-                              const q = resultSearch.toLowerCase();
-                              return (
-                                log.adminEmail.toLowerCase().includes(q) ||
-                                log.adminName.toLowerCase().includes(q) ||
-                                log.action.toLowerCase().includes(q) ||
-                                log.targetName.toLowerCase().includes(q) ||
-                                (log.details && log.details.toLowerCase().includes(q))
-                              );
-                            })
-                            .map((log) => (
-                              <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="px-4 py-4 whitespace-nowrap font-mono text-gray-400 text-[10px]">
-                                  {log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB') : '—'}
-                                </td>
-                                <td className="px-4 py-4">
-                                  <div className="flex flex-col">
-                                    <span className="font-extrabold text-gray-800">{log.adminName}</span>
-                                    <span className="text-[10px] text-gray-400 font-mono">{log.adminEmail}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap">
-                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                                    log.action === 'suspend_user' ? 'bg-red-500 text-white' :
-                                    log.action === 'unsuspend_user' ? 'bg-slate-900 text-white' :
-                                    log.action === 'update_role' ? 'bg-indigo-650 text-white' :
-                                    log.action === 'approve_document' ? 'bg-emerald-600 text-white' :
-                                    log.action === 'reject_document' ? 'bg-amber-600 text-white' :
-                                    log.action === 'delete_document' ? 'bg-gray-700 text-white' :
-                                    'bg-indigo-50 text-indigo-700 border border-indigo-100'
+
+                    {/* Bento Statistics Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Stat 1: Total actions */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div className="flex justify-between items-center text-gray-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Jumla ya Shajara</span>
+                          <Activity size={16} className="text-slate-500" />
+                        </div>
+                        <p className="text-3xl font-sans font-extrabold text-slate-900">{totalActions}</p>
+                        <p className="text-[10px] text-gray-400">Matendo yote ya usimamizi yaliyohifadhiwa.</p>
+                      </div>
+
+                      {/* Stat 2: Unique IPs */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div className="flex justify-between items-center text-gray-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Anwani za IP za Kipekee</span>
+                          <Fingerprint size={16} className="text-indigo-500" />
+                        </div>
+                        <p className="text-3xl font-sans font-extrabold text-indigo-650">{uniqueIps.length}</p>
+                        <p className="text-[10px] text-gray-400">Wasimamizi waliounganishwa kwenye mifumo tofauti.</p>
+                      </div>
+
+                      {/* Stat 3: Geographic diversity */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-2">
+                        <div className="flex justify-between items-center text-gray-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Miji Iliyorekodiwa</span>
+                          <MapPin size={16} className="text-teal-500" />
+                        </div>
+                        <p className="text-3xl font-sans font-extrabold text-teal-650">{uniqueLocations.length}</p>
+                        <p className="text-[10px] text-gray-400">Maeneo ya ufikiaji nchini Tanzania.</p>
+                      </div>
+
+                      {/* Stat 4: Security Shield Rating */}
+                      <div className={`border rounded-2xl p-5 shadow-sm space-y-2 ${shieldColor}`}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Daraja la Ulinzi (Shield)</span>
+                          <Shield size={16} />
+                        </div>
+                        <p className="text-3xl font-sans font-black tracking-tight">{shieldStatus}</p>
+                        <p className="text-[10px] opacity-85">
+                          {safetyPercent}% ya ufikiaji imetokea kupitia IP zinazoaminika.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Chart & Pattern Analytics Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left: Recharts Action Density per Region */}
+                      <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-800">Uchambuzi wa Maeneo (Login Locations Density)</h3>
+                          <p className="text-[10px] text-slate-400">Mgawanyiko wa matendo ya usimamizi kwa kila mkoa wa Tanzania.</p>
+                        </div>
+                        
+                        {locationData.length === 0 ? (
+                          <div className="h-64 flex items-center justify-center text-xs text-gray-400 italic">
+                            No location data recorded yet
+                          </div>
+                        ) : (
+                          <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                layout="vertical"
+                                data={locationData}
+                                margin={{ top: 10, right: 20, left: 10, bottom: 5 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                                <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={10} width={80} tickLine={false} />
+                                <Tooltip content={<CustomChartTooltip />} />
+                                <Bar dataKey="Actions" fill="#4f46e5" radius={[0, 8, 8, 0]} barSize={18} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: IP Threat Intelligence and Carrier Recognition */}
+                      <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-800">Mifumo na Historia za IP (IP Pattern Intelligence)</h3>
+                          <p className="text-[10px] text-slate-400">Anwani za IP zinazofanya matendo mengi zaidi na uaminifu wao.</p>
+                        </div>
+
+                        <div className="space-y-3.5">
+                          {ipPatterns.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-gray-100 text-xs">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-extrabold text-slate-800">{item.ip}</span>
+                                  <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                                    item.rating === 'safe' ? 'bg-emerald-100 text-emerald-800' :
+                                    item.rating === 'danger' ? 'bg-rose-100 text-rose-800 animate-pulse' :
+                                    'bg-amber-100 text-amber-800'
                                   }`}>
-                                    {log.action}
+                                    {item.rating === 'safe' ? 'Inaaminika' : item.rating === 'danger' ? 'Imezuiliwa' : 'Mgeni'}
                                   </span>
-                                </td>
-                                <td className="px-4 py-4">
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-gray-800">{log.targetName}</span>
-                                    <span className="text-[9px] text-gray-400 font-mono">ID: {log.targetId}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-4 max-w-xs truncate text-gray-600 font-medium" title={log.details}>
-                                  {log.details || '—'}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                                  <span>Mtandao:</span>
+                                  <span className="font-bold text-gray-500">{item.carrier}</span>
+                                </div>
+                              </div>
+
+                              <div className="text-right space-y-0.5">
+                                <p className="font-black text-slate-800 font-mono text-sm">{item.actionsCount} <span className="text-[10px] text-gray-400 font-sans font-medium">matendo</span></p>
+                                <p className="text-[9px] text-gray-400 font-mono">Lengo: {new Date(item.lastActive).toLocaleTimeString('en-GB')}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* Interactive Logs Filtering Controls */}
+                    <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm space-y-4">
+                      <div className="flex flex-col lg:flex-row gap-3">
+                        {/* Keyword Search */}
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3.5 top-3.5 text-gray-400" size={14} />
+                          <input 
+                            type="text"
+                            value={resultSearch}
+                            onChange={(e) => setResultSearch(e.target.value)}
+                            placeholder="Tafuta msimamizi, nambari ya IP, au neno maalumu la kitendo..."
+                            className="w-full border border-gray-200 rounded-2xl pl-9 pr-4 py-3 text-xs bg-slate-50 focus:outline-none focus:border-indigo-650"
+                          />
+                        </div>
+
+                        {/* Action Filter */}
+                        <div className="w-full lg:w-48">
+                          <select
+                            value={auditActionFilter}
+                            onChange={(e) => setAuditActionFilter(e.target.value)}
+                            className="w-full border border-gray-200 rounded-2xl px-3 py-3 text-xs bg-slate-50 focus:outline-none focus:border-indigo-650"
+                          >
+                            <option value="all">Kundi: Matendo Yote</option>
+                            <option value="login">Kuingia (Logins Only)</option>
+                            <option value="user">Usimamizi Watumiaji</option>
+                            <option value="content">Usimamizi Maktaba</option>
+                            <option value="settings">Mipangilio ya Mfumo</option>
+                          </select>
+                        </div>
+
+                        {/* IP Filter */}
+                        <div className="w-full lg:w-48">
+                          <select
+                            value={auditIpFilter}
+                            onChange={(e) => setAuditIpFilter(e.target.value)}
+                            className="w-full border border-gray-200 rounded-2xl px-3 py-3 text-xs bg-slate-50 focus:outline-none focus:border-indigo-650 font-mono"
+                          >
+                            <option value="all">IP Zote</option>
+                            {uniqueIps.map(ip => (
+                              <option key={ip} value={ip}>{ip}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Location Filter */}
+                        <div className="w-full lg:w-48">
+                          <select
+                            value={auditLocationFilter}
+                            onChange={(e) => setAuditLocationFilter(e.target.value)}
+                            className="w-full border border-gray-200 rounded-2xl px-3 py-3 text-xs bg-slate-50 focus:outline-none focus:border-indigo-650"
+                          >
+                            <option value="all">Mikoa Yote</option>
+                            {uniqueLocations.map(loc => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Audit Logs Data Table */}
+                      {filteredAuditLogs.length === 0 ? (
+                        <div className="text-center py-16 text-gray-400 italic bg-slate-50/50 rounded-2xl border border-dashed border-gray-200">
+                          Hakuna shajara ya usalama iliyopatikana kwa vigezo hivi vya chujio.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                          <table className="w-full text-xs text-left text-gray-500">
+                            <thead className="text-[10px] text-gray-400 uppercase font-black tracking-wider bg-gray-50/70 border-b border-gray-100">
+                              <tr>
+                                <th scope="col" className="px-4 py-3.5">Muda / Tarehe</th>
+                                <th scope="col" className="px-4 py-3.5">Msimamizi</th>
+                                <th scope="col" className="px-4 py-3.5">IP &amp; Mtandao</th>
+                                <th scope="col" className="px-4 py-3.5">Eneo na GPS</th>
+                                <th scope="col" className="px-4 py-3.5">Kitendo &amp; Mlengo</th>
+                                <th scope="col" className="px-4 py-3.5 text-center">Chaguzi</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {filteredAuditLogs.map((log) => {
+                                const carrierName = getIpCarrier(log.ipAddress);
+                                const isTrustedIp = securityWhitelistIps.includes(log.ipAddress || '');
+                                const isSpannedSz = log.isSecureZone;
+                                const uaParsed = parseUserAgent(log.userAgent);
+
+                                return (
+                                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                    {/* Timestamp */}
+                                    <td className="px-4 py-4 whitespace-nowrap font-mono text-gray-400 text-[10px]">
+                                      {log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB') : '—'}
+                                    </td>
+                                    
+                                    {/* Admin info */}
+                                    <td className="px-4 py-4">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-extrabold text-slate-800 flex items-center gap-1">
+                                          <span>{log.adminName}</span>
+                                          <span className="text-[8px] bg-slate-100 text-slate-500 px-1 py-0.2 rounded font-mono font-medium">
+                                            {uaParsed.os}
+                                          </span>
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{log.adminEmail}</span>
+                                      </div>
+                                    </td>
+
+                                    {/* IP & Carrier */}
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-mono font-extrabold text-slate-800 flex items-center gap-1.5">
+                                          <span>{log.ipAddress || '102.223.120.4'}</span>
+                                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${isTrustedIp ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-medium">{carrierName}</span>
+                                      </div>
+                                    </td>
+
+                                    {/* Location & GPS */}
+                                    <td className="px-4 py-4">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-bold text-slate-700 flex items-center gap-1">
+                                          <MapPin size={11} className="text-slate-400 shrink-0" />
+                                          <span className="truncate max-w-[120px]">{log.locationName || 'Dar es Salaam, TZ'}</span>
+                                        </span>
+                                        <span className={`text-[9px] font-black uppercase tracking-wider rounded px-1.5 py-0.2 w-fit ${
+                                          isSpannedSz ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                        }`}>
+                                          {isSpannedSz ? 'Zone Salama' : 'Zone Angalizo'}
+                                        </span>
+                                      </div>
+                                    </td>
+
+                                    {/* Action & Target */}
+                                    <td className="px-4 py-4">
+                                      <div className="flex flex-col gap-1.5">
+                                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md w-fit ${
+                                          log.action.includes('login') ? 'bg-emerald-600 text-white' :
+                                          log.action === 'suspend_user' ? 'bg-red-500 text-white' :
+                                          log.action === 'update_role' ? 'bg-indigo-600 text-white' :
+                                          log.action.includes('delete') ? 'bg-rose-600 text-white' :
+                                          'bg-slate-900 text-white'
+                                        }`}>
+                                          {log.action}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 font-semibold truncate max-w-[140px]" title={log.targetName}>
+                                          Lengo: {log.targetName}
+                                        </span>
+                                      </div>
+                                    </td>
+
+                                    {/* Options (Inspect) */}
+                                    <td className="px-4 py-4 text-center">
+                                      <button
+                                        onClick={() => setSelectedAuditLog(log)}
+                                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all"
+                                        title="Inspect full geolocational and network audit metadata"
+                                      >
+                                        <Eye size={13} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Security Inspect Modal */}
+                    {selectedAuditLog && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden transform scale-95 transition-all">
+                          {/* Modal Header */}
+                          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 text-white flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <Shield size={18} className="text-indigo-400" />
+                              <div>
+                                <h3 className="font-sans font-black text-sm uppercase tracking-wider">Uchunguzi wa Kina wa Shajara</h3>
+                                <p className="text-[10px] text-indigo-300">ID: {selectedAuditLog.id}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setSelectedAuditLog(null)}
+                              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all text-white font-extrabold text-sm"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {/* Modal Body */}
+                          <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-xs">
+                            {/* Visual Geolocation and Safe status banner */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Eneo la GPS na Usahihi</p>
+                                <p className="text-base font-extrabold text-slate-800 flex items-center gap-1.5">
+                                  <MapPin size={16} className="text-indigo-600 shrink-0" />
+                                  <span>{selectedAuditLog.locationName || 'Dar es Salaam, Tanzania'}</span>
+                                </p>
+                                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-500 pt-1">
+                                  <div>Lat: {selectedAuditLog.lat?.toFixed(5) || '-6.79240'}</div>
+                                  <div>Lng: {selectedAuditLog.lng?.toFixed(5) || '39.20830'}</div>
+                                  <div className="col-span-2">Usahihi wa GPS: ±{Math.round(selectedAuditLog.accuracy || 1500)}m</div>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Kiwango cha Usalama wa Kijiografia</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm shrink-0 ${
+                                    selectedAuditLog.isSecureZone 
+                                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                      : 'bg-amber-50 text-amber-600 border border-amber-200'
+                                  }`}>
+                                    {selectedAuditLog.isSecureZone ? '✓' : '⚠️'}
+                                  </div>
+                                  <div>
+                                    <p className="font-extrabold text-slate-800">
+                                      {selectedAuditLog.isSecureZone ? 'Eneo Lililoidhinishwa' : 'Eneo Lisilojulikana'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 leading-normal">
+                                      {selectedAuditLog.isSecureZone 
+                                        ? 'Ndani ya eneo rasmi la usalama (Secure Zone).' 
+                                        : 'Nje ya mipaka ya maeneo ya usalama.'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Network and Device Specs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Maelezo ya Kifaa na OS (User Agent)</p>
+                                {(() => {
+                                  const parsed = parseUserAgent(selectedAuditLog.userAgent);
+                                  return (
+                                    <div className="space-y-1.5">
+                                      <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                        <Globe size={13} className="text-slate-500" />
+                                        <span>Kivinjari: {parsed.browser}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                        <Sliders size={13} className="text-slate-500" />
+                                        <span>Mfumo (OS): {parsed.os}</span>
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 italic break-all font-mono">
+                                        {selectedAuditLog.userAgent || 'Mozilla/5.0'}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Mwasiliani wa Mtandao (IP Metadata)</p>
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-1.5 font-mono font-extrabold text-slate-800">
+                                    <Fingerprint size={13} className="text-indigo-600" />
+                                    <span>Anwani ya IP: {selectedAuditLog.ipAddress || '102.223.120.4'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                    <Activity size={13} className="text-indigo-600" />
+                                    <span>Mtandao wa Simu: {getIpCarrier(selectedAuditLog.ipAddress)}</span>
+                                  </div>
+                                  <span className={`inline-flex text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                    securityWhitelistIps.includes(selectedAuditLog.ipAddress || '') 
+                                      ? 'bg-emerald-100 text-emerald-800' 
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {securityWhitelistIps.includes(selectedAuditLog.ipAddress || '') ? 'Anwani Iliyoidhinishwa (Whitelisted)' : 'IP ya Nje'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Full Details Context */}
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Muktadha na Shughuli Kamili</p>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-slate-800">Kitendo:</span>
+                                  <span className="px-2 py-0.5 bg-slate-900 text-white font-mono font-bold uppercase rounded text-[9px]">
+                                    {selectedAuditLog.action}
+                                  </span>
+                                </div>
+                                <div className="text-slate-750 leading-relaxed font-semibold">
+                                  {selectedAuditLog.details}
+                                </div>
+                                <div className="text-[10px] text-gray-400 flex items-center gap-1">
+                                  <span>Mlengo (Target):</span>
+                                  <span className="font-mono text-slate-600">{selectedAuditLog.targetName}</span>
+                                  <span className="text-[9px] text-gray-400">({selectedAuditLog.targetId})</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Modal Footer */}
+                          <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-2">
+                            {securityWhitelistIps.includes(selectedAuditLog.ipAddress || '') ? (
+                              <button
+                                onClick={async () => {
+                                  if (selectedAuditLog.ipAddress) {
+                                    setSecurityWhitelistIps(prev => {
+                                      const updated = prev.filter(ip => ip !== selectedAuditLog.ipAddress);
+                                      localStorage.setItem('lup_sec_whitelist', JSON.stringify(updated));
+                                      return updated;
+                                    });
+                                    alert('IP imefanikiwa kuondolewa kwenye orodha ya uaminifu (Whitelist).');
+                                  }
+                                }}
+                                className="px-4 py-2 bg-amber-550 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all"
+                              >
+                                Ondoa kwenye Whitelist
+                              </button>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  if (selectedAuditLog.ipAddress) {
+                                    setSecurityWhitelistIps(prev => {
+                                      const updated = [...prev, selectedAuditLog.ipAddress!];
+                                      localStorage.setItem('lup_sec_whitelist', JSON.stringify(updated));
+                                      return updated;
+                                    });
+                                    alert('IP imeongezwa kwa mafanikio kwenye orodha ya uaminifu (Whitelist).');
+                                  }
+                                }}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all"
+                              >
+                                Imarisha kama IP Salama (Whitelist)
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setSelectedAuditLog(null)}
+                              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all"
+                            >
+                              Funga Uchunguzi
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

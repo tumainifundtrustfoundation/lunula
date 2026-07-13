@@ -33,6 +33,8 @@ export interface AuditLog {
   locationName?: string;
   accuracy?: number;
   isSecureZone?: boolean;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export interface SystemConfig {
