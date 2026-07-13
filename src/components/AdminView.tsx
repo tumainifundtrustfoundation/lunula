@@ -37,7 +37,9 @@ import {
   X,
   Newspaper,
   Library,
-  Tv
+  Tv,
+  ShoppingBag,
+  MessageSquare
 } from 'lucide-react';
 import {
   AreaChart,
@@ -51,7 +53,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video, Product, Feedback } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -89,7 +91,14 @@ import {
   fetchVideos,
   saveVideo,
   updateVideo,
-  deleteVideo
+  deleteVideo,
+  fetchProducts,
+  saveProduct,
+  updateProduct,
+  deleteProduct,
+  fetchFeedbacks,
+  updateFeedbackStatus,
+  updateExamResult
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -248,6 +257,24 @@ export default function AdminView({
   const [videoDuration, setVideoDuration] = useState<string>('15:00');
   const [isVideoSaving, setIsVideoSaving] = useState<boolean>(false);
 
+  // --- NEW: Bookstore products management states ---
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState<string>('');
+  const [isProductFormOpen, setIsProductFormOpen] = useState<boolean>(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productName, setProductName] = useState<string>('');
+  const [productDescription, setProductDescription] = useState<string>('');
+  const [productPrice, setProductPrice] = useState<number>(5000);
+  const [productStockQuantity, setProductStockQuantity] = useState<number>(100);
+  const [productCategory, setProductCategory] = useState<string>('Notes');
+  const [productImageUrl, setProductImageUrl] = useState<string>('');
+  const [isProductSaving, setIsProductSaving] = useState<boolean>(false);
+
+  // --- NEW: User Feedbacks states ---
+  const [dbFeedbacks, setDbFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackSearch, setFeedbackSearch] = useState<string>('');
+  const [feedbackTypeFilter, setFeedbackTypeFilter] = useState<string>('all');
+
   useEffect(() => {
     const verifyUserRoleAndLoad = async () => {
       if (!userProfile?.uid) {
@@ -372,6 +399,14 @@ export default function AdminView({
       } else if (activeTab === 'videos') {
         const vList = await fetchVideos();
         setDbVideos(vList);
+      } else if (activeTab === 'products') {
+        const prodList = await fetchProducts();
+        prodList.sort((a, b) => b.price - a.price);
+        setDbProducts(prodList);
+      } else if (activeTab === 'feedback') {
+        const feedbackList = await fetchFeedbacks();
+        feedbackList.sort((a, b) => b.createdAt - a.createdAt);
+        setDbFeedbacks(feedbackList);
       }
     } catch (err) {
       console.error('Error loading admin dashboard datasets:', err);
@@ -820,6 +855,102 @@ export default function AdminView({
     } catch (err) {
       console.error('Failed to delete video:', err);
       alert('Imeshindwa kufuta video.');
+    }
+  };
+
+  // --- NEW: Product Management Handlers ---
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setProductName('');
+    setProductDescription('');
+    setProductPrice(5000);
+    setProductStockQuantity(100);
+    setProductCategory('Notes');
+    setProductImageUrl('');
+    setIsProductFormOpen(true);
+  };
+
+  const handleOpenEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductName(product.name);
+    setProductDescription(product.description || '');
+    setProductPrice(product.price);
+    setProductStockQuantity(product.stockQuantity);
+    setProductCategory(product.category || 'Notes');
+    setProductImageUrl(product.imageUrl || '');
+    setIsProductFormOpen(true);
+  };
+
+  const handleSaveProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productName.trim()) {
+      alert('Tafadhali weka jina la bidhaa.');
+      return;
+    }
+    if (productPrice <= 0) {
+      alert('Tafadhali weka bei sahihi.');
+      return;
+    }
+
+    setIsProductSaving(true);
+    try {
+      const payload = {
+        name: productName.trim(),
+        description: productDescription.trim(),
+        price: Number(productPrice),
+        stockQuantity: Number(productStockQuantity),
+        category: productCategory,
+        imageUrl: productImageUrl.trim() || 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&auto=format&fit=crop&q=60'
+      };
+
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, payload);
+        await logAdminAction('update_product', editingProduct.id, productName.trim(), 'Updated product details in bookstore');
+        alert('Bidhaa imesasishwa kikamilifu!');
+      } else {
+        const id = await saveProduct(payload);
+        await logAdminAction('create_product', id, productName.trim(), 'Added new product directly to bookstore catalog');
+        alert('Bidhaa mpya imehifadhiwa kikamilifu!');
+      }
+
+      setIsProductFormOpen(false);
+      setEditingProduct(null);
+      // reload
+      const prodList = await fetchProducts();
+      setDbProducts(prodList);
+    } catch (err: any) {
+      console.error(err);
+      alert('Imeshindwa kuhifadhi bidhaa: ' + (err.message || err));
+    } finally {
+      setIsProductSaving(false);
+    }
+  };
+
+  const handleDeleteProductClick = async (id: string, name: string) => {
+    const confirmed = window.confirm(`Je, una uhakika unataka kufuta kabisa bidhaa hii: "${name}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteProduct(id);
+      setDbProducts(prev => prev.filter(p => p.id !== id));
+      await logAdminAction('delete_product', id, name, `Deleted product from bookstore catalog: ${name}`);
+      alert('Bidhaa imefutwa kikamilifu.');
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+      alert('Imeshindwa kufuta bidhaa.');
+    }
+  };
+
+  // --- NEW: Feedback Management Handlers ---
+  const handleUpdateFeedbackStatus = async (id: string, currentText: string, status: 'new' | 'reviewed' | 'resolved') => {
+    try {
+      await updateFeedbackStatus(id, status);
+      setDbFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status } : f));
+      await logAdminAction('update_feedback_status', id, currentText.slice(0, 30), `Updated feedback status to ${status}`);
+      alert('Hali ya maoni imesasishwa kikamilifu!');
+    } catch (err) {
+      console.error('Failed to update feedback status:', err);
+      alert('Imeshindwa kusasisha hali ya maoni.');
     }
   };
 
@@ -1687,6 +1818,33 @@ export default function AdminView({
         >
           <Clock size={16} />
           Shajara za Matendo (Audit Logs)
+        </button>
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'products'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <ShoppingBag size={16} />
+          Duka la Vitabu (Bookstore)
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'feedback'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <MessageSquare size={16} />
+          Maoni ya Watumiaji
+          {dbFeedbacks.filter(f => f.status === 'new').length > 0 && (
+            <span className="bg-rose-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              {dbFeedbacks.filter(f => f.status === 'new').length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('integrations')}
@@ -4601,6 +4759,359 @@ export default function AdminView({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: BOOKSTORE PRODUCTS MANAGEMENT */}
+          {activeTab === 'products' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-left">
+                  <h2 className="text-lg font-sans font-extrabold text-gray-900">Usimamizi wa Duka la Vitabu (Bookstore)</h2>
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                    Dhibiti vitabu na nyaraka zinazouzwa kwa gharama nafuu kwa wanafunzi Tanzania
+                  </p>
+                </div>
+                <button
+                  onClick={handleOpenAddProduct}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all uppercase flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                >
+                  <Plus size={16} /> Ongeza Bidhaa Mpya
+                </button>
+              </div>
+
+              {/* Products search and filters */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <Search size={16} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tafuta bidhaa kwa jina, kundi, au maelezo..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 text-sm text-gray-800 border border-gray-200 rounded-xl outline-none font-semibold"
+                />
+              </div>
+
+              {/* Products Table */}
+              <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-400 uppercase font-bold bg-gray-50/50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">Picha &amp; Jina la Bidhaa</th>
+                      <th scope="col" className="px-4 py-3">Kundi (Category)</th>
+                      <th scope="col" className="px-4 py-3">Bei (Price)</th>
+                      <th scope="col" className="px-4 py-3">Kiasi Kilichopo (Stock)</th>
+                      <th scope="col" className="px-4 py-3 text-right">Vitendo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dbProducts.filter(p => 
+                      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                      (p.category || '').toLowerCase().includes(productSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-xs text-gray-400 font-medium">
+                          Hakuna bidhaa zilizopatikana kwenye mfumo kwa sasa.
+                        </td>
+                      </tr>
+                    ) : (
+                      dbProducts.filter(p => 
+                        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                        (p.category || '').toLowerCase().includes(productSearch.toLowerCase())
+                      ).map((product) => (
+                        <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={product.imageUrl || 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&auto=format&fit=crop&q=60'} 
+                                alt={product.name} 
+                                className="w-12 h-14 object-cover rounded-lg shadow-sm border border-slate-100 shrink-0" 
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="flex flex-col text-left max-w-md">
+                                <span className="font-extrabold text-gray-800 line-clamp-2">{product.name}</span>
+                                <span className="text-[10px] text-gray-400 mt-1 line-clamp-1">{product.description || 'Hakuna maelezo'}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-bold text-gray-700 text-left">
+                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md capitalize">{product.category}</span>
+                          </td>
+                          <td className="px-4 py-3 text-xs font-black text-emerald-600 text-left">
+                            {product.price.toLocaleString()} TZS
+                          </td>
+                          <td className="px-4 py-3 text-xs text-left">
+                            {product.stockQuantity <= 5 ? (
+                              <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded-md font-bold animate-pulse">Inakaribia kuisha ({product.stockQuantity})</span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md font-semibold">Zipopo ({product.stockQuantity})</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenEditProduct(product)}
+                                className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-lg cursor-pointer transition-all"
+                                title="Hariri bidhaa hii"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProductClick(product.id, product.name)}
+                                className="p-2 hover:bg-red-50 text-red-500 hover:text-red-600 rounded-lg cursor-pointer transition-all"
+                                title="Futa bidhaa hii"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Product Add/Edit Modal */}
+              {isProductFormOpen && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm" onClick={() => setIsProductFormOpen(false)}></div>
+                  <div className="relative bg-white border border-gray-100 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col z-[310] animate-fade-in text-gray-800">
+                    <button 
+                      onClick={() => setIsProductFormOpen(false)}
+                      className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all z-20 cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
+
+                    <div className="p-5 border-b border-gray-100 bg-indigo-50/50 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                        <ShoppingBag size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-sans font-extrabold text-sm text-gray-900 uppercase tracking-tight">
+                          {editingProduct ? 'Hariri Bidhaa ya Duka' : 'Sajili Bidhaa Mpya'}
+                        </h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                          Usimamizi wa duka la vitabu, notisi, na majarida ya Lupanulla
+                        </p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSaveProductSubmit} className="p-6 space-y-4">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Jina la Kitabu / Bidhaa</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={productName}
+                          onChange={(e) => setProductName(e.target.value)}
+                          placeholder="Mfano: Notisi Kamili za Fizikia Kidato cha Tatu (TIE 2026)" 
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                        />
+                      </div>
+
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Maelezo ya Bidhaa</label>
+                        <textarea 
+                          rows={3}
+                          value={productDescription}
+                          onChange={(e) => setProductDescription(e.target.value)}
+                          placeholder="Mfano: Notisi hizi zimeandaliwa kwa kuzingatia muhtasari mpya wa somo la Fizikia kwa shule za sekondari Tanzania..." 
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Bei ya Mauzo (TZS)</label>
+                          <input 
+                            type="number" 
+                            required
+                            value={productPrice}
+                            onChange={(e) => setProductPrice(Number(e.target.value))}
+                            placeholder="5000" 
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Kiasi cha Stoku (Stock Quantity)</label>
+                          <input 
+                            type="number" 
+                            required
+                            value={productStockQuantity}
+                            onChange={(e) => setProductStockQuantity(Number(e.target.value))}
+                            placeholder="100" 
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Kundi la Bidhaa (Category)</label>
+                          <select 
+                            value={productCategory}
+                            onChange={(e) => setProductCategory(e.target.value)}
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 cursor-pointer"
+                          >
+                            <option value="Notes">Notes</option>
+                            <option value="Books">Books</option>
+                            <option value="Past Papers">Past Papers</option>
+                            <option value="Syllabus">Syllabus</option>
+                            <option value="Other">Nyinginezo</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1 text-left">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Picha ya Bidhaa (URL)</label>
+                          <input 
+                            type="text" 
+                            value={productImageUrl}
+                            onChange={(e) => setProductImageUrl(e.target.value)}
+                            placeholder="https://..." 
+                            className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button 
+                          type="button"
+                          onClick={() => setIsProductFormOpen(false)}
+                          className="px-4 py-2 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl uppercase hover:bg-slate-50 cursor-pointer"
+                        >
+                          Ghairi
+                        </button>
+                        <button 
+                          type="submit"
+                          disabled={isProductSaving}
+                          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl uppercase flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          {isProductSaving ? 'Inahifadhi...' : (editingProduct ? 'Hifadhi Mabadiliko' : 'Sajili Bidhaa')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: USER FEEDBACKS */}
+          {activeTab === 'feedback' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="text-left">
+                <h2 className="text-lg font-sans font-extrabold text-gray-900">Maoni na Malalamiko ya Watumiaji (Feedbacks)</h2>
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-0.5">
+                  Soma na ushughulikie mapendekezo, taarifa za hitilafu, au nyaraka zinazokosekana zilizoripotiwa na wanafunzi
+                </p>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                    <Search size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Tafuta kwa jina, barua pepe, au maudhui..."
+                    value={feedbackSearch}
+                    onChange={(e) => setFeedbackSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50/50 text-sm text-gray-800 border border-gray-200 rounded-xl outline-none font-semibold"
+                  />
+                </div>
+                <div className="w-full sm:w-48 shrink-0">
+                  <select
+                    value={feedbackTypeFilter}
+                    onChange={(e) => setFeedbackTypeFilter(e.target.value)}
+                    className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-700 cursor-pointer"
+                  >
+                    <option value="all">Aina Zote za Maoni</option>
+                    <option value="missing_notes">Nyaraka Zinazokosekana</option>
+                    <option value="improvement">Mapendekezo ya Kuboresha</option>
+                    <option value="bug">Hitilafu / Bugs</option>
+                    <option value="other">Mengineyo</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Feedback cards bento grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dbFeedbacks.filter(f => {
+                  const matchesSearch = f.userName.toLowerCase().includes(feedbackSearch.toLowerCase()) || 
+                                        f.email.toLowerCase().includes(feedbackSearch.toLowerCase()) || 
+                                        f.message.toLowerCase().includes(feedbackSearch.toLowerCase());
+                  const matchesFilter = feedbackTypeFilter === 'all' || f.type === feedbackTypeFilter;
+                  return matchesSearch && matchesFilter;
+                }).length === 0 ? (
+                  <div className="col-span-1 md:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl p-12 text-center text-xs text-gray-400 font-semibold">
+                    Hakuna maoni yoyote yaliyopatikana kwa vichujio hivi kwa sasa.
+                  </div>
+                ) : (
+                  dbFeedbacks.filter(f => {
+                    const matchesSearch = f.userName.toLowerCase().includes(feedbackSearch.toLowerCase()) || 
+                                          f.email.toLowerCase().includes(feedbackSearch.toLowerCase()) || 
+                                          f.message.toLowerCase().includes(feedbackSearch.toLowerCase());
+                    const matchesFilter = feedbackTypeFilter === 'all' || f.type === feedbackTypeFilter;
+                    return matchesSearch && matchesFilter;
+                  }).map((item) => (
+                    <div key={item.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex flex-col text-left">
+                            <span className="font-extrabold text-sm text-gray-900">{item.userName}</span>
+                            <span className="text-[10px] text-gray-400 font-semibold">{item.email}</span>
+                          </div>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider ${
+                            item.type === 'bug' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
+                            item.type === 'missing_notes' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                            item.type === 'improvement' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                            'bg-slate-50 text-slate-600 border border-slate-100'
+                          }`}>
+                            {item.type === 'missing_notes' ? 'Nyaraka Zinazokosekana' :
+                             item.type === 'bug' ? 'Hitilafu (Bug)' :
+                             item.type === 'improvement' ? 'Maboresho' : 'Nyingine'}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-gray-600 leading-relaxed text-left whitespace-pre-wrap">{item.message}</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          {new Date(item.createdAt).toLocaleString('en-GB')}
+                        </span>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${
+                            item.status === 'resolved' ? 'bg-emerald-50 text-emerald-700' :
+                            item.status === 'reviewed' ? 'bg-sky-50 text-sky-700' :
+                            'bg-amber-50 text-amber-700 animate-pulse'
+                          }`}>
+                            {item.status === 'resolved' ? 'Imetatuliwa' :
+                             item.status === 'reviewed' ? 'Inafanyiwa kazi' : 'Mpya'}
+                          </span>
+
+                          <select
+                            value={item.status}
+                            onChange={(e) => handleUpdateFeedbackStatus(item.id!, item.message, e.target.value as any)}
+                            className="bg-slate-50 border border-gray-200 text-[11px] font-bold text-gray-700 rounded-lg px-2 py-1 outline-none cursor-pointer hover:bg-slate-100"
+                          >
+                            <option value="new">Weka Mpya</option>
+                            <option value="reviewed">Weka Kwenye Uhakiki</option>
+                            <option value="resolved">Weka Imesuluhishwa</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

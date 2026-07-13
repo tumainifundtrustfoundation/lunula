@@ -296,14 +296,20 @@ export const fetchAllUsers = async (): Promise<UserProfile[]> => {
 /**
  * Upload a document record to Firestore
  */
-export const saveDocumentMetadata = async (docData: Omit<DocumentMetadata, 'id' | 'createdAt' | 'views' | 'status'>): Promise<string> => {
+export const saveDocumentMetadata = async (
+  docData: Omit<DocumentMetadata, 'id' | 'createdAt' | 'views' | 'status'> & { 
+    status?: DocumentStatus,
+    createdAt?: number,
+    views?: number
+  }
+): Promise<string> => {
   const docRef = doc(collection(db, 'documents'));
   const fullDoc: DocumentMetadata = {
     ...docData,
     id: docRef.id,
-    createdAt: Date.now(),
-    views: 0,
-    status: 'pending', // Requires admin approval by default
+    createdAt: docData.createdAt || Date.now(),
+    views: docData.views || 0,
+    status: docData.status || 'pending', // Requires admin approval by default
     rating: 5,
     downloadsCount: 0
   };
@@ -842,6 +848,38 @@ export const deleteExamResult = async (id: string): Promise<void> => {
     await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const updateExamResult = async (id: string, updates: Partial<ExamResult>): Promise<void> => {
+  const path = `exam_results/${id}`;
+  try {
+    const docRef = doc(db, 'exam_results', id);
+    await updateDoc(docRef, updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const fetchFeedbacks = async (): Promise<Feedback[]> => {
+  const path = 'feedback';
+  try {
+    const colRef = collection(db, path);
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Feedback));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const updateFeedbackStatus = async (id: string, status: 'new' | 'reviewed' | 'resolved'): Promise<void> => {
+  const path = `feedback/${id}`;
+  try {
+    const docRef = doc(db, 'feedback', id);
+    await updateDoc(docRef, { status });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
   }
 };
 

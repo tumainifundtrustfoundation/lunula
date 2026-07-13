@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   Loader
 } from 'lucide-react';
-import { saveDocumentMetadata, getAccessToken } from '../firebase';
+import { saveDocumentMetadata, getAccessToken, auth } from '../firebase';
 import { DocumentMetadata } from '../types';
 import { openGooglePicker, PickedFile } from '../utils/googlePicker';
 
@@ -241,8 +241,8 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         tags: tagsArray,
         fileId,
         driveUrl,
-        uploadedBy: userProfile?.uid || 'guest',
-        uploadedByName: userProfile?.name || 'Mwandishi Mgeni',
+        uploadedBy: auth.currentUser?.uid || userProfile?.uid || 'guest',
+        uploadedByName: auth.currentUser?.displayName || userProfile?.name || 'Mwandishi Mgeni',
         createdAt: Date.now(),
         views: 0,
         status: 'pending', // Requires admin approval by default as per rules

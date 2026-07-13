@@ -228,7 +228,7 @@ export default function App() {
           'portal', 'dashboard', 'masomo', 'mitihani', 'duka', 
           'fisimaji', 'videos', 'calculator', 'kamusi', 'mikoa', 
           'ajira', 'matangazo', 'upload', 'premium', 'workspace',
-          'forum', 'live', 'certificates', 'leaderboard', 'resources', 'library'
+          'forum', 'live', 'certificates', 'leaderboard', 'resources', 'library', 'admin'
         ];
         if (validViews.includes(cleanView)) {
           setActiveView(cleanView);

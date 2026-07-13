@@ -18,6 +18,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import AdSenseWidget from './AdSenseWidget';
+import { jsPDF } from 'jspdf';
 
 interface MasomoViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -359,8 +360,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
 
     setTimeout(() => {
       try {
-        // Access jsPDF from window because we imported it in index.html as a script
-        const { jsPDF } = (window as any).jspdf;
+        // Using bundled jsPDF imported at the top
         const doc = new jsPDF();
 
         // 1. Draw elegant border & decorative banners
