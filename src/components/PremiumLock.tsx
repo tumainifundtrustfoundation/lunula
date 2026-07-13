@@ -16,7 +16,7 @@ export default function PremiumLock({
   description = "Jiunge na Lupanulla Premium ili ufungue vipengele vyote bora vya AI na kujifunza kwa ufanisi zaidi bila kikomo.", 
   children 
 }: PremiumLockProps) {
-  const isPremium = true;
+  const isPremium = userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
   if (isPremium) {
     return <>{children}</>;

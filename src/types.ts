@@ -325,6 +325,23 @@ export interface WebsiteNews {
   imageUrl?: string;
 }
 
+export interface PaymentTransaction {
+  id?: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  planId: 'daily' | 'monthly' | 'term';
+  planName: string;
+  amount: number;
+  payMethod: 'mpesa' | 'tigopesa' | 'airtel';
+  transactionId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  approvedAt?: number;
+  approvedBy?: string;
+  rejectionReason?: string;
+}
+
 
 
 

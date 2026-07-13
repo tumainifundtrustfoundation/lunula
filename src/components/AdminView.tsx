@@ -44,7 +44,8 @@ import {
   Activity,
   Fingerprint,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  CreditCard
 } from 'lucide-react';
 import {
   AreaChart,
@@ -58,7 +59,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video, Product, Feedback } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video, Product, Feedback, PaymentTransaction } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -103,7 +104,9 @@ import {
   deleteProduct,
   fetchFeedbacks,
   updateFeedbackStatus,
-  updateExamResult
+  updateExamResult,
+  fetchPaymentTransactions,
+  updatePaymentTransactionStatus
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -152,6 +155,7 @@ export default function AdminView({
   // --- NEW: Verification & AdSense states ---
   const [dbCerts, setDbCerts] = useState<Certificate[]>([]);
   const [dbResults, setDbResults] = useState<ExamResult[]>([]);
+  const [dbTransactions, setDbTransactions] = useState<PaymentTransaction[]>([]);
   const [selectedStudentUid, setSelectedStudentUid] = useState<string>('');
   
   // Issue Certificate Form states
@@ -183,6 +187,8 @@ export default function AdminView({
   // Search states for registry
   const [certSearch, setCertSearch] = useState<string>('');
   const [resultSearch, setResultSearch] = useState<string>('');
+  const [txFilter, setTxFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [txSearch, setTxSearch] = useState<string>('');
 
   // AdSense simulation states (saved to localStorage for global toggle persistence)
   const [adsensePubId, setAdsensePubId] = useState<string>(() => localStorage.getItem('lup_adsense_pub_id') || 'ca-pub-mock-lupanulla');
@@ -376,6 +382,16 @@ export default function AdminView({
         }
       }
 
+      if (activeTab === 'approvals' || activeTab === 'payments') {
+        try {
+          const txsList = await fetchPaymentTransactions();
+          txsList.sort((a, b) => b.createdAt - a.createdAt);
+          setDbTransactions(txsList);
+        } catch (err) {
+          console.error('Error fetching payment transactions:', err);
+        }
+      }
+
       if (activeTab === 'approvals') {
         const pDocs = await fetchDocuments({ status: 'pending' });
         pDocs.sort((a, b) => b.createdAt - a.createdAt);
@@ -468,6 +484,27 @@ export default function AdminView({
       console.error('Error loading admin dashboard datasets:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateTransaction = async (txId: string, status: 'approved' | 'rejected') => {
+    let rejectionReason = '';
+    if (status === 'rejected') {
+      const reason = prompt('Weka sababu ya kukataa muamala huu (Mifano: Muamala haupatikani, Kiasi hakilingani):');
+      if (reason === null) return; // cancel
+      rejectionReason = reason || 'Kukosa uthibitisho sahihi';
+    }
+
+    try {
+      setActioningId(txId);
+      await updatePaymentTransactionStatus(txId, status, rejectionReason);
+      setDbTransactions(prev => prev.map(t => t.id === txId ? { ...t, status, rejectionReason } : t));
+      alert(status === 'approved' ? 'Muamala umepitishwa na mwanafunzi amekuwa Premium!' : 'Muamala umekataliwa!');
+    } catch (err: any) {
+      console.error('Error updating transaction:', err);
+      alert('Imeshindwa kusasisha muamala: ' + err.message);
+    } finally {
+      setActioningId(null);
     }
   };
 
@@ -2293,6 +2330,22 @@ export default function AdminView({
           Uhakiki &amp; Vyeti
         </button>
         <button
+          onClick={() => setActiveTab('payments')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'payments'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <CreditCard size={16} />
+          Uhakiki wa Malipo (Premium)
+          {dbTransactions.filter(t => t.status === 'pending').length > 0 && (
+            <span className="bg-amber-400 text-amber-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              {dbTransactions.filter(t => t.status === 'pending').length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('news')}
           className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
             activeTab === 'news'
@@ -3820,6 +3873,167 @@ export default function AdminView({
                   )}
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div className="space-y-6 animate-fade-in text-slate-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="font-sans font-extrabold text-gray-900 text-sm sm:text-base">Miamala ya Malipo ya Premium</h3>
+                  <p className="text-xs text-gray-400 font-semibold">Hakiki na upitishe malipo ya miamala ya wanafunzi waliolipia Premium</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl font-bold text-xs">
+                    Inayosubiri: {dbTransactions.filter(t => t.status === 'pending').length}
+                  </span>
+                  <span className="px-3.5 py-1.5 bg-green-500/10 border border-green-500/20 text-green-600 rounded-xl font-bold text-xs">
+                    Imepitishwa: {dbTransactions.filter(t => t.status === 'approved').length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transactions grid */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      onClick={() => setTxFilter('all')}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${txFilter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-850'}`}
+                    >
+                      Zote
+                    </button>
+                    <button
+                      onClick={() => setTxFilter('pending')}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${txFilter === 'pending' ? 'bg-amber-500 text-amber-950' : 'text-slate-500 hover:text-slate-850'}`}
+                    >
+                      Zinazosubiri
+                    </button>
+                    <button
+                      onClick={() => setTxFilter('approved')}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${txFilter === 'approved' ? 'bg-green-600 text-white' : 'text-slate-500 hover:text-slate-850'}`}
+                    >
+                      Zilizothibitishwa
+                    </button>
+                    <button
+                      onClick={() => setTxFilter('rejected')}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${txFilter === 'rejected' ? 'bg-rose-600 text-white' : 'text-slate-500 hover:text-slate-850'}`}
+                    >
+                      Zilizokataliwa
+                    </button>
+                  </div>
+
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3.5 top-2.5 text-gray-400" size={14} />
+                    <input
+                      type="text"
+                      value={txSearch}
+                      onChange={(e) => setTxSearch(e.target.value)}
+                      placeholder="Tafuta Transaction ID au Jina..."
+                      className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-xs bg-slate-50 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {dbTransactions.length === 0 ? (
+                  <div className="text-center py-12 space-y-2">
+                    <CreditCard size={32} className="text-gray-300 mx-auto" />
+                    <p className="text-gray-400 text-xs italic">Hakuna miamala iliyopatikana kwenye mfumo bado.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left text-gray-700">
+                      <thead className="text-[10px] uppercase bg-slate-50 text-slate-400 font-extrabold border-b border-slate-100">
+                        <tr>
+                          <th className="px-4 py-3">Mtumiaji & Kifurushi</th>
+                          <th className="px-4 py-3">Muamala / ID</th>
+                          <th className="px-4 py-3">Kiasi / Njia</th>
+                          <th className="px-4 py-3">Tarehe</th>
+                          <th className="px-4 py-3">Hali</th>
+                          <th className="px-4 py-3 text-right">Vitendo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {dbTransactions
+                          .filter(t => txFilter === 'all' || t.status === txFilter)
+                          .filter(t => 
+                            t.transactionId.toLowerCase().includes(txSearch.toLowerCase()) ||
+                            t.userName.toLowerCase().includes(txSearch.toLowerCase()) ||
+                            t.userEmail.toLowerCase().includes(txSearch.toLowerCase())
+                          )
+                          .map(t => (
+                            <tr key={t.id} className="hover:bg-slate-50/50">
+                              <td className="px-4 py-3.5">
+                                <div className="font-bold text-slate-900">{t.userName}</div>
+                                <div className="text-[10px] text-slate-400">{t.userEmail}</div>
+                                <span className="inline-block mt-1 bg-indigo-50 text-indigo-700 font-black text-[8px] px-1.5 py-0.5 rounded uppercase">
+                                  {t.planName}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className="font-mono font-bold text-indigo-900 bg-indigo-50/50 px-2 py-0.5 rounded border border-indigo-100/30">
+                                  {t.transactionId}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="font-bold text-slate-900">TSh {t.amount.toLocaleString()}</div>
+                                <div className="text-[9px] uppercase font-semibold text-slate-500">{t.payMethod}</div>
+                              </td>
+                              <td className="px-4 py-3.5 text-slate-400 font-medium">
+                                {new Date(t.createdAt).toLocaleString('sw-TZ', { dateStyle: 'short', timeStyle: 'short' })}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                {t.status === 'pending' && (
+                                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[9px] uppercase tracking-wider animate-pulse">Inasubiri</span>
+                                )}
+                                {t.status === 'approved' && (
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-bold text-[9px] uppercase tracking-wider">Imethibitishwa</span>
+                                )}
+                                {t.status === 'rejected' && (
+                                  <div>
+                                    <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded font-bold text-[9px] uppercase tracking-wider">Imekataliwa</span>
+                                    {t.rejectionReason && (
+                                      <p className="text-[9px] text-red-500 mt-1 italic font-medium">{t.rejectionReason}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                {t.status === 'pending' ? (
+                                  <div className="flex justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleUpdateTransaction(t.id!, 'approved')}
+                                      className="px-2 py-1 bg-green-600 hover:bg-green-500 text-white font-extrabold text-[10px] rounded uppercase cursor-pointer"
+                                    >
+                                      Kubali
+                                    </button>
+                                    <button
+                                      onClick={() => handleUpdateTransaction(t.id!, 'rejected')}
+                                      className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-[10px] rounded uppercase cursor-pointer"
+                                    >
+                                      Kataa
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-end gap-2">
+                                    <a
+                                      href={`https://wa.me/255684458632?text=Habari%20${encodeURIComponent(t.userName)},%20uhakiki%20wa%20malipo%20yako%20ya%20Lupanulla%20Premium%20umekamilika!%20Akaunti%20yako%20imeshafunguliwa.`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-emerald-600 hover:text-emerald-500 font-extrabold text-[10px] hover:underline flex items-center gap-0.5"
+                                    >
+                                      Chat WhatsApp
+                                    </a>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

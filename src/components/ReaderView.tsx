@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
   ArrowLeft, 
@@ -17,7 +17,9 @@ import {
   Trash2,
   Plus,
   Check,
-  ChevronRight
+  ChevronRight,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight } from '../firebase';
 import { DocumentMetadata, HighlightAnnotation } from '../types';
@@ -40,6 +42,56 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
 
   // States for text selection and highlight annotations
   const [readerMode, setReaderMode] = useState<'pdf' | 'notes'>('pdf');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const readerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!readerRef.current) return;
+    try {
+      if (!isFullscreen) {
+        if (readerRef.current.requestFullscreen) {
+          readerRef.current.requestFullscreen();
+        } else if ((readerRef.current as any).webkitRequestFullscreen) {
+          (readerRef.current as any).webkitRequestFullscreen();
+        } else if ((readerRef.current as any).msRequestFullscreen) {
+          (readerRef.current as any).msRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen();
+        }
+        setIsFullscreen(false);
+      }
+    } catch (e) {
+      console.warn('Native fullscreen not fully supported, falling back to CSS-only fullscreen:', e);
+      setIsFullscreen(!isFullscreen);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const activeElement = document.fullscreenElement || 
+                            (document as any).webkitFullscreenElement || 
+                            (document as any).msFullscreenElement;
+      setIsFullscreen(!!activeElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const [highlights, setHighlights] = useState<HighlightAnnotation[]>([]);
   const [selectedText, setSelectedText] = useState('');
   const [highlightColor, setHighlightColor] = useState('bg-yellow-100 text-yellow-900 border-yellow-300');
@@ -110,7 +162,8 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       
       'mock-hist-f4-2024': `SURA YA KWANZA: COLONIAL ECONOMY IN EAST AFRICA\n\nUchumi wa kikoloni ulijengwa ili kunufaisha mataifa ya Ulaya (Metropolitan countries). Njia kuu zilizotumiwa ni pamoja na kuanzishwa kwa kilimo cha mashamba makubwa (plantation agriculture), kuanzishwa kwa kodi ya kichwa (head tax) ili kulazimisha Waafrika kufanya kazi, na ujenzi wa miundombinu kama reli ya kati (Central Line) kusafirisha malighafi.\n\nSURA YA PILI: BERLIN CONFERENCE (1884 - 1885)\n\nMkutano wa Berlin uliitishwa na Chancellor wa Ujerumani, Otto von Bismarck. Lengo kuu lilikuwa kugawana bara la Afrika kwa amani kati ya mataifa ya Ulaya bila vita. Sheria ya "Effective Occupation" ilipitishwa, inayotaka taifa lolote linalodai eneo fulani kuanzisha utawala thabiti wa kijeshi na kiutawala.\n\nSURA YA TATU: MAJIMAJI REBELLION (1905 - 1907)\n\nHuu ulikuwa uasi mkubwa dhidi ya utawala wa Kijerumani huko Tanganyika Kusini. Uliongozwa na Kinjekitile Ngwale, ambaye alitumia maji yaliyochanganywa na mtama kama silaha ya kiroho kuwaaminisha wapiganaji kuwa risasi za Wajerumani zingebadilika kuwa maji. Sababu kuu ya uasi ilikuwa kulazimishwa kulima pamba na kuteswa kwa wananchi na akida.`,
       
-      'mock-bio-f4-2026': `SURA YA KWANZA: NADHARIA ZA EVOLUTION NA USHAHIDI WA KIBIOLOJIA\n\nEvolution ni mabadiliko ya taratibu ya viumbe hai kutoka kizazi kimoja hadi kingine kwa muda mrefu wa miaka. Nadharia kuu mbili ni:\n- Nadharia ya Jean-Baptiste Lamarck (Lamarckism): Inasema sifa zote ambazo kiumbe anajipatia katika maisha yake (acquired characteristics) kwa kutumia sana au kutotumia kiungo fulani cha mwili hupitishwa kwa watoto wake.\n- Nadharia ya Charles Darwin (Darwinism / Natural Selection): Inasisitiza mazingira yanachagua viumbe wenye uwezo mkubwa wa kuishi (survival of the fittest) na wale wasio na sifa zinazofaa hufa.\n\nUshahidi wa kusaidia nadharia ya Evolution unajumuisha:\n1. Palaeontology (Mabaki ya kale / Fossils).\n2. Comparative Anatomy (Ulinganifu wa viungo vya miili kama Homologous na Analogous organs).\n3. Comparative Embryology (Ulinganifu wa maendeleo ya kijusi wakati wa ujauzito).\n\nSURA YA PILI: ICOLOGY NA UCHAFUZI WA MAZINGIRA (PLASTIC POLLUTION)\n\nMifuko ya plastiki inajumuisha takataka zisizooza (non-biodegradable waste) ambazo huleta madhara makubwa nchini Tanzania:\n- Kuharibu udongo kwa kuzuia maji kupenya chini na kuathiri mizizi ya mimea.\n- Kifo cha mifugo na wanyamapori wanapokula plastiki wakidhania kuwa ni chakula.\n- Kuziba kwa mifereji na miundombinu ya maji taka, kusababisha mafuriko na milipuko ya magonjwa ya kipindupindu.\n\nNjia za kuzuia uchafuzi wa plastiki:\n- Marufuku kamili ya matumizi ya mifuko ya plastiki isiyooza (plastic bag ban).\n- Kuhamasisha matumizi ya mifuko mbadala (Kikapu, bahasha za karatasi, nk).\n- Kuanzisha viwanda vya kurejeleza plastiki (Recycling plants).\n\nSURA YA TATU: MAFANIKIO YA EVOLUTION NA SIFA ZA CLASS INSECTA\n\nInsects (Wadudu) ni kundi lililofanikiwa zaidi duniani kwa sababu ya:\n1. Kuwa na Exoskeleton ngumu ya chitin inayozuia kupoteza maji mwilini.\n2. Uwezo mkubwa wa kuruka (Wings) kuwakimbia maadui na kutafuta chakula.\n3. Uzazi mkubwa na wa haraka sana (High reproduction rate).\n4. Mfumo wa upumuaji wa Tracheole unaofanya kazi bila kutegemea mfumo wa damu.\n\nSURA YA NNE: KAZI YA INI KATIKA METABOLISI NA USIMAMIZI WA GLUKOSI\n\nIni (Liver) hufanya kazi zifuatazo kusaidia kusimamia sukari mwilini:\n- Glycogenesis: Hubadilisha glukosi ya ziada kuwa glycogen kwa msaada wa insulin wakati kiwango cha sukari mwilini kiko juu.\n- Glycogenolysis: Hubadilisha glycogen iliyohifadhiwa kuwa glukosi wakati sukari ya damu iko chini kwa msaada wa glucagon.`
+      'mock-bio-f4-2026': `SURA YA KWANZA: NADHARIA ZA EVOLUTION NA USHAHIDI WA KIBIOLOJIA\n\nEvolution ni mabadiliko ya taratibu ya viumbe hai kutoka kizazi kimoja hadi kingine kwa muda mrefu wa miaka. Nadharia kuu mbili ni:\n- Nadharia ya Jean-Baptiste Lamarck (Lamarckism): Inasema sifa zote ambazo kiumbe anajipatia katika maisha yake (acquired characteristics) kwa kutumia sana au kutotumia kiungo fulani cha mwili hupitishwa kwa watoto wake.\n- Nadharia ya Charles Darwin (Darwinism / Natural Selection): Inasisitiza mazingira yanachagua viumbe wenye uwezo mkubwa wa kuishi (survival of the fittest) na wale wasio na sifa zinazofaa hufa.\n\nUshahidi wa kusaidia nadharia ya Evolution unajumuisha:\n1. Palaeontology (Mabaki ya kale / Fossils).\n2. Comparative Anatomy (Ulinganifu wa viungo vya miili kama Homologous na Analogous organs).\n3. Comparative Embryology (Ulinganifu wa maendeleo ya kijusi wakati wa ujauzito).\n\nSURA YA PILI: ICOLOGY NA UCHAFUZI WA MAZINGIRA (PLASTIC POLLUTION)\n\nMifuko ya plastiki inajumuisha takataka zisizooza (non-biodegradable waste) ambazo huleta madhara makubwa nchini Tanzania:\n- Kuharibu udongo kwa kuzuia maji kupenya chini na kuathiri mizizi ya mimea.\n- Kifo cha mifugo na wanyamapori wanapokula plastiki wakidhania kuwa ni chakula.\n- Kuziba kwa mifereji na miundombinu ya maji taka, kusababisha mafuriko na milipuko ya magonjwa ya kipindupindu.\n\nNjia za kuzuia uchafuzi wa plastiki:\n- Marufuku kamili ya matumizi ya mifuko ya plastiki isiyooza (plastic bag ban).\n- Kuhamasisha matumizi ya mifuko mbadala (Kikapu, bahasha za karatasi, nk).\n- Kuanzisha viwanda vya kurejeleza plastiki (Recycling plants).\n\nSURA YA TATU: MAFANIKIO YA EVOLUTION NA SIFA ZA CLASS INSECTA\n\nInsects (Wadudu) ni kundi lililofanikiwa zaidi duniani kwa sababu ya:\n1. Kuwa na Exoskeleton ngumu ya chitin inayozuia kupoteza maji mwilini.\n2. Uwezo mkubwa wa kuruka (Wings) kuwakimbia maadui na kutafuta chakula.\n3. Uzazi mkubwa na wa haraka sana (High reproduction rate).\n4. Mfumo wa upumuaji wa Tracheole unaofanya kazi bila kutegemea mfumo wa damu.\n\nSURA YA NNE: KAZI YA INI KATIKA METABOLISI NA USIMAMIZI WA GLUKOSI\n\nIni (Liver) hufanya kazi zifuatazo kusaidia kusimamia sukari mwilini:\n- Glycogenesis: Hubadilisha glukosi ya ziada kuwa glycogen kwa msaada wa insulin wakati kiwango cha sukari mwilini kiko juu.\n- Glycogenolysis: Hubadilisha glycogen iliyohifadhiwa kuwa glukosi wakati sukari ya damu iko chini kwa msaada wa glucagon.`,
+      'chem-practical-handout': `SURA YA KWANZA: UCHAMBUZI WA KIASI (VOLUMETRIC ANALYSIS)\n\nVolumetric analysis au Titration inahusisha upimaji wa ujazo wa miundo miwili ya kemikali (asidi na besi) inayomanyuka ili kupata ukolezi (concentration) na masi ya molar (molar mass) ya dutu isiyojulikana.\n\nMamnyuko Muhimu katika Titration:\n- Acid + Base → Salt + Water (Mmenyuko wa Neutralization).\n- Mifano ya viashiria (indicators) ni Methyl Orange (MO - hubadilika kutoka njano kwenda nyekundu kwenye asidi) na Phenolphthalein (POP - hubadilika kutoka pinki kwenda kutokuwa na rangi kwenye asidi).\n\nSURA YA PILI: KASI YA MMENYUKO (KINETICS)\n\nKasi ya mmenyuko inategemea mambo makuu manne:\n1. Ukolezi wa vitendanishi (Concentration of reactants).\n2. Joto (Temperature).\n3. Kichocheo (Catalyst).\n4. Eneo la mguso (Surface area of solids).\n\nMmenyuko wa thiosulphate na asidi huzalisha precipitate ya njano ya sulfur: Na₂S₂O₃(aq) + 2HCl(aq) → 2NaCl(aq) + H₂O(l) + S(s) + SO₂(g).\nHerufi 'X' iliyochorwa chini ya karatasi hupotea jinsi sulfur inavyoongezeka.\n\nSURA YA TATU: QUALITATIVE ANALYSIS (UTAMBUZI WA CHUMVI)\n\nKupitia mfululizo wa vipimo vya maabara, tunatambua Cation (chaji chanya kama NH₄⁺, Pb²⁺, Cu²⁺) na Anion (chaji hasi kama Cl⁻, SO₄²⁻, CO₃²⁻):\n- Mtihani wa Sublimation: Chumvi za Ammonium (NH₄⁺) hupata sublimation wakati wa kupashwa moto kavu.\n- Mtihani wa AgNO₃: Silver nitrate hutoa precipitate nyeupe mbele ya Cl⁻ ambayo huyeyuka katika suluhisho la Ammonia.`
     };
 
     if (preAuthored[documentId]) {
@@ -539,7 +592,8 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   const handleDownload = () => {
     // If premium, trigger PDF download link directly
     alert('📥 Upakuaji umeanza! Faili lako la PDF linapakuliwa kutoka Google Drive sasa hivi.');
-    window.open('https://www.orimi.com/pdf-test.pdf', '_blank');
+    const url = doc?.driveUrl || 'https://www.orimi.com/pdf-test.pdf';
+    window.open(url, '_blank');
   };
 
   const generateOfflinePDF = () => {
@@ -716,10 +770,18 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     );
   }
 
-  const isPremium = true;
+  const isPremium = userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
   return (
-    <div id="reader-view" className="space-y-6 animate-fade-in text-slate-800 bg-slate-50">
+    <div 
+      ref={readerRef}
+      id="reader-view" 
+      className={`animate-fade-in text-slate-800 transition-all duration-300 ${
+        isFullscreen 
+          ? 'fixed inset-0 z-[9999] w-screen h-screen bg-slate-50 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6' 
+          : 'space-y-6'
+      }`}
+    >
       
       {/* Upper Navigation Action bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
@@ -748,6 +810,19 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
             title="Shirikisha"
           >
             <Share2 size={15} />
+          </button>
+
+          {/* Fullscreen Button */}
+          <button 
+            onClick={toggleFullscreen}
+            className={`p-2 rounded-xl border transition-all flex items-center justify-center ${
+              isFullscreen 
+                ? 'bg-cyan-500 border-cyan-400 text-slate-950 font-black shadow-sm' 
+                : 'bg-slate-50 border-slate-150 text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+            title={isFullscreen ? "Exit Fullscreen (Skrini Ndogo)" : "Soma kwa Skrini Nzima (Fullscreen)"}
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
 
           <button 

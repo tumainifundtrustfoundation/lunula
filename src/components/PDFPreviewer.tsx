@@ -12,6 +12,7 @@ import {
   BookOpen, 
   Sliders, 
   Maximize2,
+  Minimize2,
   FileText,
   AlertCircle,
   Eye,
@@ -20,7 +21,10 @@ import {
   Check,
   Sparkles,
   Download,
-  Info
+  Info,
+  Flame,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 
 interface PDFPreviewerProps {
@@ -780,9 +784,58 @@ export default function PDFPreviewer({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchOccurrences, setSearchOccurrences] = useState<number>(0);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<'interactive' | 'iframe'>('interactive');
+  const [viewMode, setViewMode] = useState<'interactive' | 'iframe'>(() => {
+    return [
+      'mock-bio-f4-2026', 'mock-geo-f4-2026', 'mock-chem-f4-2026',
+      'mock-math-f4-2026', 'mock-pe-f4-2026', 'mock-chem2-f4-2026',
+      'mock-chinese-f4-2026', 'mock-civics-f4-2026', 'mock-commerce-f4-2026',
+      'mock-phy-f4-2026', 'necta-phy-f4-2023', 'necta-math-f4-2022',
+      'mock-hist-f4-2024', 'chem-practical-handout'
+    ].includes(documentId) ? 'interactive' : 'iframe';
+  });
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   
   const pageContainerRef = useRef<HTMLDivElement>(null);
+
+  // Toggle fullscreen state
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+    try {
+      if (!isFullscreen) {
+        const elem = pageContainerRef.current?.parentElement?.parentElement;
+        if (elem && elem.requestFullscreen) {
+          elem.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.warn('Native fullscreen not fully supported in iframe context:', e);
+    }
+  };
+
+  // Keyboard Escape and fullscreenchange event listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      if (!isCurrentlyFullscreen && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isFullscreen]);
 
   // Rotate clockwise
   const handleRotate = () => {
@@ -799,6 +852,15 @@ export default function PDFPreviewer({
     setCurrentPage(1);
     setRotation(0);
     setSearchQuery('');
+    
+    const isSeed = [
+      'mock-bio-f4-2026', 'mock-geo-f4-2026', 'mock-chem-f4-2026',
+      'mock-math-f4-2026', 'mock-pe-f4-2026', 'mock-chem2-f4-2026',
+      'mock-chinese-f4-2026', 'mock-civics-f4-2026', 'mock-commerce-f4-2026',
+      'mock-phy-f4-2026', 'necta-phy-f4-2023', 'necta-math-f4-2022',
+      'mock-hist-f4-2024', 'chem-practical-handout'
+    ].includes(documentId);
+    setViewMode(isSeed ? 'interactive' : 'iframe');
   }, [documentId]);
 
   // High-fidelity page content database
@@ -2410,6 +2472,417 @@ export default function PDFPreviewer({
       ];
     }
 
+    // 12. Chemistry Practical Solutions - IV Handout (Sir. Donny)
+    if (documentId === 'chem-practical-handout') {
+      return [
+        {
+          pageNumber: 1,
+          title: "Page 1: Utangulizi & Muhtasari wa Kitabu",
+          rawText: "CHEMISTRY PRACTICAL SOLUTIONS - IV COMMON PRACTICALS 1. VOLUMETRIC ANALYSIS 2. RATE OF CHEMICAL REACTION AND EQUILIBRIUM 3. QUALITATIVE ANALYSIS SUBJECT HANDOUT Prepared by Sir. Donny Company Resourceful Learning Centre Page 1",
+          content: (
+            <div className="space-y-8 py-4 animate-fade-in text-slate-800">
+              <div className="text-center space-y-3 pb-8 border-b border-slate-200">
+                <div className="mx-auto w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center border border-cyan-500/20 shadow-md mb-2">
+                  <Flame size={32} className="animate-pulse" />
+                </div>
+                <p className="text-[10px] font-black tracking-widest text-cyan-600 uppercase">SIR. DONNY RESOURCEFUL LEARNING CENTRE</p>
+                <h1 className="text-2xl font-black text-slate-950 tracking-tight uppercase leading-none text-center">CHEMISTRY PRACTICAL SOLUTIONS - IV</h1>
+                <p className="text-xs font-bold text-slate-500 italic max-w-lg mx-auto leading-relaxed text-center">
+                  Kitabu cha Majaribio na Masuluhisho ya Kemia kwa Wanafunzi wa Kidato cha Nne (NECTA CSEE Practical Guide)
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+                <h3 className="text-xs font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                  <Award size={14} className="text-cyan-600" /> COMMON PRACTICALS IN NECTA SYLLABUS
+                </h3>
+                <ol className="list-decimal pl-5 text-xs font-bold text-slate-700 space-y-2 leading-relaxed">
+                  <li>
+                    <span className="text-cyan-800 font-extrabold uppercase text-[11px] block">1. Volumetric Analysis (Uchambuzi wa Kiasi / Titration)</span>
+                    Kukokotoa molarity, concentration (g/dm³), molar mass ya kiwanja kisichojulikana, namba ya maji ya ukaushaji (Z in Na₂CO₃·ZH₂O), na atomiki masi ya kipengele kisichojulikana.
+                  </li>
+                  <li>
+                    <span className="text-amber-800 font-extrabold uppercase text-[11px] block">2. Rate of Chemical Reaction and Equilibrium (Kasi ya Mmenyuko)</span>
+                    Kuchunguza jinsi mkusanyiko (concentration) au joto (temperature) linavyoathiri kasi ya mmenyuko kati ya Sodium Thiosulphate (Na₂S₂O₃) na Hydrochloric Acid (HCl).
+                  </li>
+                  <li>
+                    <span className="text-rose-800 font-extrabold uppercase text-[11px] block">3. Qualitative Analysis (Uchambuzi wa Ubora / Chumvi ya Maabara)</span>
+                    Utambuzi wa kimajaribio wa cation na anion katika chumvi rahisi (simple salt containing one cation and one anion) kwa kutumia NaOH, NH₄OH, na vitendanishi vingine.
+                  </li>
+                </ol>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-slate-200 rounded-2xl p-4 bg-gradient-to-br from-cyan-50/20 to-white hover:shadow-sm transition-all space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-xs">A</div>
+                    <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Yaliyomo Kwenye Kitabu</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-bold leading-relaxed">
+                    Maswali na majibu ya vitendo kutoka Practical 01 hadi Practical 39 yakionyesha hatua zote za maabara na ukokotoaji sahihi.
+                  </p>
+                </div>
+
+                <div className="border border-slate-200 rounded-2xl p-4 bg-gradient-to-br from-indigo-50/20 to-white hover:shadow-sm transition-all space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                    <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Lengo Kuu la Mwongozo</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-bold leading-relaxed">
+                    Kukuwezesha mwanafunzi kupata alama zote 25/25 katika swali la kwanza na la pili la mtihani wa vitendo wa kemia (NECTA Chemistry 2).
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Ukurasa wa 1 • Sir. Donny Company Resourceful Learning Centre
+              </div>
+            </div>
+          )
+        },
+        {
+          pageNumber: 2,
+          title: "Page 2: Volumetric Analysis - Practical 01",
+          rawText: "Practical 01 Determine the atomic mass of X in XOH Solution G containing 0.05 M sulphuric acid Solution H containing 2 g of XOH in 500cm3 volume of pipette 25cm3 Titration results table Pilot 1 2 3 Final reading 25.20 25.10 24.90 25.00 Mean titre 25.00cm3 Molarity of H = 0.1 M Molar mass of XOH = 40g/mol Atomic mass of X = 23g",
+          content: (
+            <div className="space-y-6 text-slate-800">
+              <div className="border-b border-slate-200 pb-2">
+                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-cyan-100 text-cyan-800 rounded-lg">Uchambuzi wa Kiasi (Volumetric Analysis)</span>
+                <h2 className="text-base font-black text-slate-900 mt-2 uppercase tracking-tight">PRACTICAL 01: Determining Atomic Mass of X in XOH</h2>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs leading-relaxed font-semibold">
+                <p className="text-slate-900"><strong className="text-slate-950 font-black">Yaliyotolewa (Provided Materials):</strong></p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                  <li><strong>Solution G:</strong> 0.05 M Sulphuric Acid (H₂SO₄)</li>
+                  <li><strong>Solution H:</strong> 2 g of XOH dissolved in 500 cm³ of solution</li>
+                  <li><strong>Indicator:</strong> Methyl Orange (MO)</li>
+                  <li><strong>Pipette Volume:</strong> 25 cm³</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">Jedwali la Matokeo ya Titration (Table of Results)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center border-collapse text-xs font-bold text-slate-700">
+                    <thead>
+                      <tr className="bg-slate-100 border-y border-slate-200 text-slate-900 uppercase tracking-wider text-[10px]">
+                        <th className="py-2 px-3 text-left">Titration Number</th>
+                        <th className="py-2 px-3">Pilot</th>
+                        <th className="py-2 px-3">1</th>
+                        <th className="py-2 px-3">2</th>
+                        <th className="py-2 px-3">3</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr>
+                        <td className="py-2 px-3 text-left text-slate-900">Final Reading (cm³)</td>
+                        <td className="py-2 px-3 bg-slate-50">25.20</td>
+                        <td className="py-2 px-3">25.10</td>
+                        <td className="py-2 px-3">24.90</td>
+                        <td className="py-2 px-3">25.00</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 text-left text-slate-900">Initial Reading (cm³)</td>
+                        <td className="py-2 px-3 bg-slate-50">0.00</td>
+                        <td className="py-2 px-3">0.00</td>
+                        <td className="py-2 px-3">0.00</td>
+                        <td className="py-2 px-3">0.00</td>
+                      </tr>
+                      <tr className="font-extrabold bg-cyan-50/30 text-cyan-950 border-t border-cyan-100">
+                        <td className="py-2 px-3 text-left">Volume Used (cm³)</td>
+                        <td className="py-2 px-3 bg-cyan-50/50">25.20</td>
+                        <td className="py-2 px-3">25.10</td>
+                        <td className="py-2 px-3">24.90</td>
+                        <td className="py-2 px-3">25.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border border-slate-150 rounded-xl space-y-3 bg-white shadow-sm">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-900 border-b pb-1">Ukokotoaji wa Kati (Mean Titre Volume)</h4>
+                  <div className="space-y-1 font-mono text-xs">
+                    <p className="font-bold text-slate-700">Mean Titre Volume (V_a) =</p>
+                    <div className="flex items-center gap-2 pl-2">
+                      <span className="text-lg font-bold">V_a =</span>
+                      <div className="text-center font-bold">
+                        <div className="border-b border-slate-400 px-2 pb-0.5">25.10 + 24.90 + 25.00</div>
+                        <div className="pt-0.5">3</div>
+                      </div>
+                      <span className="text-slate-900 font-extrabold">= 25.00 cm³</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                    Equation ya mmenyuko: <br />
+                    <code className="text-cyan-700 font-extrabold font-mono bg-cyan-50 px-1 py-0.5 rounded">H₂SO₄(aq) + 2XOH(aq) → X₂SO₄(aq) + 2H₂O(l)</code>
+                  </p>
+                </div>
+
+                <div className="p-4 border border-slate-150 rounded-xl space-y-2 bg-white shadow-sm text-[11px] font-bold text-slate-700">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-900 border-b pb-1">Ukokotoaji wa Mwisho (Final Calculations)</h4>
+                  <ul className="space-y-1.5">
+                    <li className="flex justify-between border-b border-slate-50 pb-1">
+                      <span>Molarity of Acid (M_a):</span>
+                      <span className="font-mono text-slate-900 font-extrabold">0.05 M</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-50 pb-1 text-cyan-800">
+                      <span>Molarity of Base H (M_b):</span>
+                      <span className="font-mono text-slate-900 font-extrabold">0.10 M</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-50 pb-1">
+                      <span>Concentration of H:</span>
+                      <span className="font-mono text-slate-900 font-extrabold">4.0 g/dm³</span>
+                    </li>
+                    <li className="flex justify-between border-b border-slate-50 pb-1">
+                      <span>Molar Mass of XOH:</span>
+                      <span className="font-mono text-slate-900 font-extrabold">40.0 g/mol</span>
+                    </li>
+                    <li className="flex justify-between font-extrabold text-slate-950 pt-0.5">
+                      <span>Atomic Mass of X:</span>
+                      <span className="font-mono bg-amber-400/20 text-amber-950 px-1.5 rounded">23.0 g (Sodium - Na)</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Ukurasa wa 2 • Sir. Donny Company Resourceful Learning Centre
+              </div>
+            </div>
+          )
+        },
+        {
+          pageNumber: 3,
+          title: "Page 3: Kinetics & Rate of Chemical Reaction",
+          rawText: "Practical 18 Rate of chemical reaction with equilibrium TT 0.13M Na2S2O3 Sodium thiosulphate HH 2M HCl Distilled water paper marked X Table of results Exp 1 10ml HH 20ml TT 0ml water Time 20s 1/t 0.05 Exp 2 10ml HH 15ml TT 5ml water Time 24s 1/t 0.04 Exp 3 10ml HH 10ml TT 10ml water Time 34s 1/t 0.03 Exp 4 10ml HH 5ml TT 15ml water Time 50s 1/t 0.02 Graph of 1/t against volume of thiosulphate straight line",
+          content: (
+            <div className="space-y-6 text-slate-800">
+              <div className="border-b border-slate-200 pb-2">
+                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 rounded-lg">Kasi ya Mmenyuko (Kinetics)</span>
+                <h2 className="text-base font-black text-slate-900 mt-2 uppercase tracking-tight">PRACTICAL 18: Na₂S₂O₃ and HCl Reaction Rate</h2>
+              </div>
+
+              <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5 text-xs font-bold leading-relaxed">
+                <p className="text-amber-950">
+                  Mmenyuko wa kemia hutoa Sulpfuri ngumu (precipitate) inayofanya mchanganyiko kuwa mzito na kufanya herufi "X" iliyo chini ya chupa kutofahamika tena.
+                </p>
+                <div className="font-mono text-[10px] text-slate-700 bg-white p-1.5 rounded border border-amber-100">
+                  Na₂S₂O₃(aq) + 2HCl(aq) → 2NaCl(aq) + H₂O(l) + S(s) + SO₂(g)
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-slate-950 uppercase">Jedwali la Matokeo (Table of Results)</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-center border-collapse text-xs font-bold text-slate-700">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-950 uppercase text-[9px]">
+                          <th className="py-2 px-1">Exp.</th>
+                          <th className="py-2 px-1">HCl (cm³)</th>
+                          <th className="py-2 px-1">Na₂S₂O₃ (cm³)</th>
+                          <th className="py-2 px-1">Maji (cm³)</th>
+                          <th className="py-2 px-1 text-amber-950">Time (s)</th>
+                          <th className="py-2 px-1 text-slate-950">1/t (s⁻¹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-150">
+                        <tr>
+                          <td className="py-2 px-1">1</td>
+                          <td className="py-2 px-1 font-mono">10</td>
+                          <td className="py-2 px-1 font-mono text-slate-900">20</td>
+                          <td className="py-2 px-1 font-mono">0</td>
+                          <td className="py-2 px-1 font-mono font-black text-amber-700">20</td>
+                          <td className="py-2 px-1 font-mono text-cyan-600">0.05</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-1">2</td>
+                          <td className="py-2 px-1 font-mono">10</td>
+                          <td className="py-2 px-1 font-mono text-slate-900">15</td>
+                          <td className="py-2 px-1 font-mono">5</td>
+                          <td className="py-2 px-1 font-mono font-black text-amber-700">24</td>
+                          <td className="py-2 px-1 font-mono text-cyan-600">0.04</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-1">3</td>
+                          <td className="py-2 px-1 font-mono">10</td>
+                          <td className="py-2 px-1 font-mono text-slate-900">10</td>
+                          <td className="py-2 px-1 font-mono">10</td>
+                          <td className="py-2 px-1 font-mono font-black text-amber-700">34</td>
+                          <td className="py-2 px-1 font-mono text-cyan-600">0.03</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-1">4</td>
+                          <td className="py-2 px-1 font-mono">10</td>
+                          <td className="py-2 px-1 font-mono text-slate-900">5</td>
+                          <td className="py-2 px-1 font-mono">15</td>
+                          <td className="py-2 px-1 font-mono font-black text-amber-700">50</td>
+                          <td className="py-2 px-1 font-mono text-cyan-600">0.02</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic text-left">
+                    Ufafanuzi: Thamani ya 1/t inapungua jinsi mkusanyiko wa Sodium Thiosulphate unavyopungua (mchujo wa maji unavyoongezeka).
+                  </p>
+                </div>
+
+                <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                  <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide text-center">Graph of 1/t against Volume of Na₂S₂O₃</h3>
+                  
+                  {/* High fidelity SVG Lab Graph Plot */}
+                  <div className="relative w-full aspect-square max-w-[200px] mx-auto bg-white border-2 border-slate-800 rounded p-2 shadow-inner font-mono text-[8px] font-black">
+                    {/* Y-axis line */}
+                    <div className="absolute left-6 top-2 bottom-6 w-0.5 bg-slate-800"></div>
+                    {/* X-axis line */}
+                    <div className="absolute left-6 right-2 bottom-6 h-0.5 bg-slate-800"></div>
+
+                    {/* Graph grid lines */}
+                    <div className="absolute left-6 right-2 top-2 bottom-6 grid grid-cols-4 grid-rows-4 border border-slate-100 pointer-events-none">
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-b border-dashed border-slate-200"></div>
+                      <div className="border-b border-dashed border-slate-200"></div>
+                      <div className="border-r border-dashed border-slate-200"></div>
+                      <div className="border-r border-dashed border-slate-200"></div>
+                      <div className="border-r border-dashed border-slate-200"></div>
+                      <div></div>
+                    </div>
+
+                    {/* Y Axis Labels */}
+                    <div className="absolute left-0 top-1.5 h-full flex flex-col justify-between text-slate-600">
+                      <span>0.05</span>
+                      <span>0.04</span>
+                      <span>0.03</span>
+                      <span>0.02</span>
+                      <span className="opacity-0">0</span>
+                    </div>
+
+                    {/* X Axis Labels */}
+                    <div className="absolute left-6 right-2 bottom-0 flex justify-between text-slate-600">
+                      <span>5</span>
+                      <span>10</span>
+                      <span>15</span>
+                      <span>20</span>
+                    </div>
+
+                    {/* Axis Titles */}
+                    <span className="absolute -rotate-90 left-[-16px] top-1/2 -translate-y-1/2 text-cyan-800 font-extrabold uppercase scale-85">1/t (s⁻¹)</span>
+                    <span className="absolute bottom-1 right-2 text-amber-800 font-extrabold uppercase scale-85">Vol (cm³)</span>
+
+                    {/* Plotted best fit line */}
+                    <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                      <line x1="38" y1="140" x2="185" y2="28" stroke="#10b981" strokeWidth="2" strokeDasharray="3,3" />
+                      <circle cx="38" cy="140" r="3.5" fill="#ef4444" stroke="#000" strokeWidth="1" />
+                      <circle cx="87" cy="103" r="3.5" fill="#ef4444" stroke="#000" strokeWidth="1" />
+                      <circle cx="136" cy="66" r="3.5" fill="#ef4444" stroke="#000" strokeWidth="1" />
+                      <circle cx="185" cy="28" r="3.5" fill="#ef4444" stroke="#000" strokeWidth="1" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Ukurasa wa 3 • Sir. Donny Company Resourceful Learning Centre
+              </div>
+            </div>
+          )
+        },
+        {
+          pageNumber: 4,
+          title: "Page 4: Qualitative Analysis - Practical 26",
+          rawText: "Practical 26 Qualitative analysis Sample S Simple salt containing one cation and one anion Cation present NH4+ Anion present Cl- Ammonium chloride Table of results Experiment Observation Inference a Observe appearance White crystalline Absence of transition b Add water Soluble Insoluble salt absent c Heat sublimation NH4+ may present d Add NaOH turn red litmus paper blue NH4+ confirmed e Add conc H2SO4 White fumes HCl gas Cl- present f Add H2SO4 MnO2 Greenish-yellow gas Cl- confirmed g Add AgNO3 precipitate soluble in ammonia Cl- present",
+          content: (
+            <div className="space-y-6 text-slate-800">
+              <div className="border-b border-slate-200 pb-2">
+                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 rounded-lg">Utambuzi wa Chumvi (Qualitative Analysis)</span>
+                <h2 className="text-base font-black text-slate-900 mt-2 uppercase tracking-tight">PRACTICAL 26: Identification of unknown Sample S</h2>
+              </div>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-slate-100 px-4 py-2 text-xs font-black text-slate-900 uppercase tracking-wide flex justify-between items-center">
+                  <span>Jedwali la Majaribio (Experimental Table)</span>
+                  <span className="font-mono text-cyan-800 text-[10px]">SAMPLE S</span>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs font-bold text-slate-700 leading-relaxed">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 uppercase text-[9px] text-slate-500 font-bold">
+                        <th className="py-2.5 px-3 w-1/3">Jaribio (Experiment)</th>
+                        <th className="py-2.5 px-3 w-1/3">Kuangalia (Observation)</th>
+                        <th className="py-2.5 px-3 w-1/3 text-slate-950 font-black">Uamuzi (Inference)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-150">
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(a) Muonekano (Appearance)</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- White crystalline substance</td>
+                        <td className="py-2 px-3 align-top"><span className="text-slate-500">Absence of transition elements (Fe²⁺, Cu²⁺, etc)</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(b) Kuyeyusha (Solubility in Water)</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- Sample completely dissolved</td>
+                        <td className="py-2 px-3 align-top"><span className="text-slate-500">Soluble salt is present</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(c) Kupasha Joto kavu (Heating in Dry Tube)</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- White sublimate on cooler parts; ammonia gas smell</td>
+                        <td className="py-2 px-3 align-top"><span className="text-amber-700 font-extrabold bg-amber-50 px-1 rounded">NH₄⁺ may be present</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(d) NaOH + Heat</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- Ammonia gas turns damp red litmus paper blue</td>
+                        <td className="py-2 px-3 align-top"><span className="text-emerald-700 font-extrabold bg-emerald-50 px-1 rounded">NH₄⁺ present confirmed</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(e) Conc. H₂SO₄ + Warm</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- Colourless gas giving white fumes with NH₃ (HCl gas)</td>
+                        <td className="py-2 px-3 align-top"><span className="text-amber-700 font-extrabold bg-amber-50 px-1 rounded">Cl⁻ may be present</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 align-top font-medium">(f) Conc. H₂SO₄ + MnO₂</td>
+                        <td className="py-2 px-3 align-top font-semibold text-slate-900">- Greenish-yellow gas with pungent smell (Cl₂ gas)</td>
+                        <td className="py-2 px-3 align-top"><span className="text-emerald-700 font-extrabold bg-emerald-50 px-1 rounded">Cl⁻ present confirmed</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-black text-emerald-950 uppercase">Conclusion for Sample S:</h4>
+                  <p className="text-[11px] text-emerald-900 font-semibold leading-relaxed">
+                    The Cation is <strong>NH₄⁺</strong> (Ammonium) and the Anion is <strong>Cl⁻</strong> (Chloride). <br />
+                    The chemical formula of the salt is <strong className="font-mono text-xs">NH₄Cl</strong> (<span className="underline decoration-double">Ammonium chloride</span>).
+                  </p>
+                </div>
+                <div className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm flex-shrink-0">
+                  UTAMBUZI KAMILI ✅
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Ukurasa wa 4 • Sir. Donny Company Resourceful Learning Centre
+              </div>
+            </div>
+          )
+        }
+      ];
+    }
+
     // Default template for other documents (e.g., Physics, Maths, History or any other PDF file)
     const titleUpper = documentTitle.toUpperCase();
     const docCategory = category || 'Elimu Hub Study Resource';
@@ -2594,7 +3067,11 @@ export default function PDFPreviewer({
   };
 
   return (
-    <div className="flex flex-col bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden h-[740px] relative">
+    <div className={`flex flex-col bg-white overflow-hidden relative transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 z-[9999] h-screen w-screen rounded-none border-0 shadow-none' 
+        : 'border border-slate-200 rounded-3xl shadow-sm h-[740px]'
+    }`}>
       
       {/* Upper Navigation / Toolbar inside the PDF Reader */}
       <div className="bg-slate-900 text-slate-100 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 z-10">
@@ -2637,76 +3114,105 @@ export default function PDFPreviewer({
         </div>
 
         {/* Right side: Toolbar Action Buttons */}
-        {viewMode === 'interactive' && (
-          <div className="flex items-center gap-2">
-            
-            {/* Sidebar toggle */}
-            <button 
-              onClick={() => setShowSidebar(!showSidebar)}
-              className={`p-2 rounded-lg transition-all border ${
-                showSidebar ? 'bg-slate-800 border-slate-700 text-cyan-400' : 'bg-transparent border-transparent text-slate-400 hover:text-white'
-              }`}
-              title="Toggle Sidebar Pages"
-            >
-              <FileText size={15} />
-            </button>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 overflow-hidden text-xs">
+        <div className="flex items-center gap-2">
+          {viewMode === 'interactive' && (
+            <>
+              {/* Sidebar toggle */}
               <button 
-                onClick={handleZoomOut} 
-                className="p-2 text-slate-400 hover:text-white border-r border-slate-700 hover:bg-slate-700"
-                title="Zoom Out"
+                onClick={() => setShowSidebar(!showSidebar)}
+                className={`p-2 rounded-lg transition-all border ${
+                  showSidebar ? 'bg-slate-800 border-slate-700 text-cyan-400' : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                }`}
+                title="Toggle Sidebar Pages"
               >
-                <ZoomOut size={13} />
+                <FileText size={15} />
               </button>
-              <button 
-                onClick={handleZoomReset}
-                className="px-2 font-mono text-[10px] font-extrabold text-slate-300 hover:text-white"
-                title="Reset Zoom to 100%"
-              >
-                {zoom}%
-              </button>
-              <button 
-                onClick={handleZoomIn} 
-                className="p-2 text-slate-400 hover:text-white border-l border-slate-700 hover:bg-slate-700"
-                title="Zoom In"
-              >
-                <ZoomIn size={13} />
-              </button>
-            </div>
 
-            {/* Rotate */}
-            <button 
-              onClick={handleRotate}
-              className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg transition-all"
-              title="Rotate Page Clockwise"
-            >
-              <RotateCw size={13} />
-            </button>
-
-            {/* Themes */}
-            <div className="flex bg-slate-800 rounded-lg border border-slate-700 p-0.5">
-              {(['light', 'sepia', 'dark'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
-                    theme === t 
-                      ? 'bg-slate-700 text-cyan-400 shadow-sm font-black' 
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title={`Reading Theme: ${t.toUpperCase()}`}
+              {/* Zoom Controls */}
+              <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 overflow-hidden text-xs">
+                <button 
+                  onClick={handleZoomOut} 
+                  className="p-2 text-slate-400 hover:text-white border-r border-slate-700 hover:bg-slate-700"
+                  title="Zoom Out"
                 >
-                  {t === 'light' && <Sun size={12} />}
-                  {t === 'sepia' && <span className="font-mono text-[9px] font-black uppercase">S</span>}
-                  {t === 'dark' && <Moon size={12} />}
+                  <ZoomOut size={13} />
                 </button>
-              ))}
-            </div>
+                <button 
+                  onClick={handleZoomReset}
+                  className="px-2 font-mono text-[10px] font-extrabold text-slate-300 hover:text-white"
+                  title="Reset Zoom to 100%"
+                >
+                  {zoom}%
+                </button>
+                <button 
+                  onClick={handleZoomIn} 
+                  className="p-2 text-slate-400 hover:text-white border-l border-slate-700 hover:bg-slate-700"
+                  title="Zoom In"
+                >
+                  <ZoomIn size={13} />
+                </button>
+              </div>
 
+              {/* Rotate */}
+              <button 
+                onClick={handleRotate}
+                className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg transition-all"
+                title="Rotate Page Clockwise"
+              >
+                <RotateCw size={13} />
+              </button>
+
+              {/* Themes */}
+              <div className="flex bg-slate-800 rounded-lg border border-slate-700 p-0.5">
+                {(['light', 'sepia', 'dark'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                      theme === t 
+                        ? 'bg-slate-700 text-cyan-400 shadow-sm font-black' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={`Reading Theme: ${t.toUpperCase()}`}
+                  >
+                    {t === 'light' && <Sun size={12} />}
+                    {t === 'sepia' && <span className="font-mono text-[9px] font-black uppercase">S</span>}
+                    {t === 'dark' && <Moon size={12} />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* New Tab & Fullscreen Controls - ALWAYS visible */}
+          <div className="flex items-center gap-1.5 ml-1 border-l border-slate-800 pl-2">
+            {/* Open in New Tab Button */}
+            <a 
+              href={driveUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider"
+              title="Fungua PDF kwenye Kichupo Kipya (Open PDF in New Tab)"
+            >
+              <Eye size={13} />
+              <span className="hidden sm:inline">Kichupo Kipya</span>
+            </a>
+
+            {/* Fullscreen Button */}
+            <button
+              onClick={toggleFullscreen}
+              className={`p-2 rounded-lg transition-all border flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                isFullscreen 
+                  ? 'bg-cyan-500 border-cyan-400 text-slate-950 font-black' 
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+              title={isFullscreen ? "Exit Fullscreen (Escape / Skrini Ndogo)" : "Fullscreen (Skrini Nzima)"}
+            >
+              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Skrini Ndogo' : 'Skrini Nzima'}</span>
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Main Preview Container */}

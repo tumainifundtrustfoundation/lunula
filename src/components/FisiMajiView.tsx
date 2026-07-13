@@ -50,6 +50,8 @@ interface FisiMajiViewProps {
 export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'image-generator'>('chat');
   
+  const isPremium = userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
+  
   // Chat State
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -255,6 +257,11 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
 
   // Send Prompt to Gemini
   const handleSendPrompt = async (promptText: string) => {
+    if (!isPremium) {
+      setError('🔒 Tafadhali jiunge na Premium ili kuweza kuzungumza na Lupanulla AI.');
+      onNavigate('premium');
+      return;
+    }
     if ((!promptText.trim() && attachments.length === 0) || loading) return;
 
     setError(null);
@@ -353,11 +360,21 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
   };
 
   const handleSuggestionClick = (text: string) => {
+    if (!isPremium) {
+      alert('🔒 Kipengele hiki kinahitaji akaunti ya Lupanulla Premium. Tafadhali jiunge ili uweze kutumia Lupanulla AI.');
+      onNavigate('premium');
+      return;
+    }
     handleSendPrompt(text);
   };
 
   // Image Generation Handler
   const handleGenerateImage = async () => {
+    if (!isPremium) {
+      alert('🔒 Kipengele hiki kinahitaji akaunti ya Lupanulla Premium. Tafadhali jiunge ili uweze kuchora picha kwa AI.');
+      onNavigate('premium');
+      return;
+    }
     if (!imgPrompt.trim() || generatingImg) return;
     setGeneratingImg(true);
     setImgError(null);
@@ -435,7 +452,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
 
         {/* Level Filter and Premium status configuration tabs */}
         <div className="flex flex-wrap items-center gap-3">
-          {userProfile?.subscription === 'premium' ? (
+          {isPremium ? (
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/35 text-[10px] font-extrabold uppercase tracking-wider">
               <Crown size={11} className="animate-pulse text-amber-300" />
               Premium AI Active
@@ -452,12 +469,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
         </div>
       </section>
 
-      <PremiumLock 
-        userProfile={userProfile} 
-        onNavigate={onNavigate}
-        title="Msaidizi wa Elimu Lupanulla AI"
-        description="Lupanulla AI ni kipengele cha Premium tu. Jiunge sasa ili uweze kuuliza maswali bila kikomo, kupata ufafanuzi wa hatua kwa hatua wa mtaala mzima wa TIE na NECTA!"
-      >
+      <>
         {activeTab === 'chat' ? (
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
             
@@ -594,68 +606,94 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
               )}
 
               {/* Form input bar */}
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendPrompt(input);
-                }} 
-                className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-2xl p-1.5"
-              >
-                {/* Media Attachment trigger */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2.5 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all"
-                  title="Weka Picha/Video"
-                  disabled={loading}
+              {isPremium ? (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendPrompt(input);
+                  }} 
+                  className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-2xl p-1.5"
                 >
-                  <ImageIcon size={18} />
-                </button>
-                
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileChange}
-                />
+                  {/* Media Attachment trigger */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2.5 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all"
+                    title="Weka Picha/Video"
+                    disabled={loading}
+                  >
+                    <ImageIcon size={18} />
+                  </button>
+                  
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFileChange}
+                  />
 
-                {/* Voice transcription / microphone trigger */}
-                <button
-                  type="button"
-                  onClick={recording ? stopRecording : startRecording}
-                  className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${recording ? 'bg-red-500 text-white animate-pulse' : 'text-slate-500 hover:text-cyan-600 hover:bg-cyan-50'}`}
-                  title={recording ? 'Acha kurekodi sauti' : 'Zungumza kutafsiri sauti'}
-                  disabled={loading}
-                >
-                  <Mic size={18} />
-                </button>
+                  {/* Voice transcription / microphone trigger */}
+                  <button
+                    type="button"
+                    onClick={recording ? stopRecording : startRecording}
+                    className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${recording ? 'bg-red-500 text-white animate-pulse' : 'text-slate-500 hover:text-cyan-600 hover:bg-cyan-50'}`}
+                    title={recording ? 'Acha kurekodi sauti' : 'Zungumza kutafsiri sauti'}
+                    disabled={loading}
+                  >
+                    <Mic size={18} />
+                  </button>
 
-                {recording && (
-                  <span className="text-xs text-red-600 font-extrabold animate-pulse ml-2">
-                    Inarekodi: {recordingTime}s
-                  </span>
-                )}
+                  {recording && (
+                    <span className="text-xs text-red-600 font-extrabold animate-pulse ml-2">
+                      Inarekodi: {recordingTime}s
+                    </span>
+                  )}
 
-                <input 
-                  type="text" 
-                  required={attachments.length === 0}
-                  disabled={loading || recording}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={recording ? "Tafadhali zungumza sasa..." : "Uliza chochote hapa (Hesabu, Fizikia, Kemia, Historia, n.k)..."} 
-                  className="flex-grow bg-transparent px-2 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none disabled:opacity-50"
-                />
-                
-                <button 
-                  type="submit" 
-                  disabled={loading || recording || (!input.trim() && attachments.length === 0)}
-                  className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 p-2.5 rounded-xl transition-all flex items-center justify-center flex-shrink-0 cursor-pointer"
-                >
-                  <Send size={16} />
-                </button>
-              </form>
+                  <input 
+                    type="text" 
+                    required={attachments.length === 0}
+                    disabled={loading || recording}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={recording ? "Tafadhali zungumza sasa..." : "Uliza chochote hapa (Hesabu, Fizikia, Kemia, Historia, n.k)..."} 
+                    className="flex-grow bg-transparent px-2 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none disabled:opacity-50"
+                  />
+                  
+                  <button 
+                    type="submit" 
+                    disabled={loading || recording || (!input.trim() && attachments.length === 0)}
+                    className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 p-2.5 rounded-xl transition-all flex items-center justify-center flex-shrink-0 cursor-pointer"
+                  >
+                    <Send size={16} />
+                  </button>
+                </form>
+              ) : (
+                <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-500/10 border border-amber-400/35 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-yellow-500/5 opacity-40 blur-lg rounded-2xl pointer-events-none"></div>
+                  <div className="flex items-center gap-3 relative z-10">
+                    <div className="bg-gradient-to-tr from-amber-400 to-yellow-500 text-amber-950 p-2.5 rounded-xl flex-shrink-0 shadow-md">
+                      <Crown size={18} className="animate-pulse" />
+                    </div>
+                    <div className="space-y-0.5 text-left">
+                      <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                        Lupanulla Premium Inahitajika 🚀
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-amber-900/90 font-bold leading-relaxed">
+                        Kipengele cha kuuliza maswali ya AI, kutatua mahesabu, na kupata ufafanuzi wa mtaala wa TIE kipo kwa wanachama wa Premium tu.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('premium')}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-amber-950 text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0 relative z-10 transform hover:scale-102 active:scale-95"
+                  >
+                    <Crown size={14} /> Go Premium
+                  </button>
+                </div>
+              )}
 
             </div>
 
@@ -877,15 +915,28 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleGenerateImage}
-                  disabled={generatingImg || !imgPrompt.trim()}
-                  className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
-                >
-                  <Sparkles size={14} className={generatingImg ? 'animate-spin' : ''} />
-                  {generatingImg ? 'AI Inatengeneza...' : 'Tengeneza Picha'}
-                </button>
+                {isPremium ? (
+                  <button
+                    type="button"
+                    onClick={handleGenerateImage}
+                    disabled={generatingImg || !imgPrompt.trim()}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-200 text-slate-950 disabled:text-slate-400 font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+                  >
+                    <Sparkles size={14} className={generatingImg ? 'animate-spin' : ''} />
+                    {generatingImg ? 'AI Inatengeneza...' : 'Tengeneza Picha'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert('🔒 Kipengele cha kuchora picha kwa AI kinahitaji akaunti ya Lupanulla Premium.');
+                      onNavigate('premium');
+                    }}
+                    className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer transform hover:scale-[1.01] active:scale-95"
+                  >
+                    <Crown size={14} /> Go Premium (Mchora Picha AI)
+                  </button>
+                )}
               </div>
 
             </div>
@@ -945,7 +996,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
 
           </div>
         )}
-      </PremiumLock>
+      </>
 
     </div>
   );

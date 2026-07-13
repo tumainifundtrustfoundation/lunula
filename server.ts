@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -481,15 +481,14 @@ app.post('/api/claude.php', async (req, res) => {
     });
 
     // Model selection based on features and user preference
-    // Default to gemini-3.1-flash-lite for working quota and fast response
     let selectedModel = 'gemini-3.1-flash-lite';
     if (thinking) {
       selectedModel = 'gemini-3.1-pro-preview';
     } else if (modelChoice === 'pro') {
       selectedModel = 'gemini-3.1-pro-preview';
-    } else if (modelChoice === 'lite') {
-      selectedModel = 'gemini-3.1-flash-lite';
     } else if (modelChoice === 'flash') {
+      selectedModel = 'gemini-3.5-flash';
+    } else if (modelChoice === 'lite') {
       selectedModel = 'gemini-3.1-flash-lite';
     }
 
@@ -498,20 +497,41 @@ app.post('/api/claude.php', async (req, res) => {
       temperature: 0.7,
     };
 
+    // Set search or maps grounding if selected (Forces gemini-3.5-flash as requested)
+    if (grounding === 'search') {
+      selectedModel = 'gemini-3.5-flash';
+      config.tools = [{ googleSearch: {} }];
+    } else if (grounding === 'maps') {
+      selectedModel = 'gemini-3.5-flash';
+      config.tools = [{ googleMaps: {} }];
+    }
+
+    // Force gemini-3.1-pro-preview if there are image or video attachments (for photo & video understanding)
+    let hasMediaAttachment = false;
+    if (messages && Array.isArray(messages)) {
+      for (const m of messages) {
+        if (m.attachments && Array.isArray(m.attachments)) {
+          for (const att of m.attachments) {
+            if (att.mimeType && (att.mimeType.startsWith('image/') || att.mimeType.startsWith('video/'))) {
+              hasMediaAttachment = true;
+              break;
+            }
+          }
+        }
+        if (hasMediaAttachment) break;
+      }
+    }
+
+    if (hasMediaAttachment) {
+      selectedModel = 'gemini-3.1-pro-preview';
+    }
+
     // Set thinking level to HIGH on gemini-3.1-pro-preview if thinking is enabled
     if (thinking && selectedModel === 'gemini-3.1-pro-preview') {
       config.thinkingConfig = {
-        thinkingBudget: 2048,
-        thinkingLevel: "HIGH"
+        thinkingLevel: ThinkingLevel.HIGH
       };
-      // Do not set maxOutputTokens
-    }
-
-    // Set search or maps grounding if selected
-    if (grounding === 'search') {
-      config.tools = [{ googleSearch: {} }];
-    } else if (grounding === 'maps') {
-      config.tools = [{ googleMaps: {} }];
+      // Do not set maxOutputTokens as per instructions
     }
 
     // Call Gemini API with automatic fallback to gemini-3.1-flash-lite
@@ -626,21 +646,47 @@ app.post('/api/ai/generate-image', async (req, res) => {
       return res.status(401).json({ error: 'API key not configured' });
     }
 
-    // gemini-3.1-flash-image-preview for general, gemini-3-pro-image-preview for studio quality
-    const selectedModel = quality === 'studio' ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image-preview';
+    // Use gemini-3.1-flash-image and gemini-3-pro-image as modern image models
+    const selectedModel = quality === 'studio' ? 'gemini-3-pro-image' : 'gemini-3.1-flash-image';
 
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: selectedModel,
-      contents: {
-        parts: [{ text: prompt }]
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio || '1:1',
-          imageSize: '1K'
+    let response;
+    try {
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: selectedModel,
+        contents: {
+          parts: [{ text: prompt }]
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: aspectRatio || '1:1',
+            imageSize: '1K'
+          }
         }
+      }));
+    } catch (primaryError: any) {
+      console.warn(`Primary image generation model ${selectedModel} failed. Trying gemini-2.5-flash-image fallback... Error:`, primaryError.message || primaryError);
+      
+      try {
+        response = await callGeminiWithRetry(() => ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [{ text: prompt }]
+          },
+          config: {
+            imageConfig: {
+              aspectRatio: aspectRatio || '1:1',
+              imageSize: '1K'
+            }
+          }
+        }));
+      } catch (fallbackError: any) {
+        console.error('All image generation models failed:', fallbackError);
+        return res.status(429).json({
+          error: 'Quota Exceeded',
+          message: 'Huduma ya picha imezidi kikomo cha bure cha matumizi (Quota Exceeded). Ili kutengeneza picha bila kikomo na kwa ubora wa juu wa HD Studio, tafadhali nenda kwenye jopo la **Settings > Secrets** (upande wa juu kulia wa AI Studio) na uongeze ufunguo wako wa **GEMINI_API_KEY** au jaribu tena baada ya muda mfupi.'
+        });
       }
-    }));
+    }
 
     let base64Data = '';
     const parts = response.candidates?.[0]?.content?.parts || [];
@@ -671,45 +717,72 @@ app.post('/api/ai/crawl-news', async (req, res) => {
       return res.status(401).json({ error: 'API key not configured' });
     }
 
-    // Use gemini-3.1-flash-lite as the base model for reliability
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite',
-      contents: 'Tafuta habari mpya, za kuaminika na za hivi karibuni (ndani ya miezi michache iliyopita) zinazohusu sekta ya elimu Tanzania, ratiba au matangazo ya NECTA (Baraza la Mitihani la Tanzania), mtaala mpya wa TIE (Taasisi ya Elimu Tanzania), bodi ya mikopo HESLB, au habari zozote za kielimu zinazohusu Lupanulla Hub. Lengo letu ni kukusanya habari hizi na kuziweka hadharani kwa wanafunzi na walimu kwenye Lupanulla Elimu Hub. Tafadhali andika habari hizi zote kwa lugha ya Kiswahili fasaha na yenye kuvutia sana.',
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          description: "Orodha ya habari za hivi karibuni za elimu nchini Tanzania",
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { 
-                type: Type.STRING, 
-                description: "Kichwa cha habari kirefu na rasmi (kwa Kiswahili)." 
+    // Use gemini-3.5-flash for Search Grounding as requested
+    let response;
+    try {
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: 'Tafuta habari mpya, za kuaminika na za hivi karibuni (ndani ya miezi michache iliyopita) zinazohusu sekta ya elimu Tanzania, ratiba au matangazo ya NECTA (Baraza la Mitihani la Tanzania), mtaala mpya wa TIE (Taasisi ya Elimu Tanzania), bodi ya mikopo HESLB, au habari zozote za kielimu zinazohusu Lupanulla Hub. Lengo letu ni kukusanya habari hizi na kuziweka hadharani kwa wanafunzi na walimu kwenye Lupanulla Elimu Hub. Tafadhali andika habari hizi zote kwa lugha ya Kiswahili fasaha na yenye kuvutia sana.',
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            description: "Orodha ya habari za hivi karibuni za elimu nchini Tanzania",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { 
+                  type: Type.STRING, 
+                  description: "Kichwa cha habari kirefu na rasmi (kwa Kiswahili)." 
+                },
+                source: { 
+                  type: Type.STRING, 
+                  description: "Chanzo cha habari hii, mfano: Baraza la Mitihani (NECTA), Taasisi ya Elimu (TIE), Bodi ya Mikopo (HESLB), au Lupanulla Media." 
+                },
+                content: { 
+                  type: Type.STRING, 
+                  description: "Muhtasari wa habari wa aya mbili hadi tatu kwa Kiswahili ukiwa na maelezo kamili ya kutosha." 
+                },
+                url: { 
+                  type: Type.STRING, 
+                  description: "URL halisi ya habari hiyo iliyopatikana kwenye Google Search au tovuti husika kama necta.go.tz." 
+                },
+                relevanceExplanation: { 
+                  type: Type.STRING, 
+                  description: "Maelezo mafupi kwanini habari hii ni muhimu kwa watumiaji na wanafunzi wanaosoma Lupanulla Hub." 
+                }
               },
-              source: { 
-                type: Type.STRING, 
-                description: "Chanzo cha habari hii, mfano: Baraza la Mitihani (NECTA), Taasisi ya Elimu (TIE), Bodi ya Mikopo (HESLB), au Lupanulla Media." 
-              },
-              content: { 
-                type: Type.STRING, 
-                description: "Muhtasari wa habari wa aya mbili hadi tatu kwa Kiswahili ukiwa na maelezo kamili ya kutosha." 
-              },
-              url: { 
-                type: Type.STRING, 
-                description: "URL halisi ya habari hiyo iliyopatikana kwenye Google Search au tovuti husika kama necta.go.tz." 
-              },
-              relevanceExplanation: { 
-                type: Type.STRING, 
-                description: "Maelezo mafupi kwanini habari hii ni muhimu kwa watumiaji na wanafunzi wanaosoma Lupanulla Hub." 
-              }
-            },
-            required: ["title", "source", "content", "relevanceExplanation"]
+              required: ["title", "source", "content", "relevanceExplanation"]
+            }
           }
         }
-      }
-    }));
+      }));
+    } catch (primaryError: any) {
+      console.warn('Primary news crawler with search grounding failed, falling back to gemini-3.1-flash-lite without tools:', primaryError.message || primaryError);
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: 'Tafuta habari mpya, za kuaminika na za hivi karibuni (ndani ya miezi michache iliyopita) zinazohusu sekta ya elimu Tanzania, ratiba au matangazo ya NECTA, mtaala mpya wa TIE, bodi ya mikopo HESLB, au habari za kielimu nchini Tanzania. Tafadhali andika habari hizi zote kwa lugha ya Kiswahili fasaha.',
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            description: "Orodha ya habari za hivi karibuni za elimu nchini Tanzania",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                source: { type: Type.STRING },
+                content: { type: Type.STRING },
+                url: { type: Type.STRING },
+                relevanceExplanation: { type: Type.STRING }
+              },
+              required: ["title", "source", "content", "relevanceExplanation"]
+            }
+          }
+        }
+      }));
+    }
 
     const text = response.text || '[]';
     let newsItems = [];
@@ -750,14 +823,28 @@ app.post('/api/chat', async (req, res) => {
       parts: [{ text: m.content }]
     }));
 
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite',
-      contents: contents,
-      config: {
-        systemInstruction: system,
-        temperature: 0.7,
-      }
-    }));
+    // Use gemini-3.5-flash for general multi-turn chat with fallback to gemini-3.1-flash-lite
+    let response;
+    try {
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: contents,
+        config: {
+          systemInstruction: system,
+          temperature: 0.7,
+        }
+      }));
+    } catch (primaryError: any) {
+      console.warn('Primary chat model gemini-3.5-flash failed, falling back to gemini-3.1-flash-lite:', primaryError.message || primaryError);
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: contents,
+        config: {
+          systemInstruction: system,
+          temperature: 0.7,
+        }
+      }));
+    }
 
     res.json({ reply: response.text || '' });
   } catch (error: any) {

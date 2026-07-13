@@ -332,15 +332,19 @@ export default function App() {
       await updateUserProfile(user.uid, { verificationCode: otpCode, emailVerified: false });
       setSimulatedOtp(otpCode);
       
-      await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: user.email, 
-          code: otpCode, 
-          name: userProfile?.name || user.displayName || 'Mtumiaji Lupanulla' 
-        })
-      });
+      try {
+        await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: user.email, 
+            code: otpCode, 
+            name: userProfile?.name || user.displayName || 'Mtumiaji Lupanulla' 
+          })
+        });
+      } catch (fetchErr) {
+        console.warn('send-otp API endpoint failed, falling back to simulated OTP:', fetchErr);
+      }
       
       await refreshProfile(user.uid);
       setOtpSuccessMessage('Nambari mpya ya siri imetumwa kwenye barua pepe yako.');
@@ -492,15 +496,19 @@ export default function App() {
           setUnverifiedEmail(email.trim());
           setAuthTab('verify');
           
-          await fetch('/api/auth/send-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: email.trim(), 
-              code: otpCode, 
-              name: profile.name || 'Mtumiaji Lupanulla' 
-            })
-          });
+          try {
+            await fetch('/api/auth/send-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: email.trim(), 
+                code: otpCode, 
+                name: profile.name || 'Mtumiaji Lupanulla' 
+              })
+            });
+          } catch (fetchErr) {
+            console.warn('send-otp API endpoint failed, falling back to simulated OTP:', fetchErr);
+          }
         } else {
           await refreshProfile(userCredential.user.uid);
           setShowSignInModal(false);
@@ -525,19 +533,24 @@ export default function App() {
         setSimulatedOtp(otpCode);
         setAuthTab('verify');
         
-        await fetch('/api/auth/send-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            email: email.trim(), 
-            code: otpCode, 
-            name: fullName.trim() 
-          })
-        });
+        try {
+          await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: email.trim(), 
+              code: otpCode, 
+              name: fullName.trim() 
+            })
+          });
+        } catch (fetchErr) {
+          console.warn('send-otp API endpoint failed, falling back to simulated OTP:', fetchErr);
+        }
       }
     } catch (err: any) {
       console.error('Email Authentication Error:', err);
       let errorMsg = 'Mchakato wa uthibitishaji umeshindwa. Tafadhali thibitisha barua pepe na nenosiri.';
+      
       if (err.code === 'auth/email-already-in-use') {
         errorMsg = 'Barua pepe hii inatumiwa tayari na mtumiaji mwingine.';
       } else if (err.code === 'auth/weak-password') {
@@ -545,7 +558,11 @@ export default function App() {
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         errorMsg = 'Barua pepe au nenosiri si sahihi.';
       } else if (err.code === 'auth/operation-not-allowed') {
-        errorMsg = 'Njia ya kuingia kwa Barua Pepe na Nenosiri haijawezeshwa bado kwenye Firebase Console. Tafadhali wasiliana na msimamizi kuiruhusu, au tumia kitufe cha "Endelea na Google" kuingia sasa.';
+        errorMsg = 'Njia ya kuingia kwa Barua Pepe na Nenosiri haijawezeshwa bado kwenye Firebase Console. Tafadhali wasiliana na msimamizi kuiruhusu kwenye: (Build > Authentication > Sign-in method), au tumia kitufe cha "Endelea na Google" kuingia sasa.';
+      } else if (err.code === 'auth/internal-error' || err.message?.includes('internal') || err.message?.includes('auth/')) {
+        errorMsg = `Hitilafu ya ndani ya mfumo (${err.code || 'Internal Error'}): ${err.message || 'Hali haijaruhusiwa'}. Hii hutokea mara nyingi kama Email/Password haijawezeshwa kwenye Firebase Console (Build > Authentication > Sign-in method). Tafadhali wasiliana na msimamizi, au tumia njia mbadala ya "Endelea na Google" au "Ingia kama Mgeni" kuanza kusoma mara moja bila kusubiri!`;
+      } else if (err.message) {
+        errorMsg = `Hitilafu: ${err.message}`;
       }
       setAuthError(errorMsg);
     } finally {
@@ -896,6 +913,28 @@ export default function App() {
               <h2 className="font-display font-extrabold text-2xl text-slate-900 leading-none mt-2 uppercase">Lupanulla Hub</h2>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Kitovu cha Elimu ya Kidijitali Tanzania</p>
             </div>
+
+            {typeof window !== 'undefined' && window.self !== window.top && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-2 text-amber-900 text-xs animate-fade-in">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={16} />
+                  <div className="space-y-1">
+                    <p className="font-extrabold uppercase text-[10px] tracking-wider text-amber-950">Taarifa Muhimu ya Preview (Iframe)</p>
+                    <p className="text-[11px] leading-relaxed font-semibold">
+                      Ukiwa ndani ya preview ya AI Studio, kivinjari chako kinaweza kuzuia "Email/Password Login & Signup" kwa sababu ya usalama wa kuki/storage ya iframe.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 pt-1.5 border-t border-amber-200/50">
+                  <p className="text-[10px] font-bold text-amber-950 uppercase">Njia Mbadala za Kufanikiwa:</p>
+                  <ol className="list-decimal list-inside text-[10px] font-semibold space-y-1 text-amber-900/85 pl-1">
+                    <li>Bonyeza kitufe cha kijani cha <strong className="text-teal-800">"Ingia Haraka kama Mgeni"</strong> chini ili kuingia papo hapo.</li>
+                    <li>Tumia kitufe cha <strong className="text-cyan-800">"Endelea na Google"</strong> ikiwa umeidhinisha domain yako kwenye Firebase settings.</li>
+                    <li>Fungua programu kwenye kichupo kipya cha kivinjari (kwa kubofya Share au kufungua nje ya iframe) ili kujiandikisha kwa urahisi kabisa bila kuzuiliwa na kivinjari!</li>
+                  </ol>
+                </div>
+              </div>
+            )}
 
             {authTab !== 'verify' ? (
               <>

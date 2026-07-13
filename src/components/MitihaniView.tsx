@@ -274,6 +274,25 @@ export default function MitihaniView({
       accent: 'border-emerald-500'
     },
     {
+      id: 'chem-practical-handout',
+      title: 'Chemistry Practical Solutions - IV (Subject Handout)',
+      description: 'A comprehensive chemistry practical guide prepared by Sir. Donny Company. Contains detailed volumetric analysis, rate of chemical reactions & equilibrium, qualitative analysis, balanced equations, tables of results, and calculation steps.',
+      category: 'Science & Technology',
+      tags: ['Chemistry', 'Practical', 'Handout', 'Guide', 'Form IV', 'NECTA'],
+      fileId: 'sample-drive-id-chem-handout',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Sir. Donny',
+      createdAt: Date.now() - 3600000 * 24 * 0.5,
+      views: 2450,
+      status: 'approved',
+      paperNo: 'Practical Guide',
+      year: 2026,
+      type: 'Handout',
+      sizeKB: 412,
+      accent: 'border-cyan-500'
+    },
+    {
       id: 'mock-chinese-f4-2026',
       title: 'Morogoro Region Regional Form Four Mock Examination 2026 - Chinese Language',
       description: 'Official regional mock examination paper for Chinese Language. Covers Pinyin, character translation, comprehension reading, matching patterns, and short composition writing topics.',
@@ -501,6 +520,33 @@ export default function MitihaniView({
           </div>
         </form>
 
+        <div className="flex flex-wrap gap-2 items-center text-[10px] text-slate-400 font-bold">
+          <span>Namba za majaribio ya haraka (Mifano):</span>
+          <button
+            type="button"
+            onClick={() => setCandidateCode('S0101/0001/2026')}
+            className="px-2 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md border border-slate-200 font-mono transition-colors cursor-pointer"
+          >
+            S0101/0001/2026
+          </button>
+          <button
+            type="button"
+            onClick={() => setCandidateCode('S0101/0002/2026')}
+            className="px-2 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md border border-slate-200 font-mono transition-colors cursor-pointer"
+          >
+            S0101/0002/2026
+          </button>
+        </div>
+
+        {/* Info Block */}
+        <div className="bg-indigo-50/45 border border-indigo-100 rounded-2xl p-4 max-w-xl text-xs space-y-1.5 text-indigo-950 font-medium">
+          <p className="font-extrabold uppercase text-[10px] text-indigo-700 tracking-wider">Matokeo yanayopatikana sasa:</p>
+          <ul className="list-disc list-inside space-y-0.5 text-indigo-900 font-semibold">
+            <li>Form IV NECTA Mock Examinations (2026)</li>
+            <li>Form IV NECTA Terminal (2026)</li>
+          </ul>
+        </div>
+
         {/* Error Feedback */}
         {resultLookupError && (
           <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex gap-3 text-xs text-rose-700">
@@ -554,15 +600,25 @@ export default function MitihaniView({
                   </div>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {checkedResult.subjects.map((sub, idx) => (
-                    <div key={idx} className="px-4 py-3 flex justify-between items-center hover:bg-slate-50/50">
-                      <span className="font-bold text-slate-700">{sub.subject}</span>
-                      <div className="flex gap-12 font-mono">
-                        <span className="text-slate-500 w-8 text-right">{sub.score}%</span>
-                        <span className="text-indigo-600 font-black w-8 text-right">Grade {sub.grade}</span>
+                  {checkedResult.subjects.map((sub, idx) => {
+                    const g = sub.grade.trim().toUpperCase();
+                    const badgeClass = g === 'A' ? 'bg-green-100 text-green-800 border-green-200' :
+                                       g === 'B' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                       g === 'C' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                       g === 'D' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                       'bg-rose-100 text-rose-800 border-rose-200';
+                    return (
+                      <div key={idx} className="px-4 py-3 flex justify-between items-center hover:bg-slate-50/50">
+                        <span className="font-bold text-slate-700">{sub.subject}</span>
+                        <div className="flex gap-12 font-mono items-center">
+                          <span className="text-slate-500 w-8 text-right font-bold">{sub.score}%</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border text-center w-24 ${badgeClass}`}>
+                            Grade {sub.grade}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

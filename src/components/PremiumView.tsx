@@ -13,9 +13,10 @@ import {
   MessageCircle,
   Sparkles,
   Bot,
-  Brain
+  Brain,
+  Clock
 } from 'lucide-react';
-import { updateUserProfile } from '../firebase';
+import { updateUserProfile, submitPaymentTransaction } from '../firebase';
 
 interface PremiumViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -29,7 +30,7 @@ export default function PremiumView({
   onProfileUpdate
 }: PremiumViewProps) {
   const [selectedPlan, setSelectedPlan] = useState<'daily' | 'monthly' | 'term'>('monthly');
-  const [paymentStep, setPaymentStep] = useState<'tiers' | 'instructions' | 'verifying' | 'success'>('tiers');
+  const [paymentStep, setPaymentStep] = useState<'tiers' | 'instructions' | 'pending_approval' | 'success'>('tiers');
   const [payMethod, setPayMethod] = useState<'mpesa' | 'tigopesa' | 'airtel'>('mpesa');
   
   // Verification states
@@ -63,7 +64,7 @@ export default function PremiumView({
     setPaymentStep('instructions');
   };
 
-  // Tanzanian Mobile Money validation mock which updates Firebase Firestore user profile
+  // Submit transaction details to Firestore for admin review
   const handleVerifyPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionId.trim()) {
@@ -71,27 +72,34 @@ export default function PremiumView({
       return;
     }
 
+    const txCode = transactionId.trim().toUpperCase();
+    if (txCode.length < 8) {
+      setError('Namba ya muamala uliyoweka haina usahihi. Lazima iwe na angalau herufi au namba 8.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
-      
-      // Simulate validation request
-      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Regular expression matching valid Tanzanian mobile transaction formats (e.g., MPESA/TIGOPESA alphanumeric logs)
-      if (transactionId.length < 8) {
-        throw new Error('Namba ya muamala uliyoweka haina usahihi. Tafadhali thibitisha na SMS yako.');
+      if (!userProfile?.uid) {
+        throw new Error('Hujajisajili au kuingia kwenye akaunti ili kufanya malipo.');
       }
 
-      // Update user subscription to premium inside Firestore database securely
-      if (userProfile?.uid) {
-        await updateUserProfile(userProfile.uid, { subscription: 'premium' });
-        onProfileUpdate(); // Update local profile state
-      }
+      await submitPaymentTransaction({
+        userId: userProfile.uid,
+        userName: userProfile.name || 'Mtumiaji Lupanulla',
+        userEmail: userProfile.email || 'mwanafunzi@lupanulla.co.tz',
+        planId: selectedPlan,
+        planName: activePlanDetails.name,
+        amount: activePlanDetails.price,
+        payMethod: payMethod,
+        transactionId: txCode,
+      });
 
-      setPaymentStep('success');
+      setPaymentStep('pending_approval');
     } catch (err: any) {
-      setError(err.message || 'Mchakato wa kuthibitisha malipo umefeli. Hakikisha umeweka namba sahihi au wasiliana nasi.');
+      setError(err.message || 'Mchakato wa kuwasilisha malipo umefeli. Tafadhali jaribu tena baadae.');
     } finally {
       setSubmitting(false);
     }
@@ -502,6 +510,56 @@ export default function PremiumView({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {paymentStep === 'pending_approval' && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center shadow-sm max-w-xl mx-auto space-y-6 animate-fade-in py-16 text-slate-800">
+          <div className="relative mx-auto w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
+            <Clock size={36} className="animate-spin text-amber-500 stroke-[2.5]" style={{ animationDuration: '3s' }} />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="font-display font-extrabold text-xl sm:text-2xl text-slate-900 uppercase">Malipo Yanahakikiwa! ⏳</h2>
+            <p className="text-slate-650 text-xs sm:text-sm leading-relaxed max-w-md mx-auto font-semibold">
+              Ombi lako la malipo limepokelewa na kusajiliwa kikamilifu! Msimamizi wa mfumo (Admin) anahakiki muamala wako sasa hivi. 
+            </p>
+            <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-md mx-auto">
+              Akaunti yako itamilishwa kuwa **Premium** ndani ya dakika 15-30. Unaweza kufunga ukurasa huu na utapata ujumbe au kubofya kitufe cha chini kujulisha Admin kwa haraka.
+            </p>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-left max-w-md mx-auto space-y-2">
+            <p className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Muhtasari wa Malipo:</p>
+            <div className="text-xs space-y-1 text-slate-700">
+              <p>Mteja: <strong className="text-slate-900">{userProfile?.name}</strong></p>
+              <p>Kifurushi: <strong className="text-slate-900">{activePlanDetails.name}</strong></p>
+              <p>Njia ya Malipo: <strong className="text-slate-900 uppercase">{payMethod}</strong></p>
+              <p>Transaction ID: <strong className="text-slate-900 font-mono">{transactionId.toUpperCase()}</strong></p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2 max-w-md mx-auto">
+            <a
+              href={`https://wa.me/255684458632?text=Habari%20Admin,%20nimewasilisha%20muamala%20wangu%20wa%20Lupanulla%20Premium%20kwa%20ajili%20ya%20uhakiki.%0A%0AJina:%20${encodeURIComponent(userProfile?.name || '')}%0ABarua%20Pepe:%20${encodeURIComponent(userProfile?.email || '')}%0ANamba%20ya%20Muamala:%20${encodeURIComponent(transactionId.trim().toUpperCase())}%0AKifurushi:%20${encodeURIComponent(activePlanDetails.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <MessageCircle size={15} />
+              Arifu Admin via WhatsApp
+            </a>
+
+            <button 
+              onClick={() => {
+                setPaymentStep('tiers');
+                setTransactionId('');
+              }}
+              className="px-5 py-3 border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl"
+            >
+              Rudi Kwenye Vifurushi
+            </button>
+          </div>
         </div>
       )}
 

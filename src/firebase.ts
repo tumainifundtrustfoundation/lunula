@@ -29,7 +29,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews, PaymentTransaction } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -39,6 +39,7 @@ export const auth = getAuth(app);
 // Use initializeFirestore with force long polling and persistent local cache to ensure stable connection in sandboxed preview iframe/network environment
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: false,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
@@ -213,7 +214,7 @@ export const ensureUserProfile = async (user: User, displayName: string, additio
     name: displayName,
     email: user.email || '',
     role: isSuperAdmin ? 'super_admin' : 'student',
-    subscription: 'premium',
+    subscription: isSuperAdmin ? 'premium' : 'free',
     createdAt: Date.now(),
     emailVerified: defaultVerified,
     xp: 0,
@@ -830,11 +831,95 @@ export const fetchExamResultByCode = async (candidateCode: string): Promise<Exam
   const path = 'exam_results';
   try {
     const colRef = collection(db, path);
-    const q = query(colRef, where('candidateCode', '==', candidateCode.trim().toUpperCase()));
+    const codeUpper = candidateCode.trim().toUpperCase();
+    const q = query(colRef, where('candidateCode', '==', codeUpper));
     const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const doc = snap.docs[0];
-    return { id: doc.id, ...doc.data() } as ExamResult;
+    
+    if (!snap.empty) {
+      const doc = snap.docs[0];
+      return { id: doc.id, ...doc.data() } as ExamResult;
+    }
+    
+    // Check if the entire exam_results collection is empty
+    const allResultsSnap = await getDocs(colRef);
+    if (allResultsSnap.empty) {
+      console.log('Seeding default exam results to Firestore...');
+      const DEFAULT_SEEDED_RESULTS: Omit<ExamResult, 'id'>[] = [
+        {
+          studentName: "Yohana Marco Bahati",
+          candidateCode: "S0101/0001/2026",
+          examType: "NECTA Mock Examination",
+          level: "Form IV",
+          year: 2026,
+          division: "Division I",
+          gpa: 1.14,
+          subjects: [
+            { subject: "Basic Mathematics", grade: "A", score: 88 },
+            { subject: "Physics", grade: "A", score: 85 },
+            { subject: "Chemistry", grade: "B", score: 76 },
+            { subject: "Biology", grade: "A", score: 81 },
+            { subject: "English Language", grade: "B", score: 78 },
+            { subject: "Civics", grade: "A", score: 82 },
+            { subject: "History", grade: "B", score: 74 }
+          ],
+          publishedAt: Date.now() - 3600000 * 24 * 10,
+          status: "published"
+        },
+        {
+          studentName: "Anna John Simba",
+          candidateCode: "S0101/0002/2026",
+          examType: "NECTA Mock Examination",
+          level: "Form IV",
+          year: 2026,
+          division: "Division II",
+          gpa: 2.43,
+          subjects: [
+            { subject: "Basic Mathematics", grade: "C", score: 58 },
+            { subject: "Physics", grade: "B", score: 68 },
+            { subject: "Chemistry", grade: "C", score: 55 },
+            { subject: "Biology", grade: "B", score: 65 },
+            { subject: "English Language", grade: "B", score: 70 },
+            { subject: "Civics", grade: "C", score: 52 },
+            { subject: "History", grade: "D", score: 48 }
+          ],
+          publishedAt: Date.now() - 3600000 * 24 * 10,
+          status: "published"
+        },
+        {
+          studentName: "Juma Shaban Mwinyi",
+          candidateCode: "S1245/0050/2026",
+          examType: "NECTA Terminal Examination",
+          level: "Form IV",
+          year: 2026,
+          division: "Division III",
+          gpa: 3.57,
+          subjects: [
+            { subject: "Basic Mathematics", grade: "D", score: 44 },
+            { subject: "Physics", grade: "D", score: 41 },
+            { subject: "Chemistry", grade: "C", score: 52 },
+            { subject: "Biology", grade: "D", score: 43 },
+            { subject: "English Language", grade: "C", score: 50 },
+            { subject: "Civics", grade: "D", score: 40 },
+            { subject: "History", grade: "F", score: 32 }
+          ],
+          publishedAt: Date.now() - 3600000 * 24 * 10,
+          status: "published"
+        }
+      ];
+      
+      for (const res of DEFAULT_SEEDED_RESULTS) {
+        await addDoc(colRef, res);
+      }
+      
+      // Re-run search query after seeding
+      const retrySnap = await getDocs(q);
+      if (!retrySnap.empty) {
+        const doc = retrySnap.docs[0];
+        return { id: doc.id, ...doc.data() } as ExamResult;
+      }
+    }
+    
+    return null;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
     return null;
@@ -880,6 +965,72 @@ export const updateFeedbackStatus = async (id: string, status: 'new' | 'reviewed
     await updateDoc(docRef, { status });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+/**
+ * Submits a new payment transaction verification request to Firestore
+ */
+export const submitPaymentTransaction = async (tx: Omit<PaymentTransaction, 'id' | 'status' | 'createdAt'>): Promise<string> => {
+  const path = 'payment_transactions';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, {
+      ...tx,
+      status: 'pending',
+      createdAt: Date.now()
+    });
+    return docRef.id;
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+    throw err;
+  }
+};
+
+/**
+ * Fetches all payment transactions from Firestore
+ */
+export const fetchPaymentTransactions = async (): Promise<PaymentTransaction[]> => {
+  const path = 'payment_transactions';
+  try {
+    const colRef = collection(db, path);
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as PaymentTransaction));
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.LIST, path);
+    return [];
+  }
+};
+
+/**
+ * Updates a payment transaction's status (approved or rejected) and elevates user subscription status if approved
+ */
+export const updatePaymentTransactionStatus = async (
+  id: string, 
+  status: 'approved' | 'rejected', 
+  userId: string,
+  rejectionReason?: string
+): Promise<void> => {
+  const path = `payment_transactions/${id}`;
+  try {
+    const docRef = doc(db, 'payment_transactions', id);
+    const updates: Partial<PaymentTransaction> = {
+      status,
+      approvedAt: Date.now()
+    };
+    if (rejectionReason) {
+      updates.rejectionReason = rejectionReason;
+    }
+    await updateDoc(docRef, updates);
+
+    // If approved, update user's profile to premium!
+    if (status === 'approved') {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { subscription: 'premium' });
+    }
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+    throw err;
   }
 };
 
