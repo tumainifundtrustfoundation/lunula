@@ -481,7 +481,8 @@ app.post('/api/claude.php', async (req, res) => {
     });
 
     // Model selection based on features and user preference
-    let selectedModel = 'gemini-3.5-flash';
+    // Default to gemini-3.1-flash-lite for working quota and fast response
+    let selectedModel = 'gemini-3.1-flash-lite';
     if (thinking) {
       selectedModel = 'gemini-3.1-pro-preview';
     } else if (modelChoice === 'pro') {
@@ -489,7 +490,7 @@ app.post('/api/claude.php', async (req, res) => {
     } else if (modelChoice === 'lite') {
       selectedModel = 'gemini-3.1-flash-lite';
     } else if (modelChoice === 'flash') {
-      selectedModel = 'gemini-3.5-flash';
+      selectedModel = 'gemini-3.1-flash-lite';
     }
 
     const config: any = {
@@ -498,7 +499,7 @@ app.post('/api/claude.php', async (req, res) => {
     };
 
     // Set thinking level to HIGH on gemini-3.1-pro-preview if thinking is enabled
-    if (thinking) {
+    if (thinking && selectedModel === 'gemini-3.1-pro-preview') {
       config.thinkingConfig = {
         thinkingBudget: 2048,
         thinkingLevel: "HIGH"
@@ -513,12 +514,32 @@ app.post('/api/claude.php', async (req, res) => {
       config.tools = [{ googleMaps: {} }];
     }
 
-    // Call Gemini API using modern SDK with built-in retry logic
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: selectedModel,
-      contents: contents,
-      config: config
-    }));
+    // Call Gemini API with automatic fallback to gemini-3.1-flash-lite
+    let response;
+    try {
+      response = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: selectedModel,
+        contents: contents,
+        config: config
+      }));
+    } catch (primaryError: any) {
+      console.warn(`Primary model ${selectedModel} failed. Falling back to gemini-3.1-flash-lite... Error:`, primaryError.message || primaryError);
+      if (selectedModel !== 'gemini-3.1-flash-lite') {
+        const fallbackConfig = { ...config };
+        delete fallbackConfig.thinkingConfig;
+        if (fallbackConfig.tools) {
+          // gemini-3.1-flash-lite doesn't support search/maps tools under some free-tier quotas, remove if fallback
+          delete fallbackConfig.tools;
+        }
+        response = await callGeminiWithRetry(() => ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: contents,
+          config: fallbackConfig
+        }));
+      } else {
+        throw primaryError;
+      }
+    }
 
     const reply = response.text || 'Samahani, sikuweza kupata jibu sahihi wakati huu.';
     res.json({ reply });
@@ -573,7 +594,7 @@ app.post('/api/ai/transcribe', async (req, res) => {
     }
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: [
         {
           inlineData: {
@@ -650,8 +671,9 @@ app.post('/api/ai/crawl-news', async (req, res) => {
       return res.status(401).json({ error: 'API key not configured' });
     }
 
+    // Use gemini-3.1-flash-lite as the base model for reliability
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: 'Tafuta habari mpya, za kuaminika na za hivi karibuni (ndani ya miezi michache iliyopita) zinazohusu sekta ya elimu Tanzania, ratiba au matangazo ya NECTA (Baraza la Mitihani la Tanzania), mtaala mpya wa TIE (Taasisi ya Elimu Tanzania), bodi ya mikopo HESLB, au habari zozote za kielimu zinazohusu Lupanulla Hub. Lengo letu ni kukusanya habari hizi na kuziweka hadharani kwa wanafunzi na walimu kwenye Lupanulla Elimu Hub. Tafadhali andika habari hizi zote kwa lugha ya Kiswahili fasaha na yenye kuvutia sana.',
       config: {
         tools: [{ googleSearch: {} }],
@@ -729,7 +751,7 @@ app.post('/api/chat', async (req, res) => {
     }));
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: contents,
       config: {
         systemInstruction: system,
