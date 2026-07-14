@@ -18,7 +18,9 @@ import {
   CheckCircle2,
   ShieldCheck,
   Printer,
-  Clock
+  Clock,
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 import { fetchDocuments, fetchExamResultByCode } from '../firebase';
 import { DocumentMetadata, ExamResult } from '../types';
@@ -47,7 +49,7 @@ export default function MitihaniView({
   const [selectedLevel, setSelectedLevel] = useState<string>(''); // 'Primary', 'O-Level', 'A-Level'
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
-  const [sortBy, setSortBy] = useState<string>('newest'); // 'newest', 'views', 'alphabetical'
+  const [sortBy, setSortBy] = useState<string>('subjectYear'); // 'subjectYear', 'newest', 'views', 'alphabetical'
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [showTimer, setShowTimer] = useState(false);
 
@@ -56,6 +58,66 @@ export default function MitihaniView({
   const [checkingResult, setCheckingResult] = useState<boolean>(false);
   const [checkedResult, setCheckedResult] = useState<ExamResult | null>(null);
   const [resultLookupError, setResultLookupError] = useState<string | null>(null);
+
+  // --- NEW: NECTA Past Papers Library Wizard States & Configuration ---
+  const [nectaWizardLevel, setNectaWizardLevel] = useState<string>('f4');
+  const [nectaWizardSubject, setNectaWizardSubject] = useState<string>('physics');
+  const [nectaWizardYear, setNectaWizardYear] = useState<string>('2023');
+
+  const NECTA_LEVELS = [
+    { id: 'std7', name: 'Darasa la 7 (PSLE)', description: 'Mitihani ya Kuhitimu Elimu ya Msingi' },
+    { id: 'f2', name: 'Kidato cha 2 (FTSEE)', description: 'Upimaji wa Kitaifa Kidato cha Pili' },
+    { id: 'f4', name: 'Kidato cha 4 (CSEE)', description: 'Mtihani wa Kuhitimu Elimu ya Sekondari' },
+    { id: 'f6', name: 'Kidato cha 6 (ACSEE)', description: 'Mtihani wa Kidato cha Sita na Vyuo' },
+  ];
+
+  const NECTA_SUBJECTS: Record<string, { id: string; name: string }[]> = {
+    std7: [
+      { id: 'mathematics', name: 'Mathematics (Hisabati)' },
+      { id: 'science', name: 'Science & Tech (Sayansi)' },
+      { id: 'social-studies', name: 'Social Studies (Maarifa ya Jamii)' },
+      { id: 'civic-moral', name: 'Civic & Moral (Uraia na Maadili)' },
+      { id: 'english', name: 'English Language (Kiingereza)' },
+      { id: 'kiswahili', name: 'Kiswahili' },
+    ],
+    f2: [
+      { id: 'basic-math', name: 'Basic Mathematics' },
+      { id: 'physics', name: 'Physics (Fizikia)' },
+      { id: 'chemistry', name: 'Chemistry (Kemia)' },
+      { id: 'biology', name: 'Biology (Biolojia)' },
+      { id: 'geography', name: 'Geography (Jiografia)' },
+      { id: 'history', name: 'History (Historia)' },
+      { id: 'civics', name: 'Civics (Uraia)' },
+      { id: 'english', name: 'English Language' },
+      { id: 'kiswahili', name: 'Kiswahili' },
+    ],
+    f4: [
+      { id: 'basic-math', name: 'Basic Mathematics' },
+      { id: 'physics', name: 'Physics (Fizikia)' },
+      { id: 'chemistry', name: 'Chemistry (Kemia)' },
+      { id: 'biology', name: 'Biology (Biolojia)' },
+      { id: 'geography', name: 'Geography (Jiografia)' },
+      { id: 'history', name: 'History (Historia)' },
+      { id: 'civics', name: 'Civics (Uraia)' },
+      { id: 'english', name: 'English Language' },
+      { id: 'kiswahili', name: 'Kiswahili' },
+      { id: 'commerce', name: 'Commerce (Biashara)' },
+      { id: 'bookkeeping', name: 'Book-keeping' },
+    ],
+    f6: [
+      { id: 'physics', name: 'Physics (Fizikia)' },
+      { id: 'chemistry', name: 'Chemistry (Kemia)' },
+      { id: 'biology', name: 'Biology (Biolojia)' },
+      { id: 'adv-math', name: 'Advanced Mathematics' },
+      { id: 'geography', name: 'Geography (Jiografia)' },
+      { id: 'history', name: 'History (Historia)' },
+      { id: 'english', name: 'English Language' },
+      { id: 'kiswahili', name: 'Kiswahili' },
+      { id: 'general-studies', name: 'General Studies' },
+    ],
+  };
+
+  const NECTA_YEARS = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010'];
 
   // Load active publisher configuration
   const [adsenseActive, setAdsenseActive] = useState<boolean>(() => localStorage.getItem('lup_adsense_active') !== 'false');
@@ -507,9 +569,48 @@ export default function MitihaniView({
     return matchesSearch && matchesType && matchesSubject && matchesYear && matchesLevel;
   });
 
+  const getDocSubject = (doc: DocumentMetadata) => {
+    if (doc.subject) return doc.subject;
+    // Look through standard subjects
+    const subjects = [
+      'Mathematics', 'Basic Mathematics', 'Advanced Mathematics', 'Physics', 'Chemistry', 'Biology', 
+      'History', 'Geography', 'Civics', 'English', 'Kiswahili', 'Commerce', 'Bookkeeping', 'Physical Education', 'Chinese'
+    ];
+    for (const s of subjects) {
+      if (
+        doc.title.toLowerCase().includes(s.toLowerCase()) || 
+        doc.tags.some(t => t.toLowerCase() === s.toLowerCase() || t.toLowerCase().includes(s.toLowerCase()))
+      ) {
+        // Normalize names
+        if (s.toLowerCase().includes('math')) return 'Mathematics (Hisabati)';
+        if (s.toLowerCase().includes('phy')) return 'Physics (Fizikia)';
+        if (s.toLowerCase().includes('chem')) return 'Chemistry (Kemia)';
+        if (s.toLowerCase().includes('bio')) return 'Biology (Biolojia)';
+        if (s.toLowerCase().includes('hist')) return 'History (Historia)';
+        if (s.toLowerCase().includes('geo')) return 'Geography (Jiografia)';
+        if (s.toLowerCase().includes('civ')) return 'Civics (Uraia)';
+        if (s.toLowerCase().includes('eng')) return 'English Language';
+        if (s.toLowerCase().includes('kisw')) return 'Kiswahili';
+        if (s.toLowerCase().includes('comm')) return 'Commerce (Biashara)';
+        if (s.toLowerCase().includes('book')) return 'Book-keeping';
+        return s;
+      }
+    }
+    return doc.category || 'Masomo Mengine';
+  };
+
   // Sort application
   const sortedDocs = [...filteredDocs].sort((a, b) => {
-    if (sortBy === 'newest') {
+    if (sortBy === 'subjectYear') {
+      const subA = getDocSubject(a);
+      const subB = getDocSubject(b);
+      const subCompare = subA.localeCompare(subB);
+      if (subCompare !== 0) return subCompare;
+      
+      const yrA = a.year || (a.tags.includes('2023') ? 2023 : a.tags.includes('2022') ? 2022 : a.tags.includes('2024') ? 2024 : 2026);
+      const yrB = b.year || (b.tags.includes('2023') ? 2023 : b.tags.includes('2022') ? 2022 : b.tags.includes('2024') ? 2024 : 2026);
+      return yrB - yrA; // Newer year first
+    } else if (sortBy === 'newest') {
       return b.createdAt - a.createdAt;
     } else if (sortBy === 'views') {
       return b.views - a.views;
@@ -747,6 +848,195 @@ export default function MitihaniView({
         )}
       </section>
 
+      {/* ── NEW: Maktaba Kuu ya Past Papers za NECTA (TETEA Direct) ── */}
+      <section id="necta-past-papers-center" className="bg-gradient-to-br from-indigo-950 via-slate-900 to-cyan-950 border border-cyan-500/20 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-cyan-500/10 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-cyan-500/15 text-cyan-400 rounded-xl flex items-center justify-center flex-shrink-0 border border-cyan-400/30">
+              <BookOpen size={22} className="animate-pulse" />
+            </div>
+            <div>
+              <h2 className="font-sans font-black text-white text-base uppercase tracking-tight">Kituo Kikuu cha Past Papers za NECTA (Maktaba ya Taifa)</h2>
+              <p className="text-xs text-slate-300">Pata mitihani yote ya kitaifa (NECTA) kwa miaka yote, masomo yote, na ngazi zote za elimu papo hapo!</p>
+            </div>
+          </div>
+          <span className="self-start sm:self-auto bg-cyan-500/10 text-cyan-300 font-extrabold text-[10px] uppercase tracking-wider px-3 py-1 rounded-full border border-cyan-500/20 flex items-center gap-1">
+            <Sparkles size={12} className="text-amber-400" />
+            TETEA Integration Active
+          </span>
+        </div>
+
+        {/* Wizard step selectors */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Step 1: Select Level */}
+          <div className="space-y-3">
+            <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Hatua ya 1: Chagua Ngazi ya Elimu</span>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {NECTA_LEVELS.map((lvl) => {
+                const isActive = nectaWizardLevel === lvl.id;
+                return (
+                  <button
+                    key={lvl.id}
+                    type="button"
+                    onClick={() => {
+                      setNectaWizardLevel(lvl.id);
+                      // Default to the first subject of that level to keep state valid
+                      const subs = NECTA_SUBJECTS[lvl.id] || [];
+                      if (subs.length > 0) {
+                        setNectaWizardSubject(subs[0].id);
+                      }
+                    }}
+                    className={`w-full text-left p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer ${
+                      isActive 
+                        ? 'bg-cyan-500/15 border-cyan-400 text-white shadow-md' 
+                        : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:bg-slate-800/45 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="font-bold text-xs uppercase">{lvl.name}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{lvl.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 2: Select Subject */}
+          <div className="space-y-3">
+            <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Hatua ya 2: Chagua Somo</span>
+            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+              {(NECTA_SUBJECTS[nectaWizardLevel] || []).map((sub) => {
+                const isActive = nectaWizardSubject === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => setNectaWizardSubject(sub.id)}
+                    className={`text-center p-2.5 rounded-xl border text-xs font-bold transition-all line-clamp-2 min-h-[46px] flex items-center justify-center cursor-pointer ${
+                      isActive 
+                        ? 'bg-cyan-500/20 border-cyan-400 text-white shadow' 
+                        : 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    {sub.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 3: Select Year */}
+          <div className="space-y-3">
+            <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Hatua ya 3: Chagua Mwaka wa Mtihani</span>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-64 overflow-y-auto pr-1">
+              {NECTA_YEARS.map((yr) => {
+                const isActive = nectaWizardYear === yr;
+                return (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => setNectaWizardYear(yr)}
+                    className={`py-2 px-1 rounded-lg border text-[11px] font-mono font-bold transition-all text-center cursor-pointer ${
+                      isActive 
+                        ? 'bg-amber-400 border-amber-400 text-slate-950 shadow-md font-black' 
+                        : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/30'
+                    }`}
+                  >
+                    {yr}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Selected past paper detail card */}
+        {nectaWizardLevel && nectaWizardSubject && nectaWizardYear && (
+          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6 animate-fade-in mt-2">
+            <div className="space-y-2 max-w-xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="bg-cyan-500/10 text-cyan-300 border border-cyan-400/20 text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded">
+                  NECTA NATIONAL EXAM
+                </span>
+                <span className="bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded">
+                  MWAKA {nectaWizardYear}
+                </span>
+              </div>
+              <h3 className="font-sans font-black text-white text-base sm:text-lg leading-tight">
+                NECTA {NECTA_SUBJECTS[nectaWizardLevel]?.find(s => s.id === nectaWizardSubject)?.name || nectaWizardSubject} - {NECTA_LEVELS.find(l => l.id === nectaWizardLevel)?.name || nectaWizardLevel} Past Paper ({nectaWizardYear})
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                Huu ni mtihani rasmi wa taifa wa NECTA uliotahiniwa mwaka wa {nectaWizardYear}. Unaweza kusoma mtandaoni kupitia PDF viewer yetu mahiri au kupakua PDF rasmi bure kwa ajili ya kujisomea offline.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch gap-3 shrink-0 justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const docId = `necta-${nectaWizardLevel}-${nectaWizardSubject}-${nectaWizardYear}`;
+                  onNavigate('reader', docId);
+                }}
+                className="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black text-xs px-5 py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+              >
+                <Eye size={15} />
+                Soma Mtandaoni
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  // Direct PDF URL download on TETEA
+                  const maktabaLevel = nectaWizardLevel === 'std7' ? 'psle' :
+                                       nectaWizardLevel === 'std4' ? 'sf' :
+                                       nectaWizardLevel === 'f2' ? 'ftsee' :
+                                       nectaWizardLevel === 'f4' ? 'csee' : 'acsee';
+                  const maktabaSubject = nectaWizardSubject === 'basic-math' ? 'basic-math' :
+                                         nectaWizardSubject === 'adv-math' ? 'adv-math' :
+                                         nectaWizardSubject === 'kiswahili' ? 'kiswahili' :
+                                         nectaWizardSubject === 'english' ? 'english' : nectaWizardSubject;
+                  let fileSubject = nectaWizardSubject === 'basic-math' ? 'Basic-Mathematics' :
+                                    nectaWizardSubject === 'adv-math' ? 'Advanced-Mathematics' :
+                                    nectaWizardSubject === 'kiswahili' ? 'Kiswahili' :
+                                    nectaWizardSubject === 'english' ? 'English-Language' :
+                                    nectaWizardSubject === 'science' ? 'Science-and-Technology' :
+                                    nectaWizardSubject === 'social-studies' ? 'Social-Studies' :
+                                    nectaWizardSubject === 'civic-moral' ? 'Civic-and-Moral-Education' :
+                                    nectaWizardSubject === 'mathematics' ? 'Mathematics' :
+                                    nectaWizardSubject.charAt(0).toUpperCase() + nectaWizardSubject.slice(1);
+                  let paperSuffix = '';
+                  if (nectaWizardLevel === 'f4' || nectaWizardLevel === 'f6') {
+                    if (!['basic-math', 'civics', 'kiswahili', 'bookkeeping'].includes(nectaWizardSubject)) {
+                      paperSuffix = '-1';
+                    }
+                  }
+                  const directUrl = `https://maktaba.tetea.org/past-papers/${maktabaLevel}/${maktabaSubject}/${fileSubject}${paperSuffix}-${nectaWizardYear}.pdf`;
+                  window.open(directUrl, '_blank');
+                  alert('📥 Upakuaji umeanza! Faili linapakuliwa kutoka Maktaba ya TETEA sasa hivi.');
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-5 py-3 rounded-2xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+              >
+                <Download size={15} />
+                Pakua PDF (TETEA Direct)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTimer(true);
+                  alert(`⏱️ Kipima muda kimeanzishwa! Una dakika 180 (Masaa 3) kufanya mtihani wa NECTA ${nectaWizardYear}. Unaweza kuona saa inayorudi nyuma juu ya skrini yako sasa.`);
+                }}
+                className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs px-5 py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+              >
+                <Clock size={15} />
+                Zoezi la Saa (Timer)
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* ── Trending & Popular Past Papers Carousel Slider ── */}
       <section className="space-y-4">
         <h2 className="font-display font-extrabold text-lg text-slate-900 uppercase flex items-center gap-2">
@@ -876,6 +1166,7 @@ export default function MitihaniView({
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full bg-slate-50 border border-slate-250 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer"
             >
+              <option value="subjectYear">Somo na Mwaka (A-Z, 2026-2010)</option>
               <option value="newest">Mpya Zaidi</option>
               <option value="views">Kusomwa Sana (Views)</option>
               <option value="alphabetical">Herufi (A-Z)</option>
@@ -910,62 +1201,140 @@ export default function MitihaniView({
             <p className="text-xs font-bold uppercase tracking-widest animate-pulse">Inasoma Maktaba ya Nyaraka...</p>
           </div>
         ) : sortedDocs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedDocs.map((doc) => {
-              const isBookmarked = bookmarkedIds.includes(doc.id);
-              const docAccent = doc.accent || 'border-cyan-200';
-              const fileKB = doc.sizeKB || 150;
-              const typeLabel = doc.type || (doc.tags.includes('NECTA') ? 'NECTA' : 'Mock');
-              const isPremium = doc.tags.includes('premium') || doc.tags.includes('PRO');
-
-              return (
-                <div 
-                  key={doc.id}
-                  onClick={() => onNavigate('reader', doc.id)}
-                  className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-56 hover:scale-[1.01]`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] bg-slate-100 text-slate-700 font-extrabold px-2 py-0.5 rounded uppercase">{typeLabel}</span>
-                        {isPremium && (
-                          <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                            <Crown size={10} /> PREMIUM
-                          </span>
-                        )}
-                      </div>
-                      
-                      <button 
-                        onClick={(e) => toggleBookmark(doc.id, e)}
-                        className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
-                      >
-                        <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
-                      </button>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
-                        {doc.title}
-                      </h3>
-                      <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
-                        {doc.description}
-                      </p>
-                    </div>
+          sortBy === 'subjectYear' ? (
+            <div className="space-y-10">
+              {Object.entries(
+                sortedDocs.reduce((acc, doc) => {
+                  const sub = getDocSubject(doc);
+                  if (!acc[sub]) acc[sub] = [];
+                  acc[sub].push(doc);
+                  return acc;
+                }, {} as Record<string, DocumentMetadata[]>)
+              ).map(([subject, docs]) => (
+                <div key={subject} className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <BookOpen size={18} className="text-cyan-600" />
+                    <h3 className="font-display font-extrabold text-slate-950 text-base uppercase tracking-tight">
+                      {subject} <span className="text-slate-400 font-mono text-xs font-normal">({docs.length} {docs.length === 1 ? 'mtihani' : 'mitihani'})</span>
+                    </h3>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {docs.map((doc) => {
+                      const isBookmarked = bookmarkedIds.includes(doc.id);
+                      const docAccent = doc.accent || 'border-cyan-200';
+                      const fileKB = doc.sizeKB || 150;
+                      const typeLabel = doc.type || (doc.tags.includes('NECTA') ? 'NECTA' : 'Mock');
+                      const isPremium = doc.tags.includes('premium') || doc.tags.includes('PRO');
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3 text-[10px] text-slate-400 font-bold">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} /> {doc.year || 2024} &bull; {fileKB} KB
-                    </span>
-                    <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
-                      SOMA SASA &rarr;
-                    </span>
+                      return (
+                        <div 
+                          key={doc.id}
+                          onClick={() => onNavigate('reader', doc.id)}
+                          className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-56 hover:scale-[1.01]`}
+                        >
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] bg-slate-100 text-slate-700 font-extrabold px-2 py-0.5 rounded uppercase">{typeLabel}</span>
+                                {isPremium && (
+                                  <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                    <Crown size={10} /> PREMIUM
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <button 
+                                onClick={(e) => toggleBookmark(doc.id, e)}
+                                className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                              >
+                                <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
+                              </button>
+                            </div>
+
+                            <div>
+                              <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
+                                {doc.title}
+                              </h3>
+                              <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
+                                {doc.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3 text-[10px] text-slate-400 font-bold">
+                            <span className="flex items-center gap-1">
+                              <Calendar size={12} /> {doc.year || 2024} &bull; {fileKB} KB
+                            </span>
+                            <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
+                              SOMA SASA &rarr;
+                            </span>
+                          </div>
+
+                        </div>
+                      );
+                    })}
                   </div>
-
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedDocs.map((doc) => {
+                const isBookmarked = bookmarkedIds.includes(doc.id);
+                const docAccent = doc.accent || 'border-cyan-200';
+                const fileKB = doc.sizeKB || 150;
+                const typeLabel = doc.type || (doc.tags.includes('NECTA') ? 'NECTA' : 'Mock');
+                const isPremium = doc.tags.includes('premium') || doc.tags.includes('PRO');
+
+                return (
+                  <div 
+                    key={doc.id}
+                    onClick={() => onNavigate('reader', doc.id)}
+                    className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-56 hover:scale-[1.01]`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] bg-slate-100 text-slate-700 font-extrabold px-2 py-0.5 rounded uppercase">{typeLabel}</span>
+                          {isPremium && (
+                            <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                              <Crown size={10} /> PREMIUM
+                            </span>
+                          )}
+                        </div>
+                        
+                        <button 
+                          onClick={(e) => toggleBookmark(doc.id, e)}
+                          className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                        >
+                          <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
+                        </button>
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
+                          {doc.title}
+                        </h3>
+                        <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
+                          {doc.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3 text-[10px] text-slate-400 font-bold">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} /> {doc.year || 2024} &bull; {fileKB} KB
+                      </span>
+                      <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
+                        SOMA SASA &rarr;
+                      </span>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : (
           <div className="bg-white border border-slate-200 rounded-3xl p-10 shadow-sm flex flex-col items-center justify-center text-center gap-3 py-16">
             <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-1">

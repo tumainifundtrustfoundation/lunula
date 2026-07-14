@@ -188,7 +188,7 @@ export interface AppNotification {
   userId: string; // Target user's UID or 'all' for system broadcast
   title: string;
   message: string;
-  type: 'approval' | 'update' | 'ai_response' | 'general';
+  type: 'approval' | 'rejection' | 'update' | 'ai_response' | 'general';
   read: boolean;
   createdAt: number;
   link?: string;
@@ -303,6 +303,25 @@ export interface EducationalResource {
   institution?: string; // e.g. "NECTA", "UDOM", "MIT", etc.
   region?: 'Tanzania' | 'International' | 'Both';
   tags?: string[];
+}
+
+export interface QuickBuyOrder {
+  id: string;
+  userId: string;
+  productId: string;
+  productName: string;
+  amount: number;
+  transactionId: string;
+  phoneNumber: string;
+  status: 'pending' | 'verified' | 'failed';
+  createdAt: number;
+}
+
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  productId: string;
+  addedAt: number;
 }
 
 export interface HighlightAnnotation {

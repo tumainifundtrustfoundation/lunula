@@ -552,6 +552,113 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     try {
       setLoading(true);
       setError(null);
+
+      // Check if it's a dynamic NECTA past paper ID
+      if (documentId && documentId.startsWith('necta-')) {
+        // Format: necta-[level]-[subject]-[year]
+        const parts = documentId.split('-');
+        const levelCode = parts[1] || 'f4';
+        const subjectCode = parts[2] || 'physics';
+        const yearVal = parseInt(parts[3] || '2023', 10);
+        
+        // Map codes to localized names
+        const levelNames: Record<string, string> = {
+          'std4': 'Darasa la IV (Standard 4)',
+          'std7': 'Darasa la VII (Standard 7 - PSLE)',
+          'f2': 'Kidato cha Pili (Form II - FTSEE)',
+          'f4': 'Kidato cha Nne (Form IV - CSEE)',
+          'f6': 'Kidato cha Sita (Form VI - ACSEE)'
+        };
+        
+        const subjectNames: Record<string, string> = {
+          'physics': 'Physics (Fizikia)',
+          'chemistry': 'Chemistry (Kemia)',
+          'biology': 'Biology (Biolojia)',
+          'basic-math': 'Basic Mathematics (Hisabati)',
+          'adv-math': 'Advanced Mathematics',
+          'history': 'History (Historia)',
+          'geography': 'Geography (Jiografia)',
+          'civics': 'Civics (Uraia)',
+          'kiswahili': 'Kiswahili',
+          'english': 'English Language (Kiingereza)',
+          'commerce': 'Commerce (Biashara)',
+          'bookkeeping': 'Book-keeping (Uhasibu)',
+          'science': 'Science and Technology (Sayansi na Teknolojia)',
+          'social-studies': 'Social Studies (Maarifa ya Jamii)',
+          'civic-moral': 'Civic and Moral Education (Uraia na Maadili)',
+          'mathematics': 'Mathematics (Hisabati)'
+        };
+        
+        const levelCategory: Record<string, string> = {
+          'std4': 'Primary School',
+          'std7': 'Primary School',
+          'f2': 'O-Level Secondary',
+          'f4': 'O-Level Secondary',
+          'f6': 'A-Level Secondary'
+        };
+        
+        const subjectName = subjectNames[subjectCode] || subjectCode.charAt(0).toUpperCase() + subjectCode.slice(1);
+        const levelName = levelNames[levelCode] || levelCode.toUpperCase();
+        const categoryName = levelCategory[levelCode] || 'Past Papers';
+        
+        // Generate proper maktaba.tetea.org PDF URL
+        // Example: https://maktaba.tetea.org/past-papers/csee/biology/Biology-1-2023.pdf
+        const maktabaLevel = levelCode === 'std7' ? 'psle' :
+                             levelCode === 'std4' ? 'sf' :
+                             levelCode === 'f2' ? 'ftsee' :
+                             levelCode === 'f4' ? 'csee' : 'acsee';
+                             
+        // Standardize subject folder on maktaba.tetea.org
+        const maktabaSubject = subjectCode === 'basic-math' ? 'basic-math' :
+                               subjectCode === 'adv-math' ? 'adv-math' :
+                               subjectCode === 'kiswahili' ? 'kiswahili' :
+                               subjectCode === 'english' ? 'english' : subjectCode;
+                               
+        // Capitalize subject name for file name
+        let fileSubject = subjectCode === 'basic-math' ? 'Basic-Mathematics' :
+                          subjectCode === 'adv-math' ? 'Advanced-Mathematics' :
+                          subjectCode === 'kiswahili' ? 'Kiswahili' :
+                          subjectCode === 'english' ? 'English-Language' :
+                          subjectCode === 'science' ? 'Science-and-Technology' :
+                          subjectCode === 'social-studies' ? 'Social-Studies' :
+                          subjectCode === 'civic-moral' ? 'Civic-and-Moral-Education' :
+                          subjectCode === 'mathematics' ? 'Mathematics' :
+                          subjectCode.charAt(0).toUpperCase() + subjectCode.slice(1);
+                          
+        // CSEE & ACSEE usually have paper numbers
+        let paperSuffix = '';
+        if (levelCode === 'f4' || levelCode === 'f6') {
+          if (!['basic-math', 'civics', 'kiswahili', 'bookkeeping'].includes(subjectCode)) {
+            paperSuffix = '-1';
+          }
+        }
+        
+        const driveUrl = `https://docs.google.com/viewer?url=https://maktaba.tetea.org/past-papers/${maktabaLevel}/${maktabaSubject}/${fileSubject}${paperSuffix}-${yearVal}.pdf&embedded=true`;
+        
+        const dynamicDoc: DocumentMetadata = {
+          id: documentId,
+          title: `NECTA ${subjectName} - ${levelName} (${yearVal})`,
+          description: `Karatasi rasmi ya mtihani wa taifa wa NECTA kwa somo la ${subjectName}, ngazi ya ${levelName} kwa mwaka wa ${yearVal}. Jibu maswali haya ili kujiandaa na mitihani yako ya mwisho.`,
+          category: categoryName,
+          tags: ['NECTA', subjectName, levelName, String(yearVal), 'Past Paper'],
+          fileId: `necta-${levelCode}-${subjectCode}-${yearVal}`,
+          driveUrl: driveUrl,
+          uploadedBy: 'system',
+          uploadedByName: 'NECTA Past Papers Library',
+          createdAt: Date.now() - 3600000 * 24 * 30,
+          views: Math.floor(Math.random() * 5000) + 1200,
+          status: 'approved',
+          paperNo: 'Paper 1',
+          year: yearVal,
+          type: 'NECTA',
+          sizeKB: Math.floor(Math.random() * 200) + 150
+        };
+        
+        setDoc(dynamicDoc);
+        setLoading(false);
+        return;
+      }
+
       const fetched = await fetchDocuments();
       const found = fetched.find(d => d.id === documentId);
       

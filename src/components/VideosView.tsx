@@ -58,48 +58,48 @@ export default function VideosView({ onNavigate, userProfile }: VideosViewProps)
 
   const defaultVideos: Video[] = [
     {
-      id: 'vid-phy',
-      title: 'Practical Physics: Jinsi ya kusoma Vernier Caliper na Micrometer Screw Gauge',
+      id: 'vid-physics-all',
+      title: 'ALL OF PHYSICS explained in 14 Minutes (Muhtasari wa Fizikia Nzima)',
       subject: 'Physics',
       level: 'O-Level',
-      teacher: 'Mwl. Joshua',
-      duration: '12:45',
-      youtubeId: '8_z6gD5pUoo', // Standard YouTube embed sample
-      views: 450,
-      createdAt: Date.now()
+      teacher: 'Wacky Science',
+      duration: '14:06',
+      youtubeId: 'ZAqIoDhornk',
+      views: 3120,
+      createdAt: Date.now() + 100000
     },
     {
-      id: 'vid-chem',
-      title: 'Chemistry Solved Practical: Qualitative Analysis & Cation Identification',
-      subject: 'Chemistry',
+      id: 'vid-physics-intro',
+      title: 'Physics - Basic Introduction (Utangulizi wa Msingi wa Fizikia)',
+      subject: 'Physics',
       level: 'O-Level',
-      teacher: 'Mwl. Grace',
-      duration: '18:10',
-      youtubeId: 'b_X6fO3_Ooo',
-      views: 310,
-      createdAt: Date.now() - 3600000
+      teacher: 'The Organic Chemistry Tutor',
+      duration: '30:00',
+      youtubeId: 'b1t41Q3xRM8',
+      views: 2450,
+      createdAt: Date.now() + 90000
     },
     {
-      id: 'vid-math',
-      title: 'Form IV Advanced Mathematics: Introduction to Integration and Differentiation',
-      subject: 'Advanced Mathematics',
-      level: 'A-Level',
-      teacher: 'Dr. Joseph',
-      duration: '24:30',
-      youtubeId: 'c_D2f_S_Poo',
-      views: 780,
-      createdAt: Date.now() - 3600000 * 2
+      id: 'vid-math-vectors',
+      title: 'VECTORS Top 10 Must Knows (Mambo 10 Muhimu ya Vectors - Ultimate Study Guide)',
+      subject: 'Mathematics',
+      level: 'O-Level',
+      teacher: 'JensenMath',
+      duration: '18:30',
+      youtubeId: 'l9ioZA9brtc',
+      views: 1890,
+      createdAt: Date.now() + 80000
     },
     {
-      id: 'vid-bio',
-      title: 'Msingi Darasa la 6 Sayansi: Mfumo wa Uzazi wa Binadamu na Maisha yetu',
-      subject: 'Science',
-      level: 'Primary',
-      teacher: 'Mwl. Amina',
-      duration: '10:15',
-      youtubeId: 'd_Z2o_P_Qoo',
-      views: 120,
-      createdAt: Date.now() - 3600000 * 5
+      id: 'vid-math-prob',
+      title: 'Probability Top 10 Must Knows (Mambo 10 Muhimu ya Probabiliti - Ultimate Study Guide)',
+      subject: 'Mathematics',
+      level: 'O-Level',
+      teacher: 'JensenMath',
+      duration: '22:15',
+      youtubeId: 'LgLgexX7iTs',
+      views: 1720,
+      createdAt: Date.now() + 70000
     }
   ];
 
@@ -111,10 +111,80 @@ export default function VideosView({ onNavigate, userProfile }: VideosViewProps)
     try {
       setLoading(true);
       const fetched = await fetchVideos();
-      setVideos(fetched.length > 0 ? fetched : defaultVideos);
+      let baseVideos = fetched.length > 0 ? fetched : defaultVideos;
+      
+      // Ensure all requested high-quality featured lessons are present
+      const featuredLessons: Video[] = [
+        {
+          id: 'vid-physics-all',
+          title: 'ALL OF PHYSICS explained in 14 Minutes (Muhtasari wa Fizikia Nzima)',
+          subject: 'Physics',
+          level: 'O-Level',
+          teacher: 'Wacky Science',
+          duration: '14:06',
+          youtubeId: 'ZAqIoDhornk',
+          views: 3120,
+          createdAt: Date.now() + 100000
+        },
+        {
+          id: 'vid-physics-intro',
+          title: 'Physics - Basic Introduction (Utangulizi wa Msingi wa Fizikia)',
+          subject: 'Physics',
+          level: 'O-Level',
+          teacher: 'The Organic Chemistry Tutor',
+          duration: '30:00',
+          youtubeId: 'b1t41Q3xRM8',
+          views: 2450,
+          createdAt: Date.now() + 90000
+        },
+        {
+          id: 'vid-math-vectors',
+          title: 'VECTORS Top 10 Must Knows (Mambo 10 Muhimu ya Vectors - Ultimate Study Guide)',
+          subject: 'Mathematics',
+          level: 'O-Level',
+          teacher: 'JensenMath',
+          duration: '18:30',
+          youtubeId: 'l9ioZA9brtc',
+          views: 1890,
+          createdAt: Date.now() + 80000
+        },
+        {
+          id: 'vid-math-prob',
+          title: 'Probability Top 10 Must Knows (Mambo 10 Muhimu ya Probabiliti - Ultimate Study Guide)',
+          subject: 'Mathematics',
+          level: 'O-Level',
+          teacher: 'JensenMath',
+          duration: '22:15',
+          youtubeId: 'LgLgexX7iTs',
+          views: 1720,
+          createdAt: Date.now() + 70000
+        }
+      ];
+
+      // Merge to ensure no duplicates based on youtubeId
+      let mergedList = [...baseVideos];
+      for (const lesson of featuredLessons) {
+        if (!mergedList.some(v => v.youtubeId === lesson.youtubeId)) {
+          mergedList.unshift(lesson);
+        }
+      }
+
+      // Filter out any broken mock/placeholder videos
+      const mockIds = ['8_z6gD5pUoo', 'b_X6fO3_Ooo', 'c_D2f_S_Poo', 'd_Z2o_P_Qoo'];
+      mergedList = mergedList.filter(
+        v => !mockIds.includes(v.youtubeId) && 
+             !v.youtubeId.endsWith('_Ooo') && 
+             !v.youtubeId.endsWith('_Poo') && 
+             !v.youtubeId.endsWith('_Qoo')
+      );
+
+      setVideos(mergedList);
     } catch (e) {
       console.error(e);
-      setVideos(defaultVideos);
+      // Fallback with mock filter
+      const mockIds = ['8_z6gD5pUoo', 'b_X6fO3_Ooo', 'c_D2f_S_Poo', 'd_Z2o_P_Qoo'];
+      const filteredDefaults = defaultVideos.filter(v => !mockIds.includes(v.youtubeId));
+      setVideos(filteredDefaults);
     } finally {
       setLoading(false);
     }

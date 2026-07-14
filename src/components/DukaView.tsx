@@ -13,10 +13,22 @@ import {
   ArrowRight,
   ShieldCheck,
   CreditCard,
-  Crown
+  Crown,
+  Star,
+  X,
+  Heart,
+  Zap
 } from 'lucide-react';
-import { fetchProducts, saveOrder } from '../firebase';
-import { Product, Order } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  fetchProducts, 
+  saveOrder, 
+  addToWishlist, 
+  removeFromWishlist, 
+  fetchUserWishlist,
+  saveQuickBuyOrder 
+} from '../firebase';
+import { Product, Order, QuickBuyOrder } from '../types';
 
 interface DukaViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -48,6 +60,24 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
   const [notes, setNotes] = useState('');
   const [orderSaving, setOrderSaving] = useState(false);
   const [generatedOrderId, setGeneratedOrderId] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  
+  // Feedback states
+  const [userRating, setUserRating] = useState(0);
+  const [userReview, setUserReview] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [showReviewSuccess, setShowReviewSuccess] = useState(false);
+
+  // Quick Buy states
+  const [quickBuyProduct, setQuickBuyProduct] = useState<Product | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+  const [quickBuyPhone, setQuickBuyPhone] = useState('');
+  const [isQuickBuying, setIsQuickBuying] = useState(false);
+  const [quickBuySuccess, setQuickBuySuccess] = useState(false);
+
+  // Wishlist state
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [showWishlistOnly, setShowWishlistOnly] = useState(false);
 
   const defaultProducts: Product[] = [
     {
@@ -56,7 +86,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       description: 'Kitabu teule cha kuigiza cha fasihi ya Kiswahili kwa ajili ya Kidato cha Tatu na Nne kilichoidhinishwa na TIE.',
       price: 12000,
       stockQuantity: 45,
-      category: 'Fasihi ya Kiswahili',
+      category: 'Sanaa',
       imageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=1974&auto=format&fit=crop'
     },
     {
@@ -65,7 +95,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       description: 'Miongozo na maelekezo rahisi ya kufanya majaribio ya kemia ya sekondari (Form I-IV titration & identification).',
       price: 15000,
       stockQuantity: 28,
-      category: 'Vitabu vya Sayansi',
+      category: 'Sayansi',
       imageUrl: 'https://images.unsplash.com/photo-1581093588401-fbb62a02f120?q=80&w=2069&auto=format&fit=crop'
     },
     {
@@ -74,7 +104,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       description: 'Chambuzi za hesabu za juu, formulas, na suluhisho la hatua kwa hatua kwa mada zote za calculus, algebra, na trigonometry.',
       price: 25000,
       stockQuantity: 15,
-      category: 'Vitabu vya Sayansi',
+      category: 'Hisabati',
       imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?q=80&w=1770&auto=format&fit=crop'
     },
     {
@@ -83,7 +113,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       description: 'Kikokotozi asilia cha kisayansi kilichoidhinishwa kwa mitihani ya NECTA Advanced Mathematics na Physics.',
       price: 55000,
       stockQuantity: 10,
-      category: 'Vifaa vya Shule',
+      category: 'Vifaa',
       imageUrl: 'https://images.unsplash.com/photo-1628126235206-5260b9ea6441?q=80&w=2070&auto=format&fit=crop'
     },
     {
@@ -105,6 +135,12 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       setCart(JSON.parse(storedCart));
     }
   }, []);
+
+  useEffect(() => {
+    if (userProfile?.uid) {
+      fetchUserWishlist(userProfile.uid).then(setWishlist);
+    }
+  }, [userProfile?.uid]);
 
   const loadProducts = async () => {
     try {
@@ -153,6 +189,56 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
   const removeFromCart = (productId: string) => {
     const updated = cart.filter(item => item.product.id !== productId);
     saveCartToStorage(updated);
+  };
+
+  const toggleWishlist = async (productId: string) => {
+    if (!userProfile?.uid) {
+      alert("Tafadhali ingia kwenye akaunti yako ili kutumia sehemu ya Wishlist.");
+      return;
+    }
+
+    const isInWishlist = wishlist.includes(productId);
+    if (isInWishlist) {
+      setWishlist(prev => prev.filter(id => id !== productId));
+      try {
+        await removeFromWishlist(userProfile.uid, productId);
+      } catch (err) {
+        console.error("Failed to remove from wishlist:", err);
+      }
+    } else {
+      setWishlist(prev => [...prev, productId]);
+      try {
+        await addToWishlist(userProfile.uid, productId);
+      } catch (err) {
+        console.error("Failed to add to wishlist:", err);
+      }
+    }
+  };
+
+  const handleQuickBuy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickBuyProduct || !userProfile?.uid || !transactionId || !quickBuyPhone) return;
+
+    try {
+      setIsQuickBuying(true);
+      const orderData: Omit<QuickBuyOrder, 'id'> = {
+        userId: userProfile.uid,
+        productId: quickBuyProduct.id,
+        productName: quickBuyProduct.name,
+        amount: quickBuyProduct.price,
+        transactionId,
+        phoneNumber: quickBuyPhone,
+        status: 'pending',
+        createdAt: Date.now()
+      };
+      await saveQuickBuyOrder(orderData);
+      setQuickBuySuccess(true);
+    } catch (err) {
+      console.error("Quick Buy failed:", err);
+      alert("Samahani! Shida ilitokea wakati wa kuhifadhi malipo yako. Tafadhali jaribu tena.");
+    } finally {
+      setIsQuickBuying(false);
+    }
   };
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
@@ -237,7 +323,8 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
   const filteredProducts = products.filter(p => {
     const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !selectedCategory || p.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesWishlist = !showWishlistOnly || wishlist.includes(p.id);
+    return matchesSearch && matchesCategory && matchesWishlist;
   });
 
   const categories = Array.from(new Set(products.map(p => p.category)));
@@ -292,7 +379,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
         <div className="space-y-6">
           
           {/* Categories and Search pills bar */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <Search size={18} />
@@ -307,22 +394,34 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
             </div>
 
             {categories.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button 
-                  onClick={() => setSelectedCategory('')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!selectedCategory ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                >
-                  Vyote
-                </button>
-                {categories.map(cat => (
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Chagua Somo / Jamii</span>
+                <div className="flex flex-wrap gap-2 pt-1">
                   <button 
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    onClick={() => setSelectedCategory('')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${!selectedCategory ? 'bg-cyan-600 text-white border-cyan-600 shadow-lg shadow-cyan-600/20' : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-200 hover:bg-cyan-50/50'}`}
                   >
-                    {cat}
+                    Bidhaa Zote
                   </button>
-                ))}
+                  {userProfile?.uid && (
+                    <button 
+                      onClick={() => setShowWishlistOnly(!showWishlistOnly)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 ${showWishlistOnly ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-600/20' : 'bg-white text-rose-600 border-rose-200 hover:border-rose-300 hover:bg-rose-50'}`}
+                    >
+                      <Heart size={14} className={showWishlistOnly ? 'fill-current' : ''} />
+                      Wishlist Yangu ({wishlist.length})
+                    </button>
+                  )}
+                  {categories.map(cat => (
+                    <button 
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${selectedCategory === cat ? 'bg-cyan-600 text-white border-cyan-600 shadow-lg shadow-cyan-600/20' : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-200 hover:bg-cyan-50/50'}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -338,9 +437,25 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
               {filteredProducts.map((prod) => {
                 const inCartCount = cart.find(i => i.product.id === prod.id)?.quantity || 0;
                 return (
-                  <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-                    <div className="relative h-48 bg-slate-100 overflow-hidden">
+                  <div 
+                    key={prod.id} 
+                    onClick={() => setSelectedProduct(prod)}
+                    className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                  >
+                    <div className="relative h-48 bg-slate-100 overflow-hidden group">
                       <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      
+                      {/* Wishlist Button Overlay */}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(prod.id);
+                        }}
+                        className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md border transition-all z-10 ${wishlist.includes(prod.id) ? 'bg-rose-500 border-rose-400 text-white shadow-lg' : 'bg-white/80 border-white/20 text-slate-400 hover:text-rose-500 hover:bg-white'}`}
+                      >
+                        <Heart size={14} className={wishlist.includes(prod.id) ? 'fill-current' : ''} />
+                      </button>
+
                       <span className="absolute top-2 left-2 bg-slate-900/90 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded uppercase tracking-wider">{prod.category}</span>
                     </div>
 
@@ -357,7 +472,10 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
                         </div>
 
                         <button 
-                          onClick={() => addToCart(prod)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(prod);
+                          }}
                           className="w-full py-2.5 text-xs text-center font-extrabold bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl transition-all shadow-md shadow-cyan-500/10 flex items-center justify-center gap-1.5"
                         >
                           <Plus size={14} /> Ongeza Kikapuni {inCartCount > 0 && `(${inCartCount})`}
@@ -674,6 +792,301 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
           </div>
         </div>
       )}
+
+      {/* ── Product Detail Modal ── */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedProduct(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col md:flex-row"
+            >
+              {/* Left Side: Product Image */}
+              <div className="w-full md:w-1/2 h-64 md:h-auto bg-slate-100 sticky top-0 md:relative">
+                <img 
+                  src={selectedProduct.imageUrl} 
+                  alt={selectedProduct.name} 
+                  className="w-full h-full object-cover"
+                />
+                <button 
+                  onClick={() => setSelectedProduct(null)}
+                  className="absolute top-4 left-4 p-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg text-slate-900 md:hidden"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Right Side: Content & Feedback */}
+              <div className="w-full md:w-1/2 p-6 sm:p-8 space-y-8">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <span className="px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase tracking-widest border border-cyan-100">
+                      {selectedProduct.category}
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-display font-extrabold text-slate-950 leading-tight">
+                      {selectedProduct.name}
+                    </h2>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedProduct(null)}
+                    className="hidden md:flex p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-display font-black text-cyan-800">
+                      TSh {selectedProduct.price.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg">
+                      Ipo Stock
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                    {selectedProduct.description}
+                  </p>
+                </div>
+
+                <div className="pt-4 space-y-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => {
+                        addToCart(selectedProduct);
+                        setSelectedProduct(null);
+                      }}
+                      className="w-full py-4 bg-white border-2 border-cyan-600 text-cyan-600 hover:bg-cyan-50 font-extrabold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                    >
+                      <ShoppingCart size={20} />
+                      Weka Kikapu
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setQuickBuyProduct(selectedProduct);
+                        setSelectedProduct(null);
+                      }}
+                      className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold rounded-2xl shadow-xl shadow-cyan-600/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                    >
+                      <Zap size={20} className="fill-current" />
+                      Nunua Sasa
+                    </button>
+                  </div>
+                </div>
+
+                {/* Feedback Section */}
+                <div className="space-y-5 pt-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={18} className="text-cyan-600" />
+                    <h3 className="font-display font-bold text-slate-900 text-sm uppercase">Maoni ya Wanafunzi</h3>
+                  </div>
+
+                  {showReviewSuccess ? (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-4 bg-green-50 border border-green-100 rounded-2xl text-center space-y-2"
+                    >
+                      <CheckCircle size={24} className="mx-auto text-green-600" />
+                      <p className="text-xs font-bold text-green-800 uppercase tracking-tight">Asante kwa maoni yako!</p>
+                      <button 
+                        onClick={() => setShowReviewSuccess(false)}
+                        className="text-[10px] text-green-600 underline font-bold"
+                      >
+                        Weka maoni mengine
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Star Selection */}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gusa hapa kutathmini:</span>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setUserRating(star)}
+                              className="transition-transform hover:scale-110 active:scale-95"
+                            >
+                              <Star 
+                                size={24} 
+                                className={`${star <= userRating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} 
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Review Input */}
+                      <div className="space-y-3">
+                        <textarea
+                          value={userReview}
+                          onChange={(e) => setUserReview(e.target.value)}
+                          placeholder="Andika maoni yako hapa kuhusu kitabu hiki..."
+                          className="w-full h-24 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/20 text-slate-800 resize-none transition-all placeholder:text-slate-400"
+                        />
+                        <button
+                          disabled={!userRating || !userReview.trim() || isSubmittingReview}
+                          onClick={() => {
+                            setIsSubmittingReview(true);
+                            setTimeout(() => {
+                              setIsSubmittingReview(false);
+                              setShowReviewSuccess(true);
+                              setUserRating(0);
+                              setUserReview('');
+                            }, 1000);
+                          }}
+                          className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg"
+                        >
+                          {isSubmittingReview ? 'Inatuma...' : 'Gusa hapa kutuma'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Quick Buy Modal ── */}
+      <AnimatePresence>
+        {quickBuyProduct && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setQuickBuyProduct(null);
+                setQuickBuySuccess(false);
+                setTransactionId('');
+                setQuickBuyPhone('');
+              }}
+              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 sm:p-8 space-y-6">
+                {quickBuySuccess ? (
+                  <div className="text-center space-y-4 py-8">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600">
+                      <CheckCircle size={40} />
+                    </div>
+                    <h3 className="text-2xl font-display font-black text-slate-950">Ombi Lako Limepokelewa!</h3>
+                    <p className="text-sm text-slate-600 font-medium">
+                      Asante! Tumepokea ombi lako la ununuzi wa <span className="font-bold text-slate-900">"{quickBuyProduct.name}"</span>. 
+                      Timu yetu inahakiki malipo yako sasa. Kitabu kitaonekana kwenye maktaba yako punde tu utakapohakikiwa.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setQuickBuyProduct(null);
+                        setQuickBuySuccess(false);
+                        setTransactionId('');
+                        setQuickBuyPhone('');
+                      }}
+                      className="w-full py-4 bg-slate-900 text-white font-extrabold rounded-2xl"
+                    >
+                      Sawa, Asante
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-display font-black text-slate-950 flex items-center gap-2">
+                        <Zap size={24} className="text-cyan-600 fill-current" />
+                        Nunua Haraka
+                      </h3>
+                      <button 
+                        onClick={() => setQuickBuyProduct(null)}
+                        className="p-2 hover:bg-slate-100 rounded-full text-slate-400"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-4 space-y-3">
+                      <h4 className="text-xs font-black text-cyan-800 uppercase tracking-widest">Maelekezo ya Malipo:</h4>
+                      <ol className="text-xs text-cyan-700 space-y-2 font-bold list-decimal pl-4">
+                        <li>Lipa TSh <span className="text-sm font-black">{quickBuyProduct.price.toLocaleString()}</span> kwenda:</li>
+                        <li className="list-none flex flex-col gap-1 ml-[-1rem] mt-1 bg-white p-3 rounded-xl border border-cyan-200">
+                          <span className="text-[10px] text-slate-400 uppercase">M-PESA / TIGO PESA / AIRTEL MONEY</span>
+                          <span className="text-lg text-slate-900">0743 548 225</span>
+                          <span className="text-[10px] text-slate-500 italic">Jina: LUPANULLA ELIMU HUB</span>
+                        </li>
+                        <li>Baada ya kulipa, nakili <span className="underline">Transaction ID</span> na uiweke hapa chini.</li>
+                      </ol>
+                    </div>
+
+                    <form onSubmit={handleQuickBuy} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Namba ya Simu Uliyolipia</label>
+                        <input 
+                          required
+                          type="tel"
+                          placeholder="Mfano: 0712XXXXXX"
+                          value={quickBuyPhone}
+                          onChange={(e) => setQuickBuyPhone(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Transaction ID (Kumbukumbu ya Malipo)</label>
+                        <input 
+                          required
+                          type="text"
+                          placeholder="Weka herufi na namba za muamala"
+                          value={transactionId}
+                          onChange={(e) => setTransactionId(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
+                        />
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={isQuickBuying}
+                        className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 text-white font-extrabold rounded-2xl shadow-xl shadow-cyan-600/20 flex items-center justify-center gap-3 transition-all"
+                      >
+                        {isQuickBuying ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Inatuma Ombi...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={20} />
+                            Hifadhi na Kamilisha
+                          </>
+                        )}
+                      </button>
+                    </form>
+
+                    <p className="text-[10px] text-slate-400 text-center font-medium italic">
+                      * Huduma hii ni kwa ajili ya kuharakisha ununuzi. Kitabu chako kitahakikiwa ndani ya dakika 15-30.
+                    </p>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

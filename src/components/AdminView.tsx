@@ -59,7 +59,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
-import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video, Product, Feedback, PaymentTransaction } from '../types';
+import { DocumentMetadata, UserProfile, Certificate, ExamResult, AuditLog, SystemConfig, WebsiteNews, EducationalResource, Video, Product, Feedback, PaymentTransaction, QuickBuyOrder } from '../types';
 import UploadGuideWidget from './UploadGuideWidget';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
@@ -106,7 +106,9 @@ import {
   updateFeedbackStatus,
   updateExamResult,
   fetchPaymentTransactions,
-  updatePaymentTransactionStatus
+  updatePaymentTransactionStatus,
+  fetchQuickBuyOrders,
+  updateQuickBuyOrderStatus
 } from '../firebase';
 
 const CustomChartTooltip = ({ active, payload, label }: any) => {
@@ -158,6 +160,7 @@ export default function AdminView({
   const [dbCerts, setDbCerts] = useState<Certificate[]>([]);
   const [dbResults, setDbResults] = useState<ExamResult[]>([]);
   const [dbTransactions, setDbTransactions] = useState<PaymentTransaction[]>([]);
+  const [dbQuickBuyOrders, setDbQuickBuyOrders] = useState<QuickBuyOrder[]>([]);
   const [selectedStudentUid, setSelectedStudentUid] = useState<string>('');
   const [selectedAuditLog, setSelectedAuditLog] = useState<AuditLog | null>(null);
   
@@ -503,6 +506,10 @@ export default function AdminView({
         const feedbackList = await fetchFeedbacks();
         feedbackList.sort((a, b) => b.createdAt - a.createdAt);
         setDbFeedbacks(feedbackList);
+      } else if (activeTab === 'quick_buy') {
+        const qbOrders = await fetchQuickBuyOrders();
+        qbOrders.sort((a, b) => b.createdAt - a.createdAt);
+        setDbQuickBuyOrders(qbOrders);
       }
     } catch (err) {
       console.error('Error loading admin dashboard datasets:', err);
@@ -521,12 +528,29 @@ export default function AdminView({
 
     try {
       setActioningId(txId);
-      await updatePaymentTransactionStatus(txId, status, rejectionReason);
+      const tx = dbTransactions.find(t => t.id === txId);
+      if (!tx) throw new Error('Transaction not found');
+      
+      await updatePaymentTransactionStatus(txId, status, tx.userId, rejectionReason);
       setDbTransactions(prev => prev.map(t => t.id === txId ? { ...t, status, rejectionReason } : t));
       alert(status === 'approved' ? 'Muamala umepitishwa na mwanafunzi amekuwa Premium!' : 'Muamala umekataliwa!');
     } catch (err: any) {
       console.error('Error updating transaction:', err);
       alert('Imeshindwa kusasisha muamala: ' + err.message);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleUpdateQuickBuyStatus = async (order: QuickBuyOrder, status: 'verified' | 'failed') => {
+    try {
+      setActioningId(order.id);
+      await updateQuickBuyOrderStatus(order.id, status, order.userId, order.productName);
+      setDbQuickBuyOrders(prev => prev.map(o => o.id === order.id ? { ...o, status } : o));
+      alert(status === 'verified' ? 'Malipo ya kitabu yamehakikiwa! Mwanafunzi ameshatumiwa taarifa.' : 'Malipo yamekataliwa.');
+    } catch (err: any) {
+      console.error('Error updating quick buy status:', err);
+      alert('Imeshindwa kusasisha hali ya malipo.');
     } finally {
       setActioningId(null);
     }
@@ -2575,6 +2599,22 @@ export default function AdminView({
           {dbFeedbacks.filter(f => f.status === 'new').length > 0 && (
             <span className="bg-rose-500 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
               {dbFeedbacks.filter(f => f.status === 'new').length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('quick_buy')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'quick_buy'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <ShoppingBag size={16} />
+          Mauzo ya Vitabu (Quick Buy)
+          {dbQuickBuyOrders.filter(o => o.status === 'pending').length > 0 && (
+            <span className="bg-amber-400 text-amber-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              {dbQuickBuyOrders.filter(o => o.status === 'pending').length}
             </span>
           )}
         </button>
@@ -7295,6 +7335,103 @@ export default function AdminView({
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'quick_buy' && (
+            <div className="space-y-6 animate-fade-in text-slate-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="font-sans font-extrabold text-gray-900 text-sm sm:text-base">Miamala ya Manunuzi ya Vitabu (Quick Buy)</h3>
+                  <p className="text-xs text-gray-400 font-semibold">Hakiki na upitishe malipo ya vitabu vya PDF vilivyonunuliwa na wanafunzi</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl font-bold text-xs">
+                    Inayosubiri: {dbQuickBuyOrders.filter(o => o.status === 'pending').length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+                {dbQuickBuyOrders.length === 0 ? (
+                  <div className="text-center py-12 space-y-2">
+                    <ShoppingBag size={32} className="text-gray-300 mx-auto" />
+                    <p className="text-gray-400 text-xs italic">Hakuna oda za vitabu zilizopatikana kwenye mfumo bado.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left text-gray-700">
+                      <thead className="text-[10px] uppercase bg-slate-50 text-slate-400 font-extrabold border-b border-slate-100">
+                        <tr>
+                          <th className="px-4 py-3">Bidhaa / Kitabu</th>
+                          <th className="px-4 py-3">Mtumiaji / Simu</th>
+                          <th className="px-4 py-3">Muamala / ID</th>
+                          <th className="px-4 py-3">Tarehe</th>
+                          <th className="px-4 py-3">Hali</th>
+                          <th className="px-4 py-3 text-right">Vitendo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {dbQuickBuyOrders.map(order => (
+                          <tr key={order.id} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-3.5">
+                              <div className="font-bold text-slate-900">{order.productName}</div>
+                              <div className="text-[10px] text-indigo-600 font-black">TSh {order.amount.toLocaleString()}</div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <div className="font-bold text-slate-900">{order.phoneNumber}</div>
+                              <div className="text-[10px] text-slate-400">UID: {order.userId.substring(0, 8)}...</div>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <span className="font-mono font-bold text-indigo-900 bg-indigo-50/50 px-2 py-0.5 rounded border border-indigo-100/30">
+                                {order.transactionId}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-400 font-medium">
+                              {new Date(order.createdAt).toLocaleString('sw-TZ', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {order.status === 'pending' && (
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[9px] uppercase tracking-wider animate-pulse">Inasubiri</span>
+                              )}
+                              {order.status === 'verified' && (
+                                <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-bold text-[9px] uppercase tracking-wider">Imehakikiwa</span>
+                              )}
+                              {order.status === 'failed' && (
+                                <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[9px] uppercase tracking-wider">Imefeli</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right space-x-2">
+                              {order.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateQuickBuyStatus(order, 'verified')}
+                                    disabled={actioningId === order.id}
+                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors inline-flex items-center gap-1 font-bold border border-emerald-100"
+                                    title="Thibitisha Malipo"
+                                  >
+                                    <CheckCircle size={14} />
+                                    <span>Verify</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateQuickBuyStatus(order, 'failed')}
+                                    disabled={actioningId === order.id}
+                                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center gap-1 font-bold border border-rose-100"
+                                    title="Kataa Malipo"
+                                  >
+                                    <XCircle size={14} />
+                                    <span>Fail</span>
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>

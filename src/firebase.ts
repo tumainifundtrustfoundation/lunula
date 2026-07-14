@@ -31,7 +31,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews, PaymentTransaction } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews, PaymentTransaction, QuickBuyOrder } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -1052,6 +1052,17 @@ export const updatePaymentTransactionStatus = async (
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, { subscription: 'premium' });
     }
+
+    // Send notification to student
+    await addNotification({
+      userId,
+      title: status === 'approved' ? 'Uanachama wa Premium Umethibitishwa! 💎' : 'Malipo ya Premium Yamekataliwa ❌',
+      message: status === 'approved' 
+        ? 'Hongera! Sasa wewe ni mwanachama wa Premium. Unaweza kupakua na kusoma nyaraka zote bila kikomo.' 
+        : `Samahani, malipo yako ya Premium hayajaweza kuthibitishwa. Sababu: ${rejectionReason || 'Taarifa hazijakamilika'}.`,
+      type: status === 'approved' ? 'approval' : 'rejection',
+      link: 'portal'
+    });
   } catch (err: any) {
     handleFirestoreError(err, OperationType.UPDATE, path);
     throw err;
@@ -1182,6 +1193,102 @@ export const deleteEducationalResource = async (id: string): Promise<void> => {
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
     throw error;
+  }
+};
+
+export const saveQuickBuyOrder = async (order: Omit<QuickBuyOrder, 'id'>): Promise<string> => {
+  const path = 'quick_buy_orders';
+  try {
+    const colRef = collection(db, path);
+    const docRef = await addDoc(colRef, order);
+    return docRef.id;
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+    throw err;
+  }
+};
+
+export const fetchQuickBuyOrders = async (): Promise<QuickBuyOrder[]> => {
+  const path = 'quick_buy_orders';
+  try {
+    const colRef = collection(db, path);
+    const snap = await getDocs(colRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as QuickBuyOrder));
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const updateQuickBuyOrderStatus = async (
+  id: string, 
+  status: 'verified' | 'failed', 
+  userId: string,
+  productName: string
+): Promise<void> => {
+  const path = `quick_buy_orders/${id}`;
+  try {
+    const docRef = doc(db, 'quick_buy_orders', id);
+    await updateDoc(docRef, { status });
+
+    // Send notification to student
+    await addNotification({
+      userId,
+      title: status === 'verified' ? 'Malipo Yamehakikiwa! ✅' : 'Malipo Yamekataliwa! ❌',
+      message: status === 'verified' 
+        ? `Hongera! Malipo yako ya kitabu "${productName}" yamehakikiwa kikamilifu. Sasa unaweza kukisoma.` 
+        : `Samahani! Muamala wako wa kitabu "${productName}" haujaweza kuhakikiwa. Tafadhali wasiliana nasi kwa msaada zaidi.`,
+      type: 'approval',
+      link: 'dashboard'
+    });
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.UPDATE, path);
+    throw err;
+  }
+};
+
+/**
+ * Wishlist management
+ */
+export const addToWishlist = async (userId: string, productId: string): Promise<string> => {
+  const path = 'wishlist';
+  try {
+    const wishId = `${userId}_${productId}`;
+    const docRef = doc(db, path, wishId);
+    await setDoc(docRef, {
+      userId,
+      productId,
+      addedAt: Date.now()
+    });
+    return wishId;
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    throw err;
+  }
+};
+
+export const removeFromWishlist = async (userId: string, productId: string): Promise<void> => {
+  const wishId = `${userId}_${productId}`;
+  const path = `wishlist/${wishId}`;
+  try {
+    const docRef = doc(db, 'wishlist', wishId);
+    await deleteDoc(docRef);
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+    throw err;
+  }
+};
+
+export const fetchUserWishlist = async (userId: string): Promise<string[]> => {
+  const path = 'wishlist';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data().productId as string);
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.LIST, path);
+    return [];
   }
 };
 

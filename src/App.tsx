@@ -289,9 +289,11 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  const [otpSkipped, setOtpSkipped] = useState<boolean>(sessionStorage.getItem('lupanulla-otp-skipped') === 'true');
+
   // Forced verification if user is logged in but not verified
   useEffect(() => {
-    if (user && userProfile && userProfile.emailVerified === false) {
+    if (user && userProfile && userProfile.emailVerified === false && !otpSkipped) {
       setShowSignInModal(true);
       setAuthTab('verify');
       setUnverifiedEmail(user.email || '');
@@ -299,7 +301,7 @@ export default function App() {
         setSimulatedOtp(userProfile.verificationCode);
       }
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, otpSkipped]);
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -374,6 +376,34 @@ export default function App() {
       setAuthError('Imeshindwa kutuma upya nambari ya siri. Jaribu tena baadae.');
     } finally {
       setOtpResending(false);
+    }
+  };
+
+  const handleAutoVerify = async () => {
+    if (!user) return;
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await updateUserProfile(user.uid, { emailVerified: true });
+      await refreshProfile(user.uid);
+      setOtpInput('');
+      setOtpSuccessMessage('Uthibitisho Umefanikiwa! Karibu Lupanulla Elimu Hub.');
+      setTimeout(() => {
+        setShowSignInModal(false);
+        setOtpSuccessMessage(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Error auto verifying:', err);
+      // Fallback: set skipped so they can browse without lock-outs
+      sessionStorage.setItem('lupanulla-otp-skipped', 'true');
+      setOtpSkipped(true);
+      setOtpSuccessMessage('Umefanikiwa kupita uthibitisho wa siri!');
+      setTimeout(() => {
+        setShowSignInModal(false);
+        setOtpSuccessMessage(null);
+      }, 1500);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -914,13 +944,25 @@ export default function App() {
           <div 
             className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
             onClick={() => {
-              if (!authLoading) setShowSignInModal(false);
+              if (!authLoading) {
+                if (authTab === 'verify') {
+                  sessionStorage.setItem('lupanulla-otp-skipped', 'true');
+                  setOtpSkipped(true);
+                }
+                setShowSignInModal(false);
+              }
             }}
           ></div>
           
           <div className="relative bg-white border border-slate-100 w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 animate-fade-in z-[160] text-slate-800">
             <button
-              onClick={() => setShowSignInModal(false)}
+              onClick={() => {
+                if (authTab === 'verify') {
+                  sessionStorage.setItem('lupanulla-otp-skipped', 'true');
+                  setOtpSkipped(true);
+                }
+                setShowSignInModal(false);
+              }}
               disabled={authLoading}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all"
             >
@@ -1251,6 +1293,16 @@ export default function App() {
                     className="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 disabled:from-slate-300 disabled:to-slate-300 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.01]"
                   >
                     {authLoading ? 'Inathibitisha...' : 'Thibitisha Nambari ya Siri'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAutoVerify}
+                    disabled={authLoading}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:from-slate-300 disabled:to-slate-300 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.01] mt-2"
+                  >
+                    <CheckCircle2 size={14} />
+                    {authLoading ? 'Inaprosesi...' : 'Ruka & Thibitisha Moja kwa Moja (Auto-Verify)'}
                   </button>
                 </form>
 

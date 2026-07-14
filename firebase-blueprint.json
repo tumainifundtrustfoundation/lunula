@@ -214,9 +214,57 @@
         "tags": { "type": "array" }
       },
       "required": ["id", "title", "url", "category", "isVerified", "clicksCount", "recommendationsCount", "recommendedByUsers", "createdAt", "createdBy", "createdByName"]
+    },
+    "WishlistItem": {
+      "title": "Wishlist Item",
+      "description": "A book or resource saved by a student to their personal wishlist.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the student."
+        },
+        "productId": {
+          "type": "string",
+          "description": "The ID of the product."
+        },
+        "addedAt": {
+          "type": "integer",
+          "description": "Timestamp when added."
+        }
+      },
+      "required": ["userId", "productId", "addedAt"]
+    },
+    "QuickBuyOrder": {
+      "title": "Quick Buy Order",
+      "description": "A pending order for a specific product waiting for manual verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "amount": { "type": "integer" },
+        "transactionId": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "failed"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["userId", "productId", "productName", "amount", "transactionId", "phoneNumber", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/quick_buy_orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/QuickBuyOrder"
+      },
+      "description": "Pending quick buy orders for manual verification."
+    },
+    "/wishlist/{wishId}": {
+      "schema": {
+        "$ref": "#/entities/WishlistItem"
+      },
+      "description": "Personal wishlist for students."
+    },
     "/educational_resources/{resourceId}": {
       "schema": {
         "$ref": "#/entities/EducationalResource"
