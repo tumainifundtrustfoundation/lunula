@@ -16,6 +16,7 @@ export interface UserProfile {
   verificationCode?: string;
   xp?: number;
   studyTime?: number;
+  favorites?: string[]; // Array of topic titles or compound IDs for favorite notes
 }
 
 export interface AuditLog {

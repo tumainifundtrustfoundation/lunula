@@ -395,11 +395,11 @@ export default function Navbar({
                     <p className="text-xs font-bold text-white line-clamp-1 max-w-[120px]">{userProfile.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase ${
-                        userProfile.subscription === 'premium' 
+                        (userProfile.subscription === 'premium' || userProfile.role === 'admin' || userProfile.role === 'super_admin')
                           ? 'bg-amber-400 text-amber-950' 
                           : 'bg-slate-800 text-slate-400 border border-slate-700/50'
                       }`}>
-                        {userProfile.subscription === 'premium' ? '★ Premium' : 'Bure'}
+                        {(userProfile.subscription === 'premium' || userProfile.role === 'admin' || userProfile.role === 'super_admin') ? '★ Premium' : 'Bure'}
                       </span>
                     </div>
                   </div>

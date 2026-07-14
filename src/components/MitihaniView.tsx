@@ -17,11 +17,13 @@ import {
   Crown,
   CheckCircle2,
   ShieldCheck,
-  Printer
+  Printer,
+  Clock
 } from 'lucide-react';
 import { fetchDocuments, fetchExamResultByCode } from '../firebase';
 import { DocumentMetadata, ExamResult } from '../types';
 import { GoogleAdSenseUnit } from './MatangazoView';
+import ExamTimer from './ExamTimer';
 
 interface MitihaniViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -47,6 +49,7 @@ export default function MitihaniView({
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('newest'); // 'newest', 'views', 'alphabetical'
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+  const [showTimer, setShowTimer] = useState(false);
 
   // --- NEW: Exam Results Check States ---
   const [candidateCode, setCandidateCode] = useState<string>('');
@@ -156,8 +159,84 @@ export default function MitihaniView({
       paperNo: 'Paper 1',
       year: 2026,
       type: 'Mock',
-      sizeKB: 295,
-      accent: 'border-emerald-400'
+      sizeKB: 210,
+      accent: 'border-green-400'
+    },
+    {
+      id: 'uvinza-math-f1-2026',
+      title: 'Uvinza District Council - Form One Terminal Joint Examination, May 2026 - Mathematics',
+      description: 'Joint terminal examination for Form One students in Uvinza District. Covers branches of mathematics, fractions, weight, and profit calculations.',
+      category: 'Mathematics',
+      tags: ['Mathematics', 'Form One', 'Terminal', 'Uvinza', '2026'],
+      fileId: 'uvinza-1',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now(),
+      views: 45,
+      status: 'approved',
+      paperNo: 'Terminal',
+      year: 2026,
+      type: 'Terminal',
+      sizeKB: 320,
+      accent: 'border-cyan-500'
+    },
+    {
+      id: 'chamwino-math-f1-2026',
+      title: 'Chamwino District - Form One Terminal Examination - Basic Mathematics, May 2026',
+      description: 'Standard terminal assessment for Form One candidates in Chamwino. Focuses on basic operations, rational numbers, and mathematical definitions.',
+      category: 'Mathematics',
+      tags: ['Basic Mathematics', 'Form One', 'Terminal', 'Chamwino', '2026'],
+      fileId: 'chamwino-1',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now(),
+      views: 67,
+      status: 'approved',
+      paperNo: 'Terminal',
+      year: 2026,
+      type: 'Terminal',
+      sizeKB: 290,
+      accent: 'border-indigo-500'
+    },
+    {
+      id: 'busega-math-f1-2026',
+      title: 'Busega District Council - Form One Terminal Examination - Mathematics, May 2026',
+      description: 'Regional terminal evaluation for Busega district. Includes significant figures, decimals, and algebraic simplifications.',
+      category: 'Mathematics',
+      tags: ['Mathematics', 'Form One', 'Terminal', 'Busega', '2026'],
+      fileId: 'busega-1',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now(),
+      views: 89,
+      status: 'approved',
+      paperNo: 'Terminal',
+      year: 2026,
+      type: 'Terminal',
+      sizeKB: 310,
+      accent: 'border-emerald-500'
+    },
+    {
+      id: 'tulia-math-f1-2026',
+      title: 'Dr. Tulia Ackson Secondary School - Form One Opening Examination, July 2026',
+      description: 'Opening assessment for new Form One students. Covers branches of mathematics, rational numbers, and variable expressions.',
+      category: 'Mathematics',
+      tags: ['Mathematics', 'Form One', 'Opening', 'Dr. Tulia Ackson', '2026'],
+      fileId: 'tulia-1',
+      driveUrl: 'https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true',
+      uploadedBy: 'admin',
+      uploadedByName: 'Lupanulla Admin',
+      createdAt: Date.now(),
+      views: 110,
+      status: 'approved',
+      paperNo: 'Opening',
+      year: 2026,
+      type: 'Terminal',
+      sizeKB: 275,
+      accent: 'border-amber-600'
     },
     {
       id: 'mock-geo-f4-2026',
@@ -446,7 +525,9 @@ export default function MitihaniView({
     .slice(0, 3);
 
   return (
-    <div id="mitihani-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50">
+    <div id="mitihani-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50 relative">
+      {/* Exam Timer Floating Widget */}
+      {showTimer && <ExamTimer onClose={() => setShowTimer(false)} />}
       
       {/* ── Banner Section ── */}
       <section className="bg-gradient-to-r from-cyan-600 via-cyan-800 to-indigo-950 rounded-3xl p-6 sm:p-10 text-white shadow-lg relative overflow-hidden border border-cyan-500/10">
@@ -464,12 +545,26 @@ export default function MitihaniView({
             </p>
           </div>
           
-          <button 
-            onClick={() => onNavigate('upload')}
-            className="bg-white text-slate-900 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-md flex-shrink-0"
-          >
-            <Plus size={16} /> Pakia Mtihani Mpya
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-shrink-0">
+            <button 
+              onClick={() => setShowTimer(!showTimer)}
+              className={`font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md ${
+                showTimer 
+                  ? 'bg-amber-400 text-amber-950 hover:bg-amber-500' 
+                  : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
+            >
+              <Clock size={16} /> 
+              {showTimer ? 'Funga Kipima Muda' : 'Kipima Muda (Timer)'}
+            </button>
+
+            <button 
+              onClick={() => onNavigate('upload')}
+              className="bg-white text-slate-900 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 shadow-md"
+            >
+              <Plus size={16} /> Pakia Mtihani Mpya
+            </button>
+          </div>
         </div>
       </section>
 
@@ -896,6 +991,15 @@ export default function MitihaniView({
         )}
       </div>
 
+      {/* ── Footer Copyright ── */}
+      <footer className="pt-10 pb-6 border-t border-slate-200 text-center space-y-2">
+        <p className="text-[10px] text-slate-400 font-medium tracking-wide">
+          © 2026 Lupanulla Foundation. Haki miliki zote zimehifadhiwa na kulindwa.
+        </p>
+        <p className="text-[9px] text-slate-300 italic max-w-md mx-auto">
+          Maudhui haya ya mitihani yanatolewa kwa madhumuni ya kitaaluma pekee kusaidia wanafunzi wa Kitanzania katika maandalizi yao ya mitihani.
+        </p>
+      </footer>
     </div>
   );
 }

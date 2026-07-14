@@ -24,6 +24,8 @@ import {
   addDoc,
   deleteDoc,
   increment,
+  arrayUnion,
+  arrayRemove,
   orderBy,
   onSnapshot,
   persistentLocalCache,
@@ -228,10 +230,14 @@ export const ensureUserProfile = async (user: User, displayName: string, additio
     
     if (snap.exists()) {
       const existing = snap.data() as UserProfile;
-      // If super_admin, always ensure they are super_admin
-      if (isSuperAdmin && existing.role !== 'super_admin') {
-        await updateDoc(userRef, { role: 'super_admin' });
+      // If super_admin, always ensure they are super_admin and have premium subscription
+      if (isSuperAdmin && (existing.role !== 'super_admin' || existing.subscription !== 'premium')) {
+        const updates: Partial<UserProfile> = {};
+        if (existing.role !== 'super_admin') updates.role = 'super_admin';
+        if (existing.subscription !== 'premium') updates.subscription = 'premium';
+        await updateDoc(userRef, updates);
         existing.role = 'super_admin';
+        existing.subscription = 'premium';
       }
       return existing;
     }
@@ -292,6 +298,21 @@ export const fetchAllUsers = async (): Promise<UserProfile[]> => {
   const colRef = collection(db, 'users');
   const snap = await getDocs(colRef);
   return snap.docs.map(d => d.data() as UserProfile);
+};
+
+/**
+ * Toggle a topic in user's favorites
+ */
+export const toggleTopicFavorite = async (uid: string, topicId: string, isAdding: boolean): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      favorites: isAdding ? arrayUnion(topicId) : arrayRemove(topicId)
+    });
+  } catch (err: any) {
+    console.warn('toggleTopicFavorite failed:', err.message || err);
+    throw err;
+  }
 };
 
 /**
@@ -489,12 +510,13 @@ export const addComment = async (documentId: string, userId: string, userName: s
  * Lupanulla Announcements (Matangazo)
  */
 export const fetchAnnouncements = async (): Promise<Announcement[]> => {
+  const path = 'matangazo';
   try {
-    const colRef = collection(db, 'matangazo');
+    const colRef = collection(db, path);
     const snap = await getDocs(colRef);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
   } catch (error) {
-    console.error('fetchAnnouncements error:', error);
+    handleFirestoreError(error, OperationType.LIST, path);
     return [];
   }
 };
@@ -546,12 +568,13 @@ export const deleteAnnouncement = async (id: string): Promise<void> => {
  * Lupanulla Products (Duka)
  */
 export const fetchProducts = async (): Promise<Product[]> => {
+  const path = 'products';
   try {
-    const colRef = collection(db, 'products');
+    const colRef = collection(db, path);
     const snap = await getDocs(colRef);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
   } catch (error) {
-    console.error('fetchProducts error:', error);
+    handleFirestoreError(error, OperationType.LIST, path);
     return [];
   }
 };
@@ -599,12 +622,13 @@ export const deleteProduct = async (id: string): Promise<void> => {
  * Lupanulla Videos (Lupa+ Video Class)
  */
 export const fetchVideos = async (): Promise<Video[]> => {
+  const path = 'videos';
   try {
-    const colRef = collection(db, 'videos');
+    const colRef = collection(db, path);
     const snap = await getDocs(colRef);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Video));
   } catch (error) {
-    console.error('fetchVideos error:', error);
+    handleFirestoreError(error, OperationType.LIST, path);
     return [];
   }
 };

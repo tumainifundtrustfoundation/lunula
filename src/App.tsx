@@ -144,6 +144,7 @@ export default function App() {
   // Routing State - defaults to 'portal' (the landing page)
   const [activeView, setActiveView] = useState<string>('portal');
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activeAdminTab, setActiveAdminTab] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Login Modal State
@@ -188,9 +189,18 @@ export default function App() {
     };
     window.addEventListener('open-login-modal', handleOpenLogin);
     window.addEventListener('open-signup-modal', handleOpenSignup);
+    
+    const handleRefreshProfile = () => {
+      if (user) {
+        refreshProfile(user.uid, user.displayName || 'Mwanafunzi Lupanulla');
+      }
+    };
+    window.addEventListener('refresh-user-profile', handleRefreshProfile);
+
     return () => {
       window.removeEventListener('open-login-modal', handleOpenLogin);
       window.removeEventListener('open-signup-modal', handleOpenSignup);
+      window.removeEventListener('refresh-user-profile', handleRefreshProfile);
     };
   }, []);
 
@@ -222,6 +232,12 @@ export default function App() {
         } else {
           setActiveView('portal');
         }
+      } else if (hash.startsWith('#admin')) {
+        const params = new URLSearchParams(hash.includes('?') ? hash.split('?')[1] : '');
+        const tab = params.get('tab');
+        setActiveView('admin');
+        setActiveAdminTab(tab);
+        setActiveDocumentId(null);
       } else {
         const cleanView = hash.replace('#', '');
         const validViews = [
@@ -245,13 +261,15 @@ export default function App() {
   }, []);
 
   // Sync state navigation back to hash
-  const navigateTo = (view: string, documentId?: string) => {
+  const navigateTo = (view: string, id?: string) => {
     if (view === 'feedback') {
       setIsFeedbackOpen(true);
       return;
     }
-    if (view === 'reader' && documentId) {
-      window.location.hash = `#reader?id=${documentId}`;
+    if (view === 'reader' && id) {
+      window.location.hash = `#reader?id=${id}`;
+    } else if (view === 'admin' && id) {
+      window.location.hash = `#admin?tab=${id}`;
     } else {
       window.location.hash = `#${view}`;
     }
@@ -812,6 +830,7 @@ export default function App() {
               <AdminView 
                 onNavigate={navigateTo} 
                 userProfile={userProfile} 
+                initialTab={activeAdminTab || 'approvals'}
               />
             )}
           </Suspense>

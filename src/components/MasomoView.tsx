@@ -15,10 +15,13 @@ import {
   HelpCircle,
   User,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Star
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import AdSenseWidget from './AdSenseWidget';
 import { jsPDF } from 'jspdf';
+import { toggleTopicFavorite } from '../firebase';
 
 interface MasomoViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -30,6 +33,7 @@ interface Topic {
   subtopics: string[];
   content: string;
   notesSample: string;
+  isDownloadable?: boolean;
 }
 
 interface ClassLevel {
@@ -42,23 +46,31 @@ interface ClassLevel {
 }
 
 export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps) {
-  const [openLevel, setOpenLevel] = useState<string | null>('olevel');
+  const [activeLevelTab, setActiveLevelTab] = useState<'all' | 'msingi' | 'olevel' | 'alevel' | 'favorites'>('all');
+  const [activeStreamTab, setActiveStreamTab] = useState<'all' | 'PCB' | 'HGE' | 'EGM'>('all');
   const [openSubject, setOpenSubject] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfSuccess, setPdfSuccess] = useState(false);
 
+  const streams = {
+    PCB: ['Physics', 'Chemistry', 'Biology', 'General Studies (GS)'],
+    HGE: ['History', 'Geography', 'Economics', 'General Studies (GS)'],
+    EGM: ['Economics', 'Geography', 'Advanced Mathematics', 'General Studies (GS)']
+  };
+
   // Tanzanian Academic Structure: Levels -> Classes -> Subjects -> Topics & Content
   const academicData: ClassLevel[] = [
     {
       id: 'msingi',
-      name: 'Elimu ya Msingi (Primary School - Darasa 5-7)',
+      name: 'Elimu ya Msingi (TIE Curriculum - Darasa 5-7)',
       subjects: [
         {
           name: 'Hisabati (Mathematics)',
           topics: [
             {
-              title: 'Sehemu na Desimali (Fractions & Decimals)',
+              title: 'Chapter 1: Namba Nzima na Sehemu',
+              isDownloadable: true,
               subtopics: [
                 'Ufafanuzi wa sehemu (proper, improper and mixed fractions)',
                 'Kubadili sehemu kuwa desimali na kinyume chake',
@@ -163,21 +175,23 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     },
     {
       id: 'olevel',
-      name: 'Elimu ya Sekondari - Kidato cha 1-4 (Ordinary Level - O-Level)',
+      name: 'Sekondari - Kidato cha 1-4 (TIE O-Level)',
       subjects: [
         {
-          name: 'Physics (Fizikia)',
+          name: 'Basic Mathematics',
           topics: [
             {
-              title: 'Linear Motion (Mwendo Mnyoofu)',
+              title: 'Topic 1: Numbers (Form I)',
+              isDownloadable: true,
               subtopics: [
-                'Distance and Displacement (Umbali na Mvuto)',
-                'Speed, Velocity and Acceleration',
-                'Equations of Uniformly Accelerated Motion',
-                'Graphs of Motion (S-T and V-T graphs)'
+                'Base Ten Numeration',
+                'Natural Numbers and Whole Numbers',
+                'Operations with Whole Numbers',
+                'Factors and Multiples',
+                'Integers'
               ],
-              content: 'Linear motion is a motion along a straight line. It can be described mathematically using 1D equations. Speed is a scalar quantity while velocity is a vector quantity containing both magnitude and direction. Acceleration is the rate of change of velocity.',
-              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Physics (Fizikia)\nKidato: Kidato cha Nne (Form IV)\nMada: Linear Motion (Mwendo Mnyoofu)\n\n1. KEY TERMS & DEFINITIONS\na) Distance (s): The actual path length covered by an object. Unit: meters (m). It is a scalar quantity.\nb) Displacement (d): The shortest distance from the initial position to the final position in a specified direction. Unit: meters (m). It is a vector quantity.\nc) Speed (v): Distance covered per unit time. Speed = Distance / Time. It is a scalar.\nd) Velocity (u, v): Displacement per unit time. Velocity = Displacement / Time. It is a vector.\ne) Acceleration (a): The rate of change of velocity. Acceleration = (Final Velocity - Initial Velocity) / Time. Unit: m/s².\n\n2. THREE EQUATIONS OF LINEAR MOTION\nUnder uniform acceleration, we use:\n1. v = u + at\n2. s = ut + 0.5at²\n3. v² = u² + 2as\nWhere: u = initial velocity, v = final velocity, a = acceleration, t = time, s = displacement.'
+              content: 'Numbers are the foundation of mathematics. In this topic, we cover the basic number systems, including natural numbers, whole numbers, and integers, along with their fundamental operations.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Basic Mathematics\nForm: Form One\nTopic: Numbers\n\n1. BASE TEN NUMERATION\nThe system of numeration we use is called the base ten system because it uses ten digits: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.\n\n2. TYPES OF NUMBERS\na) Natural Numbers (N): Counting numbers starting from 1. {1, 2, 3, ...}\nb) Whole Numbers (W): Natural numbers including 0. {0, 1, 2, 3, ...}\nc) Integers (Z): Whole numbers and their negatives. {..., -2, -1, 0, 1, 2, ...}'
             },
             {
               title: 'Structure of the Atom (Muundo wa Atomu)',
@@ -196,6 +210,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
           topics: [
             {
               title: 'Chemical Equations (Milinganyo ya Kikemia)',
+              isDownloadable: true,
               subtopics: [
                 'Writing word and chemical equations',
                 'Balancing simple chemical equations',
@@ -211,6 +226,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
           topics: [
             {
               title: 'Classification of Living Things (Uainishaji wa Viumbe)',
+              isDownloadable: true,
               subtopics: [
                 'Five Kingdoms of classification',
                 'Kingdom Monera and Protista',
@@ -226,6 +242,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
           topics: [
             {
               title: 'Quadratic Equations (Milinganyo ya Kipeuo cha Pili)',
+              isDownloadable: true,
               subtopics: [
                 'Solving by Factoring',
                 'Solving by Completing the Square',
@@ -316,6 +333,66 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               ],
               content: 'Mechanics deals with the behavior of physical bodies when subjected to forces. At advanced level, we study rotational dynamics, projectile kinematics, and gravitational field interactions.',
               notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Physics\nLevel: Form V & VI (A-Level)\nTopic: Projectile Motion\n\n1. BASICS OF PROJECTILE MOTION\nAn object launched into space influenced only by gravity. The path is a parabola.\n\n2. KEY FORMULAS (No air resistance):\n- Time of Flight (T) = 2*u*sin(θ) / g\n- Maximum Height (H) = u²*sin²(θ) / 2g\n- Horizontal Range (R) = u²*sin(2θ) / g'
+            }
+          ]
+        },
+        {
+          name: 'Chemistry',
+          topics: [
+            {
+              title: 'Organic Chemistry (Kemia Hai)',
+              subtopics: [
+                'Alkanes, Alkenes and Alkynes',
+                'Functional groups and isomerism',
+                'Reaction mechanisms in organic compounds'
+              ],
+              content: 'Organic chemistry is the study of the structure, properties, composition, reactions, and preparation of carbon-containing compounds.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Chemistry\nLevel: A-Level\nTopic: Organic Chemistry Intro\n\n1. CLASSIFICATION OF ORGANIC COMPOUNDS\nBased on functional groups like Hydroxyl (-OH), Carboxyl (-COOH), etc.'
+            }
+          ]
+        },
+        {
+          name: 'Biology',
+          topics: [
+            {
+              title: 'Cytology and Genetics (Seliba na Jenetiki)',
+              subtopics: [
+                'Structure and function of cell organelles',
+                'Mendelian inheritance and gene mutations',
+                'DNA replication and protein synthesis'
+              ],
+              content: 'Cytology is the study of cells, and genetics is the study of genes, genetic variation, and heredity in organisms.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Biology\nLevel: A-Level\nTopic: Cell Theory\n\n1. THE CELL THEORY\n- All living organisms are composed of one or more cells.\n- The cell is the basic unit of structure and organization in organisms.\n- Cells arise from pre-existing cells.'
+            }
+          ]
+        },
+        {
+          name: 'History',
+          topics: [
+            {
+              title: 'World History (Historia ya Dunia)',
+              subtopics: [
+                'The First World War and Second World War',
+                'The League of Nations and United Nations',
+                'Cold War and Decolonization'
+              ],
+              content: 'World history at advanced level focuses on global political and economic changes from the late 19th century to the modern era.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced History\nLevel: A-Level\nTopic: World War I'
+            }
+          ]
+        },
+        {
+          name: 'Economics',
+          topics: [
+            {
+              title: 'Microeconomics (Uchumi Mdogo)',
+              subtopics: [
+                'Theory of Demand and Supply',
+                'Market structures and pricing',
+                'Consumer behavior and utility'
+              ],
+              content: 'Microeconomics studies the behavior of individuals and firms in making decisions regarding the allocation of scarce resources.',
+              notesSample: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: Advanced Economics\nLevel: A-Level\nTopic: Demand & Supply'
             }
           ]
         },
@@ -427,16 +504,40 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     }, 1500);
   };
 
-  const handleLevelToggle = (levelId: string) => {
-    setOpenLevel(prev => (prev === levelId ? null : levelId));
-    setOpenSubject(null);
-    setSelectedTopic(null);
-  };
-
   const handleSubjectToggle = (subjName: string) => {
     setOpenSubject(prev => (prev === subjName ? null : subjName));
     setSelectedTopic(null);
   };
+
+  const handleToggleFavorite = async (e: React.MouseEvent, topic: Topic) => {
+    e.stopPropagation();
+    if (!userProfile?.uid) {
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+      return;
+    }
+    
+    const topicId = topic.title; 
+    const isFav = userProfile.favorites?.includes(topicId);
+    
+    try {
+      await toggleTopicFavorite(userProfile.uid, topicId, !isFav);
+      window.dispatchEvent(new CustomEvent('refresh-user-profile'));
+    } catch (err) {
+      console.error('Favorite toggle error:', err);
+    }
+  };
+
+  const favorites = academicData.flatMap(level => 
+    level.subjects.flatMap(subj => 
+      subj.topics.filter(topic => userProfile?.favorites?.includes(topic.title))
+    )
+  );
+
+  const filteredLevels = activeLevelTab === 'favorites' 
+    ? [] 
+    : academicData.filter(level => 
+        activeLevelTab === 'all' || level.id === activeLevelTab
+      );
 
   return (
     <div id="masomo-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50">
@@ -466,6 +567,78 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
         </div>
       </section>
 
+      {/* ── Level & Stream Filtering Tabs ── */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Ngazi ya Elimu</h3>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'all', name: 'Zote' },
+                { id: 'msingi', name: 'Msingi' },
+                { id: 'olevel', name: 'O-Level' },
+                { id: 'alevel', name: 'A-Level' },
+                { id: 'favorites', name: 'Zilizopendwa ★' }
+              ].map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setActiveLevelTab(tab.id as any);
+                    setOpenSubject(null);
+                    setSelectedTopic(null);
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activeLevelTab === tab.id 
+                      ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20' 
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {tab.name}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {activeLevelTab === 'alevel' && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-1"
+            >
+              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Mchepuo (Stream)</h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'all', name: 'Zote' },
+                  { id: 'PCB', name: 'PCB' },
+                  { id: 'HGE', name: 'HGE' },
+                  { id: 'EGM', name: 'EGM' }
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setActiveStreamTab(tab.id as any);
+                      setOpenSubject(null);
+                      setSelectedTopic(null);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      activeStreamTab === tab.id 
+                        ? 'bg-amber-400 text-amber-950 shadow-md shadow-amber-400/20' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {tab.name}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+
       {/* ── Google AdSense Responsive Ad Unit (Masomo-top) ── */}
       <AdSenseWidget slotId="3000300303" className="my-2" />
 
@@ -474,63 +647,149 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
         
         {/* Left Side: Levels and Subjects Accordion */}
         <div className="lg:col-span-1 space-y-4">
-          <h2 className="font-display font-extrabold text-lg text-slate-900 uppercase">Chagua Ngazi ya Masomo</h2>
+          <h2 className="font-display font-extrabold text-lg text-slate-900 uppercase">
+            {activeLevelTab === 'all' ? 'Orodha ya Masomo' : 
+             activeLevelTab === 'favorites' ? 'Mada Unazozipenda' :
+             activeLevelTab === 'alevel' && activeStreamTab !== 'all' ? `Masomo ya ${activeStreamTab}` : 'Masomo Yaliyochujwa'}
+          </h2>
           
           <div className="space-y-3">
-            {academicData.map((level) => {
-              const isLevelOpen = openLevel === level.id;
+            {activeLevelTab === 'favorites' ? (
+              <div className="space-y-2 animate-fade-in">
+                {favorites.length > 0 ? (
+                  favorites.map((topic) => {
+                    const isTopicSelected = selectedTopic?.title === topic.title;
+                    return (
+                      <motion.button 
+                        key={topic.title}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ scale: 1.02, x: 5 }}
+                        onClick={() => setSelectedTopic(topic)}
+                        className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold shadow-sm transition-all flex items-center justify-between gap-2 border ${
+                          isTopicSelected 
+                            ? 'bg-cyan-600 border-cyan-600 text-white shadow-cyan-600/20' 
+                            : 'bg-white border-slate-100 text-slate-700 hover:border-cyan-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <BookMarked size={16} className={isTopicSelected ? 'text-white' : 'text-cyan-500'} />
+                          <span className="truncate">{topic.title}</span>
+                        </div>
+                        <motion.div 
+                          whileTap={{ scale: 0.8 }}
+                          onClick={(e) => handleToggleFavorite(e, topic)}
+                          className={`p-1.5 rounded-full transition-colors ${
+                            isTopicSelected ? 'bg-white/20 text-white' : 'bg-slate-50 text-amber-400 hover:bg-amber-50'
+                          }`}
+                        >
+                          <Star size={14} fill="currentColor" />
+                        </motion.div>
+                      </motion.button>
+                    );
+                  })
+                ) : (
+                  <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center space-y-4 shadow-sm">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
+                      <Star size={24} className="text-slate-300" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-slate-900">Hakuna Mada Zilizopendwa</h3>
+                      <p className="text-xs text-slate-500 max-w-[200px] mx-auto">
+                        Bonyeza ikoni ya nyota kwenye mada yoyote ili kuihifadhi hapa kwa urahisi.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              filteredLevels.map((level) => {
+              // Filter subjects if level is alevel and a stream is selected
+              const displaySubjects = level.id === 'alevel' && activeStreamTab !== 'all'
+                ? level.subjects.filter(s => (streams as any)[activeStreamTab].includes(s.name))
+                : level.subjects;
+
+              if (displaySubjects.length === 0) return null;
+
               return (
-                <div key={level.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-all">
-                  <button 
-                    onClick={() => handleLevelToggle(level.id)}
-                    className={`w-full flex justify-between items-center p-4 text-left font-bold text-xs sm:text-sm uppercase transition-colors ${isLevelOpen ? 'bg-cyan-50/50 text-cyan-700' : 'text-slate-800 hover:bg-slate-50'}`}
-                  >
+                <motion.div 
+                  key={level.id}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-all"
+                >
+                  <div className={`w-full flex justify-between items-center p-4 text-left font-bold text-xs sm:text-sm uppercase bg-slate-50 border-b border-slate-100 text-slate-500`}>
                     <span className="flex items-center gap-2">
-                      <BookOpen size={16} className={isLevelOpen ? 'text-cyan-600' : 'text-slate-400'} />
+                      <BookOpen size={16} />
                       {level.name}
                     </span>
-                    {isLevelOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+                  </div>
 
-                  {isLevelOpen && (
-                    <div className="border-t border-slate-100 p-2 space-y-1 bg-slate-50/50">
-                      {level.subjects.map((subj) => {
-                        const isSubjOpen = openSubject === subj.name;
-                        return (
-                          <div key={subj.name} className="rounded-xl overflow-hidden">
-                            <button 
-                              onClick={() => handleSubjectToggle(subj.name)}
-                              className={`w-full flex justify-between items-center px-4 py-2.5 text-xs text-left font-semibold transition-all ${isSubjOpen ? 'bg-cyan-600 text-white shadow-inner' : 'text-slate-700 hover:bg-slate-200/55'}`}
-                            >
-                              <span>{subj.name}</span>
-                              <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.2 rounded-md group-hover:bg-slate-200">{subj.topics.length} Mada</span>
-                            </button>
+                  <div className="p-2 space-y-1">
+                    {displaySubjects.map((subj) => {
+                      const isSubjOpen = openSubject === subj.name;
+                      return (
+                        <div key={subj.name} className="rounded-xl overflow-hidden">
+                          <motion.button 
+                            whileHover={{ scale: 1.01, x: 2 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSubjectToggle(subj.name)}
+                            className={`w-full flex justify-between items-center px-4 py-2.5 text-xs text-left font-semibold transition-all ${isSubjOpen ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-700 hover:bg-slate-200/55'}`}
+                          >
+                            <span>{subj.name}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.2 rounded-md group-hover:bg-slate-200">{subj.topics.length} Mada</span>
+                          </motion.button>
 
+                          <AnimatePresence>
                             {isSubjOpen && (
-                              <div className="bg-white p-2 border-x border-b border-slate-100 space-y-1">
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="bg-white p-2 border-x border-b border-slate-100 space-y-1 overflow-hidden"
+                              >
                                 {subj.topics.map((topic) => {
                                   const isTopicSelected = selectedTopic?.title === topic.title;
+                                  const isFav = userProfile?.favorites?.includes(topic.title);
                                   return (
-                                    <button 
+                                    <motion.button 
                                       key={topic.title}
+                                      whileHover={{ backgroundColor: '#f8fafc', x: 4 }}
                                       onClick={() => setSelectedTopic(topic)}
-                                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 ${isTopicSelected ? 'bg-cyan-50 border-l-4 border-cyan-600 text-cyan-800' : 'text-slate-600 hover:bg-slate-50'}`}
+                                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between gap-2 ${isTopicSelected ? 'bg-cyan-50 border-l-4 border-cyan-600 text-cyan-800' : 'text-slate-600'}`}
                                     >
-                                      <FileText size={12} className={isTopicSelected ? 'text-cyan-600' : 'text-slate-400'} />
-                                      <span className="truncate">{topic.title}</span>
-                                    </button>
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <FileText size={12} className={isTopicSelected ? 'text-cyan-600' : 'text-slate-400'} />
+                                          {topic.isDownloadable && (
+                                            <span className="flex-shrink-0 bg-red-100 text-red-600 px-1 rounded-[4px] text-[8px] font-black tracking-tighter">PDF</span>
+                                          )}
+                                        </div>
+                                        <span className="truncate">{topic.title}</span>
+                                      </div>
+                                      <motion.div
+                                        whileTap={{ scale: 0.8 }}
+                                        onClick={(e) => handleToggleFavorite(e, topic)}
+                                        className={`flex-shrink-0 p-1 rounded-md transition-colors ${
+                                          isFav ? 'text-amber-400 bg-amber-50' : 'text-slate-300 hover:text-slate-400'
+                                        }`}
+                                      >
+                                        <Star size={12} fill={isFav ? 'currentColor' : 'none'} />
+                                      </motion.div>
+                                    </motion.button>
                                   );
                                 })}
-                              </div>
+                              </motion.div>
                             )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
               );
-            })}
+            }))}
           </div>
 
           {/* ── Google AdSense Responsive Ad Unit (Masomo-sidebar) ── */}
@@ -545,7 +804,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               {/* Reader Header */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-5">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-cyan-600 font-extrabold uppercase tracking-wider block">Ngazi: {academicData.find(l => l.id === openLevel)?.name.split(' (')[0]}</span>
+                  <span className="text-[10px] text-cyan-600 font-extrabold uppercase tracking-wider block">Ngazi: {academicData.find(l => l.subjects.some(s => s.topics.some(t => t.title === selectedTopic.title)))?.name.split(' (')[0]}</span>
                   <h3 className="font-display font-extrabold text-slate-950 text-xl sm:text-2xl uppercase leading-tight">{selectedTopic.title}</h3>
                   <span className="text-xs text-slate-400 font-semibold">Imeandaliwa na Lupanulla Academic Board &bull; Julai 2026</span>
                 </div>
@@ -631,7 +890,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
                 Tafadhali chagua ngazi ya shule, kisha chagua somo lako mpendwa na mada katika orodha ya upande wa kushoto ili kufungua kijitabu chako cha masomo.
               </p>
               <button 
-                onClick={() => setOpenLevel('olevel')}
+                onClick={() => setActiveLevelTab('olevel')}
                 className="mt-2 py-2 px-5 text-xs font-bold bg-slate-950 text-white hover:bg-slate-800 transition-all rounded-xl"
               >
                 FUNGUA KINDA CHETU
@@ -642,6 +901,15 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
 
       </div>
 
+      {/* ── Footer Copyright ── */}
+      <footer className="pt-10 pb-6 border-t border-slate-200 text-center space-y-2">
+        <p className="text-[10px] text-slate-400 font-medium tracking-wide">
+          © 2026 Lupanulla Foundation. Haki miliki zote zimehifadhiwa.
+        </p>
+        <p className="text-[9px] text-slate-300 italic max-w-md mx-auto">
+          Mtaala huu na notisi zimeandaliwa kulingana na miongozo rasmi ya Taasisi ya Elimu Tanzania (TIE).
+        </p>
+      </footer>
     </div>
   );
 }

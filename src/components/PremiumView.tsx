@@ -129,7 +129,7 @@ export default function PremiumView({
           <div className="flex-shrink-0 bg-slate-950/40 border border-white/15 px-6 py-4 rounded-2xl backdrop-blur-sm text-center">
             <p className="text-[10px] text-amber-300 font-bold uppercase">Hali ya Akaunti yako</p>
             <p className="font-display font-extrabold text-lg uppercase tracking-tight">
-              {userProfile?.subscription === 'premium' ? '★ PREMIUM MEMBER' : 'Mwanachama wa Bure'}
+              {(userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin') ? '★ PREMIUM MEMBER' : 'Mwanachama wa Bure'}
             </p>
           </div>
         </div>

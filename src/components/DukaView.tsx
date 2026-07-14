@@ -78,13 +78,22 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?q=80&w=1770&auto=format&fit=crop'
     },
     {
-      id: 'prod-casio',
+      id: 'prodcasio',
       name: 'Scientific Calculator - Casio FX-991EX ClassWiz',
       description: 'Kikokotozi asilia cha kisayansi kilichoidhinishwa kwa mitihani ya NECTA Advanced Mathematics na Physics.',
       price: 55000,
       stockQuantity: 10,
       category: 'Vifaa vya Shule',
       imageUrl: 'https://images.unsplash.com/photo-1628126235206-5260b9ea6441?q=80&w=2070&auto=format&fit=crop'
+    },
+    {
+      id: 'prod-think-grow-rich',
+      name: 'Think and Grow Rich - Napoleon Hill',
+      description: 'Kitabu maarufu duniani cha mafanikio na utajiri. Jifunze misingi 13 ya kuelekea kwenye mafanikio ya kifedha na maisha.',
+      price: 15000,
+      stockQuantity: 50,
+      category: 'Maendeleo Binafsi',
+      imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1974&auto=format&fit=crop'
     }
   ];
 
@@ -251,18 +260,30 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
             </p>
           </div>
 
-          <button 
-            onClick={() => setCheckoutStep('cart')}
-            className="bg-white text-slate-900 font-extrabold text-xs px-5 py-3.5 rounded-xl transition-all shadow-md flex items-center gap-2 relative hover:bg-slate-50 flex-shrink-0"
-          >
-            <ShoppingCart size={16} className="text-cyan-600" />
-            <span>Kikapu cha Manunuzi</span>
-            {cartItemCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold animate-bounce">
-                {cartItemCount}
-              </span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 flex-shrink-0">
+            {(userProfile?.role === 'admin' || userProfile?.role === 'super_admin') && (
+              <button 
+                onClick={() => onNavigate('admin', 'products')}
+                className="bg-slate-900/50 backdrop-blur-md border border-white/20 text-white font-extrabold text-[10px] uppercase px-4 py-3.5 rounded-xl transition-all hover:bg-slate-900 flex items-center gap-2"
+              >
+                <Plus size={14} className="text-cyan-400" />
+                <span>Dhibiti Bidhaa</span>
+              </button>
             )}
-          </button>
+
+            <button 
+              onClick={() => setCheckoutStep('cart')}
+              className="bg-white text-slate-900 font-extrabold text-xs px-5 py-3.5 rounded-xl transition-all shadow-md flex items-center gap-2 relative hover:bg-slate-50"
+            >
+              <ShoppingCart size={16} className="text-cyan-600" />
+              <span>Kikapu cha Manunuzi</span>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold animate-bounce">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </section>
 

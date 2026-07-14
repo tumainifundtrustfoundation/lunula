@@ -54,7 +54,7 @@ service cloud.firestore {
 
     // Public Collections (Accessible by everyone)
     match /educational_resources/{resourceId} {
-      allow get, list: if true;
+      allow read: if true;
       allow create: if isSignedIn() && isAdmin() && isValidId(resourceId) && isValidEducationalResource(request.resource.data)
         && request.resource.data.clicksCount == 0
         && request.resource.data.recommendationsCount == 0
@@ -68,18 +68,18 @@ service cloud.firestore {
     }
 
     match /matangazo/{annId} {
-      allow get, list: if true;
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /videos/{vidId} {
-      allow get, list: if true;
+      allow read: if true;
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     match /products/{prodId} {
-      allow get, list: if true;
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -90,15 +90,28 @@ service cloud.firestore {
       
       allow create: if isSignedIn() && request.auth.uid == userId 
         && request.resource.data.uid == request.auth.uid
-        && (request.resource.data.role == "student" || (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" && request.resource.data.role == "super_admin"))
+        && (
+          request.resource.data.role == "student" 
+          || (
+            (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" || request.auth.token.email.lower() == "lupanulla.co.tz@gmail.com") 
+            && request.resource.data.role == "super_admin"
+            && request.resource.data.subscription == "premium"
+          )
+        )
         && (request.resource.data.subscription == "free" || request.resource.data.subscription == "premium")
         && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
         && request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() <= 100;
 
       allow update: if isSignedIn() && (
         (request.auth.uid == userId 
-          && request.resource.data.role == resource.data.role 
-          && request.resource.data.subscription == resource.data.subscription
+          && (
+            (request.resource.data.role == resource.data.role && request.resource.data.subscription == resource.data.subscription)
+            || (
+              (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" || request.auth.token.email.lower() == "lupanulla.co.tz@gmail.com")
+              && request.resource.data.role == "super_admin"
+              && request.resource.data.subscription == "premium"
+            )
+          )
           && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
           && request.resource.data.email == resource.data.email)
         || isAdmin()
@@ -176,6 +189,36 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Payment Transactions collection
+    match /payment_transactions/{txId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
+    }
+
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
+    }
+
+    // Highlights collection
+    match /highlights/{hId} {
+      allow read, write: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Website News collection
+    match /website_news/{newsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Audit Logs collection
     match /audit_logs/{logId} {
       allow create: if isSignedIn() && isAdmin();
@@ -185,6 +228,11 @@ service cloud.firestore {
     // System Configurations collection
     match /system_configs/{configId} {
       allow read, write: if isSuperAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

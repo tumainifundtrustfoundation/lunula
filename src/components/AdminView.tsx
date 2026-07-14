@@ -130,13 +130,15 @@ const CustomChartTooltip = ({ active, payload, label }: any) => {
 interface AdminViewProps {
   onNavigate: (view: string, id?: string) => void;
   userProfile: any;
+  initialTab?: string;
 }
 
 export default function AdminView({
   onNavigate,
-  userProfile
+  userProfile,
+  initialTab
 }: AdminViewProps) {
-  const [activeTab, setActiveTab] = useState<string>('approvals');
+  const [activeTab, setActiveTab] = useState<string>(initialTab || 'approvals');
   
   // Standalone Admin Login states
   const [adminEmail, setAdminEmail] = useState<string>('');

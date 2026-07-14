@@ -114,7 +114,7 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
 
   const handleDownload = async (doc: DocumentMetadata) => {
     const isBook = doc.type?.toLowerCase() === 'books' || doc.category?.toLowerCase() === 'books' || (doc as any).documentType?.toLowerCase() === 'books';
-    const isPremiumUser = userProfile?.subscription === 'premium';
+    const isPremiumUser = userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
     if (isBook && !isPremiumUser) {
       setModalBookTitle(doc.title);
