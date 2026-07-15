@@ -197,7 +197,7 @@ export default function AdminView({
   const [txSearch, setTxSearch] = useState<string>('');
 
   // AdSense simulation states (saved to localStorage for global toggle persistence)
-  const [adsensePubId, setAdsensePubId] = useState<string>(() => localStorage.getItem('lup_adsense_pub_id') || 'ca-pub-mock-lupanulla');
+  const [adsensePubId, setAdsensePubId] = useState<string>(() => localStorage.getItem('lup_adsense_pub_id') || 'ca-pub-4209377418042440');
   const [adsenseActive, setAdsenseActive] = useState<boolean>(() => localStorage.getItem('lup_adsense_active') !== 'false');
   const [adsenseFormat, setAdsenseFormat] = useState<string>('auto');
   const [adsenseEarnings, setAdsenseEarnings] = useState<number>(() => parseFloat(localStorage.getItem('lup_adsense_earnings') || '124.50'));

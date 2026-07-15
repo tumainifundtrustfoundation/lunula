@@ -1000,6 +1000,7 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
                 year={doc.year}
                 type={doc.type}
                 onSelectText={setSelectedText}
+                onSwitchToNotes={() => handleToggleReaderMode('notes')}
               />
             </div>
           ) : (

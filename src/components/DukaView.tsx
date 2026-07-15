@@ -299,8 +299,8 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       // URL encode the message for the link
       const encodedMessage = encodeURIComponent(waMessage);
       
-      // WhatsApp business gateway of Lupanulla Foundation (255743548225)
-      const waUrl = `https://wa.me/255743548225?text=${encodedMessage}`;
+      // WhatsApp business gateway of Lupanulla Foundation (255699479032)
+      const waUrl = `https://wa.me/255699479032?text=${encodedMessage}`;
 
       // Clear local cart
       saveCartToStorage([]);
@@ -782,7 +782,7 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
               Rudi Dukani Kupakua
             </button>
             <a 
-              href="https://wa.me/255743548225" 
+              href="https://wa.me/255699479032" 
               target="_blank" 
               rel="noopener noreferrer"
               className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl flex items-center gap-1 shadow-md shadow-green-600/10"

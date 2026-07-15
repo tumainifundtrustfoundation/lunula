@@ -636,10 +636,10 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
               </a>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-              <a href="tel:0743548225" className="inline-flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+              <a href="tel:0699479032" className="inline-flex items-center justify-center gap-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
                 <Phone size={14} /> Pigia Simu
               </a>
-              <a href="https://wa.me/255743548225" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
+              <a href="https://wa.me/255699479032" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
                 <MessageCircle size={14} /> WhatsApp Chat
               </a>
             </div>

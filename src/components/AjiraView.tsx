@@ -96,7 +96,7 @@ export default function AjiraView() {
 
               <div className="flex-shrink-0 w-full sm:w-auto">
                 <button 
-                  onClick={() => alert(`Tafadhali tuma wasifu wako (CV) na nakala ya vyeti kwa barua pepe ya shule ya kufanyia maombi ya kazi. Unaweza kuwasiliana nasi kwa usaidizi kupitia barua pepe: lupanulla.co.tz@gmail.com au Simu/WhatsApp: 0743548225`)}
+                  onClick={() => alert(`Tafadhali tuma wasifu wako (CV) na nakala ya vyeti kwa barua pepe ya shule ya kufanyia maombi ya kazi. Unaweza kuwasiliana nasi kwa usaidizi kupitia barua pepe: lupanulla.co.tz@gmail.com au Simu/WhatsApp: 0699479032`)}
                   className="w-full py-2.5 px-5 text-xs text-center font-extrabold bg-slate-950 hover:bg-slate-800 text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
                 >
                   Omba Kazi <ArrowRight size={14} />

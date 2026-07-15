@@ -35,6 +35,7 @@ interface PDFPreviewerProps {
   year?: number;
   type?: string;
   onSelectText?: (text: string) => void;
+  onSwitchToNotes?: () => void;
 }
 
 interface PageData {
@@ -775,15 +776,31 @@ export default function PDFPreviewer({
   category, 
   year, 
   type,
-  onSelectText
+  onSelectText,
+  onSwitchToNotes
 }: PDFPreviewerProps) {
+  const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(100);
   const [rotation, setRotation] = useState<number>(0);
   const [theme, setTheme] = useState<'light' | 'sepia' | 'dark'>('light');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchOccurrences, setSearchOccurrences] = useState<number>(0);
-  const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const [showSidebar, setShowSidebar] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setShowSidebar(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize(); // trigger initial check
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [viewMode, setViewMode] = useState<'interactive' | 'iframe'>(() => {
     return [
       'mock-bio-f4-2026', 'mock-geo-f4-2026', 'mock-chem-f4-2026',
@@ -796,6 +813,47 @@ export default function PDFPreviewer({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   
   const pageContainerRef = useRef<HTMLDivElement>(null);
+
+  const iframeSrcDoc = useMemo(() => {
+    return `
+      <!DOCTYPE html>
+      <html lang="sw" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+        <title>${documentTitle.replace(/"/g, '&quot;')}</title>
+        <style>
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+          }
+          .pdf-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+            overflow: auto;
+          }
+          iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="pdf-wrapper">
+          <iframe src="${driveUrl}" allowfullscreen></iframe>
+        </div>
+      </body>
+      </html>
+    `;
+  }, [driveUrl, documentTitle]);
 
   // Toggle fullscreen state
   const toggleFullscreen = () => {
@@ -3219,16 +3277,53 @@ export default function PDFPreviewer({
       <div className="flex-1 flex overflow-hidden relative">
         
         {viewMode === 'iframe' ? (
-          <div className="w-full h-full bg-slate-900 relative">
+          <div className="w-full h-full bg-slate-900 relative flex flex-col items-center justify-center p-0 sm:p-4">
             <iframe 
-              src={driveUrl}
+              srcDoc={iframeSrcDoc}
               className="w-full h-full border-0"
               title={documentTitle}
               allowFullScreen
             ></iframe>
-            {/* Disclaimer float */}
-            <div className="absolute top-4 left-4 bg-slate-950/90 border border-slate-800 p-2.5 rounded-xl text-[10px] font-semibold text-slate-300 max-w-xs shadow-lg backdrop-blur-sm">
-              ℹ️ Hali ya Direct Preview: Iframe hii inapakia moja kwa moja kutoka Google Drive. Ikishindwa kuonekana, bofya "Interactive HD Reader" juu ili kutumia toleo letu la haraka na lenye zana za kusomea.
+            
+            {/* Responsive floating hint widget */}
+            <div className={`absolute left-4 right-4 bg-slate-950/95 border border-slate-800 p-3 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xl backdrop-blur-sm z-10 animate-fade-in ${isMobile ? 'bottom-4' : 'top-4 max-w-md md:max-w-none'}`}>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-cyan-500/10 text-cyan-400 rounded-lg flex items-center justify-center border border-cyan-500/20 shrink-0">
+                  <Info size={12} />
+                </div>
+                <p className="text-[10px] text-slate-300 font-semibold leading-relaxed">
+                  {isMobile 
+                    ? 'Je, PDF inachelewa au inaonekana vibaya? Unaweza kuifungua moja kwa moja au kusoma kama Notisi Mahiri.'
+                    : 'Hali ya Direct Preview: Inapakia kutoka Google Drive. Ikishindwa kuonekana au unataka kuandika highlights, bofya "Interactive HD Reader" juu au "Smart Notes".'
+                  }
+                </p>
+              </div>
+              <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
+                <a 
+                  href={(() => {
+                    if (driveUrl.includes('https://docs.google.com/viewer?url=')) {
+                      const extracted = driveUrl.split('https://docs.google.com/viewer?url=')[1]?.split('&embedded=true')[0];
+                      if (extracted) {
+                        return decodeURIComponent(extracted);
+                      }
+                    }
+                    return driveUrl;
+                  })()} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 md:flex-initial text-center py-1.5 px-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-[10px] uppercase rounded-xl transition-all shadow-lg cursor-pointer"
+                >
+                  Fungua Kwenye Tab Mpya
+                </a>
+                {onSwitchToNotes && (
+                  <button 
+                    onClick={onSwitchToNotes}
+                    className="flex-1 md:flex-initial py-1.5 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-extrabold text-[10px] uppercase rounded-xl transition-all cursor-pointer"
+                  >
+                    Notisi Mahiri
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -3297,10 +3392,11 @@ export default function PDFPreviewer({
                 onMouseUp={handleTextSelection}
                 onTouchEnd={handleTextSelection}
                 style={{ 
-                  transform: `scale(${zoom / 100}) rotate(${rotation}deg)`, 
+                  zoom: isMobile ? `${zoom}%` : undefined,
+                  transform: !isMobile ? `scale(${zoom / 100}) rotate(${rotation}deg)` : (rotation ? `rotate(${rotation}deg)` : undefined),
                   transformOrigin: 'top center'
                 }}
-                className={`w-full max-w-[620px] min-h-[720px] p-8 sm:p-12 rounded-3xl border shadow-xl transition-all duration-300 relative overflow-hidden select-text leading-relaxed font-sans ${themeClasses[theme]}`}
+                className={`w-full max-w-[620px] min-h-[500px] sm:min-h-[720px] p-4 sm:p-12 rounded-3xl border shadow-xl transition-all duration-300 relative overflow-hidden select-text leading-relaxed font-sans ${themeClasses[theme]}`}
               >
                 {/* Lupanulla Watermark Backdrop */}
                 <div className="absolute inset-0 flex flex-col items-center justify-around pointer-events-none overflow-hidden select-none opacity-[0.035] dark:opacity-[0.02] z-0">

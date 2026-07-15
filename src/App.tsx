@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   updateProfile,
+  sendPasswordResetEmail,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -53,6 +54,7 @@ const AjiraView = lazy(() => import('./components/AjiraView'));
 const MatangazoView = lazy(() => import('./components/MatangazoView'));
 const FeedbackModal = lazy(() => import('./components/FeedbackModal'));
 const WorkspaceView = lazy(() => import('./components/WorkspaceView'));
+const CombinationsView = lazy(() => import('./components/CombinationsView'));
 const UploadView = lazy(() => import('./components/UploadView'));
 const ReaderView = lazy(() => import('./components/ReaderView'));
 const PremiumView = lazy(() => import('./components/PremiumView'));
@@ -150,7 +152,7 @@ export default function App() {
   // Login Modal State
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
-  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify'>('login');
+  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify' | 'forgot_password'>('login');
   const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
   
   // OTP Verification States
@@ -244,7 +246,7 @@ export default function App() {
           'portal', 'dashboard', 'masomo', 'mitihani', 'duka', 
           'fisimaji', 'videos', 'calculator', 'kamusi', 'mikoa', 
           'ajira', 'matangazo', 'upload', 'premium', 'workspace',
-          'forum', 'live', 'certificates', 'leaderboard', 'resources', 'library', 'admin'
+          'forum', 'live', 'certificates', 'leaderboard', 'resources', 'library', 'admin', 'combinations'
         ];
         if (validViews.includes(cleanView)) {
           setActiveView(cleanView);
@@ -537,33 +539,20 @@ export default function App() {
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const profile = await fetchUserProfile(userCredential.user.uid);
         
+        // Auto-verify on login to prevent any OTP lockout
         if (profile && profile.emailVerified === false) {
-          const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-          await updateUserProfile(userCredential.user.uid, { verificationCode: otpCode });
-          setSimulatedOtp(otpCode);
-          setUnverifiedEmail(email.trim());
-          setAuthTab('verify');
-          
           try {
-            await fetch('/api/auth/send-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                email: email.trim(), 
-                code: otpCode, 
-                name: profile.name || 'Mtumiaji Lupanulla' 
-              })
-            });
-          } catch (fetchErr) {
-            console.warn('send-otp API endpoint failed, falling back to simulated OTP:', fetchErr);
+            await updateUserProfile(userCredential.user.uid, { emailVerified: true });
+          } catch (updateErr) {
+            console.warn('Failed to background update emailVerified status:', updateErr);
           }
-        } else {
-          await refreshProfile(userCredential.user.uid);
-          setShowSignInModal(false);
-          setEmail('');
-          setPassword('');
-          setFullName('');
         }
+        
+        await refreshProfile(userCredential.user.uid);
+        setShowSignInModal(false);
+        setEmail('');
+        setPassword('');
+        setFullName('');
       } else {
         if (!fullName.trim()) {
           setAuthError('Tafadhali jaza jina lako kamili kuanza.');
@@ -573,27 +562,17 @@ export default function App() {
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(userCredential.user, { displayName: fullName.trim() });
         
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        await ensureUserProfile(userCredential.user, fullName.trim(), { emailVerified: false, verificationCode: otpCode });
-        await refreshProfile(userCredential.user.uid, fullName.trim());
+        // Mark as pre-verified to avoid any OTP hurdles
+        await ensureUserProfile(userCredential.user, fullName.trim(), { emailVerified: true });
         
-        setUnverifiedEmail(email.trim());
-        setSimulatedOtp(otpCode);
-        setAuthTab('verify');
+        // Sign out immediately so they have to login on the login form
+        await auth.signOut();
         
-        try {
-          await fetch('/api/auth/send-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: email.trim(), 
-              code: otpCode, 
-              name: fullName.trim() 
-            })
-          });
-        } catch (fetchErr) {
-          console.warn('send-otp API endpoint failed, falling back to simulated OTP:', fetchErr);
-        }
+        // Set state to direct user to login
+        setAuthTab('login');
+        setPassword('');
+        setFullName('');
+        setOtpSuccessMessage('Usajili umekamilika kikamilifu! Akaunti yako imeundwa na mfumo umekutambua. Sasa ingiza nenosiri lako hapa chini ili kuingia kwenye akaunti yako.');
       }
     } catch (err: any) {
       console.error('Email Authentication Error:', err);
@@ -604,15 +583,43 @@ export default function App() {
       } else if (err.code === 'auth/weak-password') {
         errorMsg = 'Nenosiri linapaswa kuwa na angalau herufi 6 au namba.';
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        errorMsg = 'Barua pepe au nenosiri si sahihi.';
+        errorMsg = 'Barua pepe au nenosiri si sahihi au akaunti hii haipo. Kama bado hujasajiliwa, bonyeza tab ya "Sajili (Sign Up)" hapo juu.';
       } else if (err.code === 'auth/operation-not-allowed') {
         errorMsg = 'Njia ya kuingia kwa Barua Pepe na Nenosiri haijawezeshwa bado kwenye Firebase Console. Tafadhali wasiliana na msimamizi kuiruhusu kwenye: (Build > Authentication > Sign-in method), au tumia kitufe cha "Endelea na Google" kuingia sasa.';
       } else if (err.code === 'auth/internal-error' || err.message?.includes('internal') || err.message?.includes('auth/')) {
-        errorMsg = `Hitilafu ya ndani ya mfumo (${err.code || 'Internal Error'}): ${err.message || 'Hali haijaruhusiwa'}. Hii hutokea mara nyingi kama Email/Password haijawezeshwa kwenye Firebase Console (Build > Authentication > Sign-in method). Tafadhali wasiliana na msimamizi, au tumia njia mbadala ya "Endelea na Google" au "Ingia kama Mgeni" kuanza kusoma mara moja bila kusubiri!`;
+        errorMsg = `Hitilafu ya ndani ya mfumo (${err.code || 'Internal Error'}): ${err.message || 'Hali haijaruhusiwa'}. Tafadhali tumia njia mbadala ya "Endelea na Google" au "Ingia kama Mgeni" kuanza kusoma mara moja bila kusubiri!`;
       } else if (err.message) {
         errorMsg = `Hitilafu: ${err.message}`;
       }
       setAuthError(errorMsg);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setAuthError('Tafadhali jaza barua pepe (email) yako kwanza hapo chini.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError(null);
+    setOtpSuccessMessage(null);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setOtpSuccessMessage('Barua pepe ya kurejesha nenosiri imetumwa! Tafadhali angalia kikasha chako cha barua pepe (inbox au spam folder) ili kuweka nenosiri jipya.');
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      let errMsg = 'Kuna hitilafu imetokea wakati wa kutuma barua pepe ya kurejesha nenosiri.';
+      if (err.code === 'auth/user-not-found') {
+        errMsg = 'Hakuna akaunti iliyosajiliwa na barua pepe hii.';
+      } else if (err.code === 'auth/invalid-email') {
+        errMsg = 'Barua pepe uliyoingiza si sahihi.';
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      setAuthError(errMsg);
     } finally {
       setAuthLoading(false);
     }
@@ -776,6 +783,10 @@ export default function App() {
 
             {activeView === 'calculator' && (
               <CalculatorView />
+            )}
+
+            {activeView === 'combinations' && (
+              <CombinationsView />
             )}
 
             {activeView === 'kamusi' && (
@@ -997,12 +1008,75 @@ export default function App() {
               </div>
             )}
 
-            {authTab !== 'verify' ? (
+            {authTab === 'forgot_password' ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="text-center space-y-1.5">
+                  <h3 className="font-sans font-black text-slate-800 text-sm uppercase tracking-wider">Kurejesha Nenosiri</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                    Weka barua pepe yako hapa chini, na tutakutumia ujumbe wenye kiungo (link) cha kuweka nenosiri jipya kwa urahisi kabisa.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <p>{authError}</p>
+                  </div>
+                )}
+
+                {otpSuccessMessage && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex gap-2 text-xs text-emerald-800 font-semibold animate-bounce">
+                    <CheckCircle size={16} className="flex-shrink-0 mt-0.5 text-emerald-600" />
+                    <p>{otpSuccessMessage}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      Barua pepe yako (Email)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-slate-950 hover:bg-slate-800 disabled:bg-slate-300 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  >
+                    {authLoading ? 'Inatuma...' : 'Tuma Ujumbe wa Kurejesha'}
+                  </button>
+                </form>
+
+                <div className="text-center pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthError(null);
+                      setOtpSuccessMessage(null);
+                      setAuthTab('login');
+                    }}
+                    className="text-xs font-black text-cyan-600 hover:text-cyan-700 hover:underline cursor-pointer"
+                  >
+                    &larr; Rudi kwenye Kuingia (Login)
+                  </button>
+                </div>
+              </div>
+            ) : authTab !== 'verify' ? (
               <>
                 <div className="flex border-b border-slate-100 gap-1 pb-px">
                   <button
                     onClick={() => {
                       setAuthError(null);
+                      setOtpSuccessMessage(null);
                       setAuthTab('login');
                     }}
                     className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
@@ -1014,6 +1088,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setAuthError(null);
+                      setOtpSuccessMessage(null);
                       setAuthTab('signup');
                     }}
                     className={`flex-1 pb-2.5 text-xs font-extrabold uppercase border-b-2 text-center transition-all ${
@@ -1028,6 +1103,16 @@ export default function App() {
                   <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
                     <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
                     <p>{authError}</p>
+                  </div>
+                )}
+
+                {otpSuccessMessage && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex gap-2.5 text-xs text-emerald-800 font-bold animate-fade-in shadow-sm">
+                    <CheckCircle size={18} className="flex-shrink-0 mt-0.5 text-emerald-600" />
+                    <div className="space-y-0.5 text-left">
+                      <p className="uppercase text-[10px] text-emerald-700 tracking-wider font-black">Hongera! Usajili Umefanikiwa</p>
+                      <p className="leading-relaxed text-emerald-950 font-semibold text-xs">{otpSuccessMessage}</p>
+                    </div>
                   </div>
                 )}
 
@@ -1173,6 +1258,22 @@ export default function App() {
                       className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
                     />
                   </div>
+
+                  {authTab === 'login' && (
+                    <div className="flex justify-end pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthError(null);
+                          setOtpSuccessMessage(null);
+                          setAuthTab('forgot_password');
+                        }}
+                        className="text-[11px] font-extrabold text-cyan-600 hover:text-cyan-700 hover:underline cursor-pointer transition-all"
+                      >
+                        Umesahau Nenosiri?
+                      </button>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

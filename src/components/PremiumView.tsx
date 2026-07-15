@@ -498,9 +498,9 @@ export default function PremiumView({
                   <PhoneCall size={14} className="text-amber-400/80" />
                   Piga Simu (Yohana): 0684458632
                 </a>
-                <a href="tel:0743548225" className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:underline">
+                <a href="tel:0699479032" className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 hover:underline">
                   <PhoneCall size={14} className="text-amber-400/70" />
-                  Piga Simu (Lawrent/Support): 0743548225
+                  Piga Simu (Lawrent/Support): 0699479032
                 </a>
                 <a href="https://wa.me/255684458632?text=Habari,%20nahitaji%20msaada%20wa%20malipo%20ya%20Lupanulla%20Premium" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:underline">
                   <MessageCircle size={14} className="text-emerald-400 animate-pulse" />

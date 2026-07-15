@@ -22,8 +22,8 @@ export default function AdSenseWidget({
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Read from environment variables with fallback
-  const adClientId = clientId || (import.meta as any).env?.VITE_ADSENSE_CLIENT_ID || 'ca-pub-5064038820261100'; // realistic demo publisher ID
-  const adSlotId = slotId || (import.meta as any).env?.VITE_ADSENSE_SLOT_ID || '8026110038'; // realistic demo slot ID
+  const adClientId = clientId || (import.meta as any).env?.VITE_ADSENSE_CLIENT_ID || 'ca-pub-4209377418042440'; // primary publisher ID
+  const adSlotId = slotId || (import.meta as any).env?.VITE_ADSENSE_SLOT_ID || '8026110038'; // fallback slot ID
 
   useEffect(() => {
     // 1. Check if the script is already loaded

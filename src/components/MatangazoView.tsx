@@ -632,19 +632,19 @@ export default function MatangazoView() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone size={16} className="text-cyan-600 shrink-0" />
-                <a href="tel:0743548225" className="hover:text-cyan-600 hover:underline">
-                  0743548225 / +255 743 548 225
+                <a href="tel:0699479032" className="hover:text-cyan-600 hover:underline">
+                  0699479032 / +255 699 479 032
                 </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <MessageCircle size={16} className="text-emerald-500 shrink-0" />
                 <a 
-                  href="https://wa.me/255743548225" 
+                  href="https://wa.me/255699479032" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 hover:underline hover:text-emerald-500"
                 >
-                  WhatsApp: 0743548225
+                  WhatsApp: 0699479032
                 </a>
               </div>
               <div className="flex items-center gap-2.5">

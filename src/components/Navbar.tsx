@@ -118,6 +118,7 @@ export default function Navbar({
   ];
 
   const toolsMenuItems = [
+    { id: 'combinations', label: 'Kombination 2025/2026', icon: Award },
     { id: 'resources', label: 'Hub ya Vyanzo vya Elimu', icon: Globe },
     { id: 'forum', label: 'Jukwaa la Jamii', icon: MessageSquare },
     { id: 'live', label: 'Kipindi cha Video', icon: Video },
