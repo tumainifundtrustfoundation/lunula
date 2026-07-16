@@ -20,10 +20,11 @@ import {
   MapPin,
   X,
   RefreshCw,
-  Clock
+  Clock,
+  Bookmark
 } from 'lucide-react';
-import { fetchDocuments, fetchLibraryConfig, incrementDocumentViews, incrementDocumentDownloads, LibraryConfig, DEFAULT_LIBRARY_CONFIG } from '../firebase';
-import { DocumentMetadata, UserProfile } from '../types';
+import { fetchDocuments, fetchLibraryConfig, incrementDocumentViews, incrementDocumentDownloads, LibraryConfig, DEFAULT_LIBRARY_CONFIG, toggleBookmark, fetchUserBookmarks } from '../firebase';
+import { DocumentMetadata, UserProfile, UserBookmark } from '../types';
 
 interface LibraryViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -57,6 +58,9 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Bookmarks State
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+
   // Unique Years and Regions dynamically gathered from documents list
   const [dynamicYears, setDynamicYears] = useState<string[]>([]);
   const [dynamicRegions, setDynamicRegions] = useState<string[]>([]);
@@ -86,9 +90,65 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
     }
   };
 
+  const loadBookmarks = async () => {
+    if (!userProfile?.uid) {
+      const stored = localStorage.getItem('lupa_bookmarks');
+      if (stored) {
+        setBookmarkedIds(JSON.parse(stored));
+      }
+      return;
+    }
+    
+    try {
+      const bookmarks = await fetchUserBookmarks(userProfile.uid);
+      setBookmarkedIds(bookmarks.map(b => b.resourceId));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     loadData();
-  }, []);
+    loadBookmarks();
+  }, [userProfile?.uid]);
+
+  const handleToggleBookmark = async (doc: DocumentMetadata, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!userProfile?.uid) {
+      // Guest local storage
+      let updated: string[];
+      if (bookmarkedIds.includes(doc.id)) {
+        updated = bookmarkedIds.filter(id => id !== doc.id);
+        showToast(`Imeondolewa kwenye hifadhi ya muda.`);
+      } else {
+        updated = [...bookmarkedIds, doc.id];
+        showToast(`Imehifadhiwa kwenye kivinjari chako!`);
+      }
+      setBookmarkedIds(updated);
+      localStorage.setItem('lupa_bookmarks', JSON.stringify(updated));
+      return;
+    }
+
+    try {
+      const isNowBookmarked = await toggleBookmark(userProfile.uid, {
+        id: doc.id,
+        type: 'document',
+        title: doc.title
+      });
+      
+      if (isNowBookmarked) {
+        setBookmarkedIds(prev => [...prev, doc.id]);
+        showToast(`Imehifadhiwa kwenye akaunti yako!`);
+      } else {
+        setBookmarkedIds(prev => prev.filter(id => id !== doc.id));
+        showToast(`Imeondolewa kwenye hifadhi.`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast(`Hitilafu imetokea!`);
+    }
+  };
 
   const handleShare = (doc: DocumentMetadata) => {
     const shareUrl = `${window.location.origin}/#reader?id=${doc.id}`;
@@ -566,7 +626,7 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                     </div>
 
                     {/* Actions Group */}
-                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
                       <button
                         onClick={() => handlePreview(doc)}
                         className="py-2.5 px-2 bg-gray-50 hover:bg-gray-100 hover:text-emerald-700 text-slate-700 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm border border-gray-100"
@@ -585,6 +645,18 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                       >
                         <Download size={11} />
                         Pakua
+                      </button>
+
+                      <button
+                        onClick={(e) => handleToggleBookmark(doc, e)}
+                        className={`py-2.5 px-2 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 border shadow-sm ${
+                          bookmarkedIds.includes(doc.id)
+                            ? 'bg-amber-50 border-amber-100 text-amber-600'
+                            : 'bg-gray-50 border-gray-100 text-slate-700 hover:text-emerald-700'
+                        }`}
+                      >
+                        <Bookmark size={11} fill={bookmarkedIds.includes(doc.id) ? "currentColor" : "none"} />
+                        {bookmarkedIds.includes(doc.id) ? 'Imehifadhiwa' : 'Hifadhi'}
                       </button>
 
                       <button

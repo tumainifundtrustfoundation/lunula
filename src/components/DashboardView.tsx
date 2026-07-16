@@ -20,10 +20,12 @@ import {
   Compass,
   Globe,
   TrendingUp,
-  Clock
+  Clock,
+  Bookmark,
+  Trash2
 } from 'lucide-react';
-import { fetchDocuments } from '../firebase';
-import { DocumentMetadata } from '../types';
+import { fetchDocuments, fetchUserBookmarks, toggleBookmark } from '../firebase';
+import { DocumentMetadata, UserBookmark } from '../types';
 import FocusTimer from './FocusTimer';
 import {
   ResponsiveContainer,
@@ -81,13 +83,32 @@ export default function DashboardView({ onNavigate, userProfile, language = 'sw'
   const [checkingResults, setCheckingResults] = useState(false);
   const [resultsOutput, setResultsOutput] = useState<string | null>(null);
   const [recentDocs, setRecentDocs] = useState<DocumentMetadata[]>([]);
+  const [bookmarks, setBookmarks] = useState<UserBookmark[]>([]);
+  const [loadingBookmarks, setLoadingBookmarks] = useState(true);
   const [activeLeaderboard, setActiveLeaderboard] = useState<'darasa' | 'mkoa'>('darasa');
 
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartFilter, setChartFilter] = useState<'all' | 'minutes' | 'xp'>('all');
+  
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
 
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', () => {
+      setShowInstallBtn(false);
+      setDeferredPrompt(null);
+    });
+
     loadRecentDocs();
+    loadBookmarks();
     
     const generate30DaysData = () => {
       const data = [];
@@ -122,7 +143,47 @@ export default function DashboardView({ onNavigate, userProfile, language = 'sw'
     };
     
     setChartData(generate30DaysData());
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  const loadBookmarks = async () => {
+    if (!userProfile?.uid) return;
+    setLoadingBookmarks(true);
+    try {
+      const data = await fetchUserBookmarks(userProfile.uid);
+      setBookmarks(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingBookmarks(false);
+    }
+  };
+
+  const handleRemoveBookmark = async (e: React.MouseEvent, bookmark: UserBookmark) => {
+    e.stopPropagation();
+    if (!userProfile?.uid) return;
+    const removed = await toggleBookmark(userProfile.uid, {
+      id: bookmark.resourceId,
+      type: bookmark.resourceType,
+      title: bookmark.resourceTitle
+    });
+    if (!removed) {
+      setBookmarks(prev => prev.filter(b => b.id !== bookmark.id));
+    }
+  };
 
   const loadRecentDocs = async () => {
     try {
@@ -171,6 +232,27 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
   return (
     <div id="dashboard-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50">
       
+      {/* ── PWA Install CTA Banner ── */}
+      {showInstallBtn && (
+        <section className="bg-cyan-600 rounded-3xl p-4 sm:p-5 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-cyan-600/20 border border-cyan-500/30 animate-bounce-subtle">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <Sparkles size={24} className="text-white animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm sm:text-base">Weka Lupanulla kwenye Home Screen</h3>
+              <p className="text-white/80 text-[10px] sm:text-xs font-medium">Pata uzoefu wa app, notisi za haraka, na soma offline ukiwa na icon yako mwenyewe!</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleInstallClick}
+            className="bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 shrink-0"
+          >
+            Weka App Sasa
+          </button>
+        </section>
+      )}
+
       {/* ── Welcome Banner with Floating Ambient Particles ── */}
       <section className="relative rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 p-6 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
         {/* Floating Stars Particle Effect Simulation */}
@@ -238,6 +320,81 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
             <p className="text-[10px] text-slate-400 font-semibold">Soma mada 1 zaidi leo kudumisha streak yako!</p>
           </div>
         </div>
+      </section>
+
+      {/* ── Bookmarks Section (Hifadhi Zangu) ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-extrabold text-xl text-slate-900 uppercase flex items-center gap-2">
+            <Bookmark size={20} className="text-cyan-600" />
+            Hifadhi Zangu
+          </h2>
+          <span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full uppercase">
+            {bookmarks.length} Zimehifadhiwa
+          </span>
+        </div>
+        
+        {loadingBookmarks ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-slate-100 animate-pulse h-24 rounded-2xl border border-slate-200"></div>
+            ))}
+          </div>
+        ) : bookmarks.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {bookmarks.map(bookmark => (
+              <div 
+                key={bookmark.id}
+                onClick={() => {
+                  let viewName: string = bookmark.resourceType;
+                  if (viewName === 'document') viewName = 'library';
+                  if (viewName === 'news') viewName = 'matangazo';
+                  onNavigate(viewName, bookmark.resourceId);
+                }}
+                className="bg-white border border-slate-200 p-4 rounded-2xl hover:border-cyan-400 hover:shadow-sm cursor-pointer transition-all group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={(e) => handleRemoveBookmark(e, bookmark)}
+                    className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                
+                <div className="space-y-2">
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase inline-block ${
+                    bookmark.resourceType === 'document' ? 'bg-cyan-100 text-cyan-800' :
+                    bookmark.resourceType === 'exam' ? 'bg-purple-100 text-purple-800' :
+                    bookmark.resourceType === 'news' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'
+                  }`}>
+                    {bookmark.resourceType === 'document' ? 'Notisi' : 
+                     bookmark.resourceType === 'exam' ? 'Mtihani' : 
+                     bookmark.resourceType === 'news' ? 'Habari' : 'Nyingine'}
+                  </span>
+                  <h3 className="font-bold text-slate-900 text-sm line-clamp-2 pr-6">{bookmark.resourceTitle}</h3>
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold mt-1">
+                    <Clock size={10} />
+                    {new Date(bookmark.addedAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center text-center gap-2">
+            <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
+              <Bookmark size={24} />
+            </div>
+            <p className="text-slate-400 text-sm font-medium">Hujachagua notisi au mitihani yoyote ya kuhifadhi bado.</p>
+            <button 
+              onClick={() => onNavigate('masomo')}
+              className="text-cyan-600 text-xs font-bold hover:underline mt-1"
+            >
+              Vinjari masomo sasa &rarr;
+            </button>
+          </div>
+        )}
       </section>
 
       {/* ── Core Statistics Counters ── */}

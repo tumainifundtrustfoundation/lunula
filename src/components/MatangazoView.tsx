@@ -20,10 +20,11 @@ import {
   ShieldCheck,
   Percent,
   HelpCircle,
-  MessageCircle
+  MessageCircle,
+  Bookmark
 } from 'lucide-react';
-import { fetchAnnouncements, fetchWebsiteNews } from '../firebase';
-import { Announcement, WebsiteNews } from '../types';
+import { fetchAnnouncements, fetchWebsiteNews, toggleBookmark, fetchUserBookmarks } from '../firebase';
+import { Announcement, WebsiteNews, UserBookmark } from '../types';
 
 /**
  * MhuniWalking Component
@@ -174,7 +175,7 @@ export function GoogleAdSenseUnit({ slot, adFormat = 'auto', className = '' }: {
   );
 }
 
-export default function MatangazoView() {
+export default function MatangazoView({ userProfile }: { userProfile: any }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [news, setNews] = useState<WebsiteNews[]>([]);
   const [activeTab, setActiveTab] = useState<'news' | 'announcements'>('news');
@@ -183,6 +184,7 @@ export default function MatangazoView() {
   const [affAmbassadorName, setAffAmbassadorName] = useState('');
   const [ambassadorJoined, setAmbassadorJoined] = useState(false);
   const [stats, setStats] = useState({ clicks: 42, signups: 7, earnings: 35000 });
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
 
   const defaultAnnouncements: Announcement[] = [
     {
@@ -207,7 +209,55 @@ export default function MatangazoView() {
 
   useEffect(() => {
     loadAnnouncements();
-  }, []);
+    loadBookmarks();
+  }, [userProfile?.uid]);
+
+  const loadBookmarks = async () => {
+    if (!userProfile?.uid) {
+      const stored = localStorage.getItem('lupa_bookmarks');
+      if (stored) {
+        setBookmarkedIds(JSON.parse(stored));
+      }
+      return;
+    }
+    
+    try {
+      const bookmarks = await fetchUserBookmarks(userProfile.uid);
+      setBookmarkedIds(bookmarks.map(b => b.resourceId));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleBookmark = async (id: string, title: string, type: string) => {
+    if (!userProfile?.uid) {
+      let updated: string[];
+      if (bookmarkedIds.includes(id)) {
+        updated = bookmarkedIds.filter(i => i !== id);
+      } else {
+        updated = [...bookmarkedIds, id];
+      }
+      setBookmarkedIds(updated);
+      localStorage.setItem('lupa_bookmarks', JSON.stringify(updated));
+      return;
+    }
+
+    try {
+      const isBookmarked = await toggleBookmark(userProfile.uid, {
+        id,
+        title,
+        type: 'news' // for news/announcements
+      });
+      
+      if (isBookmarked) {
+        setBookmarkedIds(prev => [...prev, id]);
+      } else {
+        setBookmarkedIds(prev => prev.filter(i => i !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadAnnouncements = async () => {
     try {
@@ -404,16 +454,28 @@ export default function MatangazoView() {
                         <div />
                       )}
                       
-                      <button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${item.title}\n\nSoma zaidi kwenye tovuti ya Lupanulla Elimu Hub.`);
-                          alert('Kichwa cha habari kimenakiliwa! Waambie marafiki zako.');
-                        }}
-                        className="text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-cyan-500 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Share2 size={12} />
-                        Sambaza
-                      </button>
+                      <div className="flex gap-4 items-center">
+                        <button 
+                          onClick={() => handleToggleBookmark(item.id, item.title, 'news')}
+                          className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors ${
+                            bookmarkedIds.includes(item.id) ? 'text-amber-500' : 'text-slate-400 hover:text-cyan-500'
+                          }`}
+                        >
+                          <Bookmark size={12} fill={bookmarkedIds.includes(item.id) ? "currentColor" : "none"} />
+                          {bookmarkedIds.includes(item.id) ? 'Imehifadhiwa' : 'Hifadhi'}
+                        </button>
+
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${item.title}\n\nSoma zaidi kwenye tovuti ya Lupanulla Elimu Hub.`);
+                            alert('Kichwa cha habari kimenakiliwa! Waambie marafiki zako.');
+                          }}
+                          className="text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-cyan-500 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Share2 size={12} />
+                          Sambaza
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 ))
@@ -463,7 +525,17 @@ export default function MatangazoView() {
                     {ann.desc}
                   </p>
 
-                  <div className="flex justify-end mt-4 border-t border-slate-100 dark:border-slate-900 pt-3">
+                  <div className="flex justify-end mt-4 border-t border-slate-100 dark:border-slate-900 pt-3 gap-4">
+                    <button 
+                      onClick={() => handleToggleBookmark(ann.id, ann.title, 'news')}
+                      className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors ${
+                        bookmarkedIds.includes(ann.id) ? 'text-amber-500' : 'text-slate-400 hover:text-cyan-500'
+                      }`}
+                    >
+                      <Bookmark size={12} fill={bookmarkedIds.includes(ann.id) ? "currentColor" : "none"} />
+                      {bookmarkedIds.includes(ann.id) ? 'Imehifadhiwa' : 'Hifadhi'}
+                    </button>
+
                     <button 
                       onClick={() => {
                         // Copy news text or share

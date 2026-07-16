@@ -53,6 +53,11 @@ service cloud.firestore {
     }
 
     // Public Collections (Accessible by everyone)
+    match /matangazo/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /educational_resources/{resourceId} {
       allow read: if true;
       allow create: if isSignedIn() && isAdmin() && isValidId(resourceId) && isValidEducationalResource(request.resource.data)
@@ -65,11 +70,6 @@ service cloud.firestore {
         || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recommendedByUsers', 'recommendationsCount']))
       );
       allow delete: if isSignedIn() && isAdmin();
-    }
-
-    match /matangazo/{annId} {
-      allow read: if true;
-      allow write: if isAdmin();
     }
 
     match /videos/{vidId} {
@@ -242,6 +242,13 @@ service cloud.firestore {
     // System Configurations collection
     match /system_configs/{configId} {
       allow read, write: if isSuperAdmin();
+    }
+
+    // User Bookmarks
+    match /user_bookmarks/{bookmarkId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // Default deny

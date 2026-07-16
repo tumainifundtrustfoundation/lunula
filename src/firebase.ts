@@ -31,7 +31,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, WebsiteNews, PaymentTransaction, QuickBuyOrder } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -248,6 +248,64 @@ export const ensureUserProfile = async (user: User, displayName: string, additio
   }
   
   return profile;
+};
+
+/**
+ * User Bookmarks (Hifadhi)
+ */
+export const toggleBookmark = async (
+  userId: string, 
+  resource: { id: string; type: 'document' | 'exam' | 'video' | 'news'; title: string }
+): Promise<boolean> => {
+  const path = 'user_bookmarks';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId), where('resourceId', '==', resource.id));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      // Remove bookmark
+      const bookmarkId = snap.docs[0].id;
+      await deleteDoc(doc(db, path, bookmarkId));
+      return false; // Not bookmarked anymore
+    } else {
+      // Add bookmark
+      await addDoc(colRef, {
+        userId,
+        resourceId: resource.id,
+        resourceTitle: resource.title,
+        resourceType: resource.type,
+        addedAt: Date.now()
+      });
+      return true; // Bookmarked
+    }
+  } catch (err: any) {
+    console.error('toggleBookmark error:', err);
+    return false;
+  }
+};
+
+export const fetchUserBookmarks = async (userId: string): Promise<UserBookmark[]> => {
+  const path = 'user_bookmarks';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId), orderBy('addedAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as UserBookmark));
+  } catch (err: any) {
+    // Fallback if index not ready
+    try {
+      const colRef = collection(db, path);
+      const q = query(colRef, where('userId', '==', userId));
+      const snap = await getDocs(q);
+      return snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as UserBookmark))
+        .sort((a, b) => b.addedAt - a.addedAt);
+    } catch (e) {
+      console.error('fetchUserBookmarks error:', e);
+      return [];
+    }
+  }
 };
 
 /**
@@ -564,6 +622,21 @@ export const fetchAnnouncements = async (): Promise<Announcement[]> => {
   try {
     const colRef = collection(db, path);
     const snap = await getDocs(colRef);
+    
+    // Auto-seed if empty to ensure the app has content and collection is initialized
+    if (snap.empty) {
+      console.log('Seeding initial announcements...');
+      await saveAnnouncement({
+        title: "Karibu Lupanulla Elimu Hub 📢",
+        desc: "Tunafuraha kukujulisha kuwa mfumo mpya wa Lupanulla sasa uko hewani. Furahia notisi, mitihani, msaidizi wa AI na huduma nyingi mpya zilizoboreshwa kwa ajili yako.",
+        type: "news",
+        status: "published"
+      } as any);
+      
+      const reSnap = await getDocs(colRef);
+      return reSnap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
+    }
+    
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);

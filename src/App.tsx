@@ -802,7 +802,9 @@ export default function App() {
             )}
 
             {activeView === 'matangazo' && (
-              <MatangazoView />
+              <MatangazoView 
+                userProfile={userProfile} 
+              />
             )}
 
             {activeView === 'workspace' && (

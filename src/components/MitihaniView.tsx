@@ -22,8 +22,8 @@ import {
   BookOpen,
   Sparkles
 } from 'lucide-react';
-import { fetchDocuments, fetchExamResultByCode } from '../firebase';
-import { DocumentMetadata, ExamResult } from '../types';
+import { fetchDocuments, fetchExamResultByCode, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks } from '../firebase';
+import { DocumentMetadata, ExamResult, UserBookmark } from '../types';
 import { GoogleAdSenseUnit } from './MatangazoView';
 import ExamTimer from './ExamTimer';
 
@@ -494,11 +494,24 @@ export default function MitihaniView({
 
   useEffect(() => {
     loadDocs();
-    const storedBookmarks = localStorage.getItem('lupa_bookmarks');
-    if (storedBookmarks) {
-      setBookmarkedIds(JSON.parse(storedBookmarks));
-    }
-  }, []);
+    const checkBookmarks = async () => {
+      if (!userProfile?.uid) {
+        const storedBookmarks = localStorage.getItem('lupa_bookmarks');
+        if (storedBookmarks) {
+          setBookmarkedIds(JSON.parse(storedBookmarks));
+        }
+        return;
+      }
+      
+      try {
+        const bookmarks = await fetchUserBookmarks(userProfile.uid);
+        setBookmarkedIds(bookmarks.map(b => b.resourceId));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    checkBookmarks();
+  }, [userProfile?.uid]);
 
   const loadDocs = async () => {
     try {
@@ -527,16 +540,37 @@ export default function MitihaniView({
     }
   };
 
-  const toggleBookmark = (docId: string, e: React.MouseEvent) => {
+  const handleToggleBookmark = async (doc: DocumentMetadata, e: React.MouseEvent) => {
     e.stopPropagation(); // Avoid navigating
-    let updated: string[];
-    if (bookmarkedIds.includes(docId)) {
-      updated = bookmarkedIds.filter(id => id !== docId);
-    } else {
-      updated = [...bookmarkedIds, docId];
+    
+    if (!userProfile?.uid) {
+      // Fallback for guest
+      let updated: string[];
+      if (bookmarkedIds.includes(doc.id)) {
+        updated = bookmarkedIds.filter(id => id !== doc.id);
+      } else {
+        updated = [...bookmarkedIds, doc.id];
+      }
+      setBookmarkedIds(updated);
+      localStorage.setItem('lupa_bookmarks', JSON.stringify(updated));
+      return;
     }
-    setBookmarkedIds(updated);
-    localStorage.setItem('lupa_bookmarks', JSON.stringify(updated));
+
+    try {
+      const isNowBookmarked = await toggleBookmarkFirestore(userProfile.uid, {
+        id: doc.id,
+        type: 'exam',
+        title: doc.title
+      });
+      
+      if (isNowBookmarked) {
+        setBookmarkedIds(prev => [...prev, doc.id]);
+      } else {
+        setBookmarkedIds(prev => prev.filter(id => id !== doc.id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Filter application
@@ -1244,7 +1278,7 @@ export default function MitihaniView({
                               </div>
                               
                               <button 
-                                onClick={(e) => toggleBookmark(doc.id, e)}
+                                onClick={(e) => handleToggleBookmark(doc, e)}
                                 className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
                               >
                                 <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
@@ -1304,7 +1338,7 @@ export default function MitihaniView({
                         </div>
                         
                         <button 
-                          onClick={(e) => toggleBookmark(doc.id, e)}
+                          onClick={(e) => handleToggleBookmark(doc, e)}
                           className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
                         >
                           <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />

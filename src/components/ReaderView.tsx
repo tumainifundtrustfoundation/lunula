@@ -21,8 +21,8 @@ import {
   Maximize2,
   Minimize2
 } from 'lucide-react';
-import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight } from '../firebase';
-import { DocumentMetadata, HighlightAnnotation } from '../types';
+import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks } from '../firebase';
+import { DocumentMetadata, HighlightAnnotation, UserBookmark } from '../types';
 import FlashcardsModal from './FlashcardsModal';
 import PDFPreviewer from './PDFPreviewer';
 import { jsPDF } from 'jspdf';
@@ -536,11 +536,25 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     loadDocument();
     
     // Check bookmark status
-    const storedBookmarks = localStorage.getItem('lupa_bookmarks');
-    if (storedBookmarks) {
-      const bookmarked = JSON.parse(storedBookmarks) as string[];
-      setIsBookmarked(bookmarked.includes(documentId));
-    }
+    const checkBookmarkStatus = async () => {
+      if (!userProfile?.uid) {
+        const storedBookmarks = localStorage.getItem('lupa_bookmarks');
+        if (storedBookmarks) {
+          const bookmarked = JSON.parse(storedBookmarks) as string[];
+          setIsBookmarked(bookmarked.includes(documentId));
+        }
+        return;
+      }
+      
+      try {
+        const bookmarks = await fetchUserBookmarks(userProfile.uid);
+        setIsBookmarked(bookmarks.some(b => b.resourceId === documentId));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    checkBookmarkStatus();
 
     // Load active highlights
     if (userProfile?.uid) {
@@ -681,19 +695,35 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     }
   };
 
-  const handleToggleBookmark = () => {
-    const storedBookmarks = localStorage.getItem('lupa_bookmarks');
-    let bookmarked: string[] = storedBookmarks ? JSON.parse(storedBookmarks) : [];
+  const handleToggleBookmark = async () => {
+    if (!doc) return;
     
-    if (isBookmarked) {
-      bookmarked = bookmarked.filter(id => id !== documentId);
-      setIsBookmarked(false);
-    } else {
-      bookmarked.push(documentId);
-      setIsBookmarked(true);
+    if (!userProfile?.uid) {
+      // Fallback to localStorage for guest
+      const storedBookmarks = localStorage.getItem('lupa_bookmarks');
+      let bookmarked: string[] = storedBookmarks ? JSON.parse(storedBookmarks) : [];
+      
+      if (isBookmarked) {
+        bookmarked = bookmarked.filter(id => id !== documentId);
+        setIsBookmarked(false);
+      } else {
+        bookmarked.push(documentId);
+        setIsBookmarked(true);
+      }
+      localStorage.setItem('lupa_bookmarks', JSON.stringify(bookmarked));
+      return;
     }
-    
-    localStorage.setItem('lupa_bookmarks', JSON.stringify(bookmarked));
+
+    try {
+      const result = await toggleBookmark(userProfile.uid, {
+        id: doc.id,
+        type: doc.type?.toLowerCase().includes('exam') ? 'exam' : 'document',
+        title: doc.title
+      });
+      setIsBookmarked(result);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDownload = () => {

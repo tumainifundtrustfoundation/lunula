@@ -41,27 +41,31 @@ export default function Logo({ className = '', size = 'md' }: LogoProps) {
         alt="Lupanulla Elimu Hub Logo"
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
-        className={`${imgSizeClasses[size]} object-contain shadow-md border border-slate-800/10 ${className}`}
+        className={`${imgSizeClasses[size]} object-contain shadow-md border border-slate-200/50 ${className}`}
       />
     );
   }
 
-  // Beautiful SVG Fallback when image fails to load
+  // Beautiful SVG Fallback when image fails to load - Styled to match the new official logo
   return (
     <div 
-      className={`${svgSizeClasses[size]} ${svgPadding[size]} bg-gradient-to-br from-cyan-500 via-teal-500 to-indigo-600 shadow-md border border-cyan-400/20 flex items-center justify-center relative overflow-hidden group ${className}`}
+      className={`${svgSizeClasses[size]} ${svgPadding[size]} bg-white shadow-sm border border-slate-200 flex items-center justify-center relative overflow-hidden group ${className}`}
     >
-      {/* Background radial highlight */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_60%)] animate-pulse" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/5 via-transparent to-green-600/5" />
       
-      {/* Absolute peak craftsmanship Vector Emblem */}
-      <GraduationCap 
-        size={iconSizes[size]} 
-        className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] relative z-10 transition-transform duration-300 group-hover:scale-110" 
-      />
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="flex items-baseline font-black leading-none tracking-tighter">
+          <span className="text-blue-900" style={{ fontSize: iconSizes[size] * 1.2 }}>L</span>
+          <span className="text-green-600" style={{ fontSize: iconSizes[size] * 1.2 }}>N</span>
+        </div>
+        <GraduationCap 
+          size={iconSizes[size] * 0.6} 
+          className="text-blue-900 mt-[-2px] transition-transform duration-300 group-hover:scale-110" 
+        />
+      </div>
       
-      {/* Rising Sun Glow */}
-      <div className="absolute -bottom-1 -right-1 w-1/2 h-1/2 bg-amber-400 rounded-full blur-sm opacity-60 mix-blend-screen" />
+      {/* Subtle background detail */}
+      <div className="absolute -bottom-1 -right-1 w-2/3 h-2/3 bg-green-500/10 rounded-full blur-md" />
     </div>
   );
 }

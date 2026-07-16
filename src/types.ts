@@ -335,6 +335,15 @@ export interface HighlightAnnotation {
   createdAt: number;
 }
 
+export interface UserBookmark {
+  id: string;
+  userId: string;
+  resourceId: string;
+  resourceTitle: string;
+  resourceType: 'document' | 'exam' | 'video' | 'news';
+  addedAt: number;
+}
+
 export interface WebsiteNews {
   id: string;
   title: string;
