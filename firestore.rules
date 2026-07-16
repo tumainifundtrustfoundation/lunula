@@ -53,7 +53,7 @@ service cloud.firestore {
     }
 
     // Public Collections (Accessible by everyone)
-    match /matangazo/{document=**} {
+    match /matangazo/{annId} {
       allow read: if true;
       allow write: if isAdmin();
     }

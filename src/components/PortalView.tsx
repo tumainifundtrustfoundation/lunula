@@ -565,12 +565,12 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
               <div className="relative bg-slate-950 p-2 rounded-2xl border border-slate-800">
                 <img 
                   src={founderImg} 
-                  alt="Lupanulla - Mwanzilishi" 
+                  alt="Lupanulla Elimu Hub" 
                   referrerPolicy="no-referrer"
-                  className="w-full max-w-[280px] h-[340px] object-cover rounded-xl transition-all duration-500 group-hover:scale-[1.02]"
+                  className="w-full max-w-[280px] h-[340px] object-contain p-6 bg-slate-900 rounded-xl transition-all duration-500 group-hover:scale-[1.02]"
                 />
                 <div className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg text-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">LUPANULLA (FOUNDER)</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">LUPANULLA ELIMU HUB</span>
                 </div>
               </div>
             </div>

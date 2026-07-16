@@ -622,21 +622,6 @@ export const fetchAnnouncements = async (): Promise<Announcement[]> => {
   try {
     const colRef = collection(db, path);
     const snap = await getDocs(colRef);
-    
-    // Auto-seed if empty to ensure the app has content and collection is initialized
-    if (snap.empty) {
-      console.log('Seeding initial announcements...');
-      await saveAnnouncement({
-        title: "Karibu Lupanulla Elimu Hub 📢",
-        desc: "Tunafuraha kukujulisha kuwa mfumo mpya wa Lupanulla sasa uko hewani. Furahia notisi, mitihani, msaidizi wa AI na huduma nyingi mpya zilizoboreshwa kwa ajili yako.",
-        type: "news",
-        status: "published"
-      } as any);
-      
-      const reSnap = await getDocs(colRef);
-      return reSnap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
-    }
-    
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, path);

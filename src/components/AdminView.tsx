@@ -373,21 +373,29 @@ export default function AdminView({
       try {
         setLoadingFreshRole(true);
         const freshProfile = await fetchUserProfile(userProfile.uid);
-        if (freshProfile) {
+        const isSuperAdminEmail = auth.currentUser?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || userProfile?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || auth.currentUser?.uid === 'a9wJ0DcKpkN9I9iyO2yQzcI7VlT2';
+        if (isSuperAdminEmail) {
+          setFreshRole('super_admin');
+        } else if (freshProfile) {
           setFreshRole(freshProfile.role);
         } else {
           setFreshRole(userProfile.role || 'student');
         }
       } catch (err) {
         console.error('Failed to verify user role directly from Firestore:', err);
-        setFreshRole(userProfile.role || 'student');
+        const isSuperAdminEmail = auth.currentUser?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || userProfile?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || auth.currentUser?.uid === 'a9wJ0DcKpkN9I9iyO2yQzcI7VlT2';
+        if (isSuperAdminEmail) {
+          setFreshRole('super_admin');
+        } else {
+          setFreshRole(userProfile.role || 'student');
+        }
       } finally {
         setLoadingFreshRole(false);
       }
     };
 
     verifyUserRoleAndLoad();
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, auth.currentUser]);
 
   useEffect(() => {
     if (freshRole === 'admin' || freshRole === 'super_admin') {
@@ -2203,7 +2211,9 @@ export default function AdminView({
     localStorage.setItem('lup_sec_logs', JSON.stringify(freshLogs));
   };
 
-  if (userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin' && freshRole !== 'admin' && freshRole !== 'super_admin') {
+  const isSuperAdminEmail = auth.currentUser?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || userProfile?.email?.toLowerCase() === 'lupanulla.co.tz@gmail.com' || auth.currentUser?.uid === 'a9wJ0DcKpkN9I9iyO2yQzcI7VlT2';
+
+  if (!isSuperAdminEmail && userProfile?.role !== 'admin' && userProfile?.role !== 'super_admin' && freshRole !== 'admin' && freshRole !== 'super_admin') {
     return (
       <div className="max-w-md mx-auto mt-12 animate-fade-in space-y-6">
         {/* Standalone Admin Card */}
