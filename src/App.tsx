@@ -39,6 +39,8 @@ import {
   signInAsGuest 
 } from './firebase';
 
+import metadata from '../metadata.json';
+
 import Navbar from './components/Navbar';
 import Logo from './components/Logo';
 import AdminView from './components/AdminView';
@@ -1059,7 +1061,13 @@ export default function App() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-900 pt-6 mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px]">
-          <p>© 2026 Lupanulla Foundation. Haki zote zimehifadhiwa.</p>
+          <div className="flex items-center gap-2.5">
+            <p>© 2026 Lupanulla Foundation. Haki zote zimehifadhiwa.</p>
+            <span className="bg-slate-900 border border-slate-850 text-cyan-400 rounded-full px-2.5 py-0.5 text-[9px] font-mono tracking-wider font-extrabold flex items-center gap-1 shadow-inner">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Toleo v{metadata.version || '2.5.0'}
+            </span>
+          </div>
           <div className="flex gap-4 font-bold">
             <a 
               href="#privacy-policy" 
