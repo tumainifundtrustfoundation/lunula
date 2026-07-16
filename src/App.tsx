@@ -5,6 +5,9 @@ import {
   createUserWithEmailAndPassword, 
   updateProfile,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -38,6 +41,7 @@ import {
 
 import Navbar from './components/Navbar';
 import Logo from './components/Logo';
+import AdminView from './components/AdminView';
 
 // Lazy Loaded View Components for Optimized Initial Bundle Size and Faster LCP
 const PortalView = lazy(() => import('./components/PortalView'));
@@ -63,7 +67,6 @@ const ForumView = lazy(() => import('./components/ForumView'));
 const LiveClassesView = lazy(() => import('./components/LiveClassesView'));
 const CertificatesView = lazy(() => import('./components/CertificatesView'));
 const LeaderboardView = lazy(() => import('./components/LeaderboardView'));
-const AdminView = lazy(() => import('./components/AdminView'));
 const ResourcesView = lazy(() => import('./components/ResourcesView'));
 
 // Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
@@ -152,8 +155,15 @@ export default function App() {
   // Login Modal State
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
-  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify' | 'forgot_password'>('login');
+  const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify' | 'forgot_password' | 'email_link'>('login');
   const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
+  
+  // Passwordless Email Link states
+  const [emailLinkVerifying, setEmailLinkVerifying] = useState<boolean>(false);
+  const [emailLinkError, setEmailLinkError] = useState<string | null>(null);
+  const [emailConfirmRequired, setEmailConfirmRequired] = useState<boolean>(false);
+  const [emailConfirmValue, setEmailConfirmValue] = useState<string>('');
+  const [linkSentMessage, setLinkSentMessage] = useState<string | null>(null);
   
   // OTP Verification States
   const [otpInput, setOtpInput] = useState<string>('');
@@ -276,6 +286,115 @@ export default function App() {
       window.location.hash = `#${view}`;
     }
   };
+
+  // Complete Sign-In with Email Link
+  const completeEmailLinkSignIn = async (emailToSignIn: string) => {
+    setEmailLinkVerifying(true);
+    setEmailLinkError(null);
+    try {
+      const result = await signInWithEmailLink(auth, emailToSignIn, window.location.href);
+      
+      // Retrieve the display name if they entered one during signup
+      const savedFullName = window.localStorage.getItem('signUpFullName') || result.user.displayName || 'Mwanafunzi Lupanulla';
+      
+      if (savedFullName && savedFullName !== result.user.displayName) {
+        await updateProfile(result.user, { displayName: savedFullName });
+      }
+
+      // Create or ensure the user profile exists
+      await ensureUserProfile(result.user, savedFullName, { emailVerified: true });
+      await refreshProfile(result.user.uid, savedFullName);
+
+      // Clean up localStorage
+      window.localStorage.removeItem('emailForSignIn');
+      window.localStorage.removeItem('signUpFullName');
+
+      // Clear query params to make URL clean
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Close modal and show success message
+      setShowSignInModal(false);
+      setOtpSuccessMessage('Hongera! Kuingia kwa barua pepe (Email Link) kumefanikiwa kikamilifu! Karibu sana kwenye Lupanulla Hub.');
+      setEmailLinkVerifying(false);
+      setEmailConfirmRequired(false);
+    } catch (error: any) {
+      console.error('Email Link Sign-In Error:', error);
+      let errorMsg = 'Imeshindwa kukamilisha kuingia kwa link ya barua pepe. Link hii inaweza kuwa imetumika tayari au muda wake umekwisha.';
+      if (error.code === 'auth/invalid-action-code') {
+        errorMsg = 'Kiungo (link) hiki cha barua pepe si sahihi au kimeisha muda wake wa matumizi. Tafadhali omba kingine.';
+      } else if (error.message) {
+        errorMsg = `Hitilafu: ${error.message}`;
+      }
+      setEmailLinkError(errorMsg);
+      setEmailLinkVerifying(false);
+    }
+  };
+
+  // Handler to send email login link
+  const handleSendEmailLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setAuthError('Tafadhali jaza barua pepe (email) yako kwanza.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError(null);
+    setLinkSentMessage(null);
+
+    try {
+      const actionCodeSettings = {
+        url: window.location.origin,
+        handleCodeInApp: true,
+      };
+
+      await sendSignInLinkToEmail(auth, email.trim(), actionCodeSettings);
+
+      // Store in local storage to avoid prompting on return
+      window.localStorage.setItem('emailForSignIn', email.trim());
+      if (fullName.trim()) {
+        window.localStorage.setItem('signUpFullName', fullName.trim());
+      }
+
+      setLinkSentMessage(`Tumekutumia barua pepe salama yenye kiungo cha kuingia/kusajili kwenye: ${email.trim()}. Tafadhali angalia kikasha chako cha barua pepe (Inbox au Spam/Junk folder) kisha bofya kiungo hicho ili kujiunga au kuingia moja kwa moja.`);
+      
+      // Clear fields to keep form clean
+      setEmail('');
+      setFullName('');
+    } catch (err: any) {
+      console.error('Send Email Link Error:', err);
+      let errorMsg = 'Imeshindwa kutuma link ya barua pepe. Tafadhali thibitisha barua pepe yako na ujaribu tena.';
+      if (err.code === 'auth/invalid-email') {
+        errorMsg = 'Barua pepe uliyoingiza si sahihi. Tafadhali weka barua pepe sahihi.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMsg = 'Hitilafu ya mtandao. Tafadhali thibitisha muunganisho wako wa intaneti.';
+      } else if (err.message) {
+        errorMsg = `Hitilafu: ${err.message}`;
+      }
+      setAuthError(errorMsg);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Effect to intercept the email link sign in on load
+  useEffect(() => {
+    const checkEmailLink = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        setEmailLinkVerifying(true);
+        setShowSignInModal(true);
+        
+        const emailToSignIn = window.localStorage.getItem('emailForSignIn') || '';
+        if (!emailToSignIn) {
+          // Email is missing in local storage
+          setEmailConfirmRequired(true);
+          setEmailLinkVerifying(false);
+        } else {
+          await completeEmailLinkSignIn(emailToSignIn);
+        }
+      }
+    };
+    checkEmailLink();
+  }, []);
 
   // Sync Auth State
   useEffect(() => {
@@ -627,6 +746,19 @@ export default function App() {
 
   return (
     <div id="lupanulla-app" className={`min-h-screen flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-950 ${theme}`}>
+      
+      {/* Email Link Verifying Overlay */}
+      {emailLinkVerifying && (
+        <div id="email-link-verifying-overlay" className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center p-6 text-center text-white animate-fade-in">
+          <div className="space-y-4 max-w-md">
+            <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <h2 className="font-sans font-black text-2xl uppercase tracking-wider text-indigo-300">Tunakuhakiki na Kukuunganisha</h2>
+            <p className="text-xs text-slate-300 font-bold leading-relaxed">
+              Tafadhali subiri kidogo wakati tunathibitisha kiungo chako cha usajili/kuingia na kuandaa akaunti yako...
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Feedback Modal */}
       <FeedbackModal 
@@ -1010,7 +1142,59 @@ export default function App() {
               </div>
             )}
 
-            {authTab === 'forgot_password' ? (
+            {emailConfirmRequired ? (
+              <div className="space-y-4 animate-fade-in text-slate-800">
+                <div className="text-center space-y-1.5">
+                  <div className="mx-auto w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-1">
+                    <Sparkles size={20} className="animate-pulse" />
+                  </div>
+                  <h3 className="font-sans font-black text-slate-800 text-sm uppercase tracking-wider">Thibitisha Barua Pepe Yako</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                    Ulifungua kiungo hiki kwenye kivinjari au kifaa tofauti. Tafadhali thibitisha barua pepe uliyotumia kuomba kiungo hiki ili kuendelea.
+                  </p>
+                </div>
+
+                {emailLinkError && (
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <p>{emailLinkError}</p>
+                  </div>
+                )}
+
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (emailConfirmValue.trim()) {
+                      completeEmailLinkSignIn(emailConfirmValue.trim());
+                    }
+                  }} 
+                  className="space-y-4"
+                >
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      Barua pepe yako (Email)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={emailConfirmValue}
+                      onChange={(e) => setEmailConfirmValue(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={emailLinkVerifying}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  >
+                    {emailLinkVerifying ? 'Inakamilisha...' : 'Thibitisha na Kuingia'}
+                  </button>
+                </form>
+              </div>
+            ) : authTab === 'forgot_password' ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="text-center space-y-1.5">
                   <h3 className="font-sans font-black text-slate-800 text-sm uppercase tracking-wider">Kurejesha Nenosiri</h3>
@@ -1064,6 +1248,85 @@ export default function App() {
                     onClick={() => {
                       setAuthError(null);
                       setOtpSuccessMessage(null);
+                      setAuthTab('login');
+                    }}
+                    className="text-xs font-black text-cyan-600 hover:text-cyan-700 hover:underline cursor-pointer"
+                  >
+                    &larr; Rudi kwenye Kuingia (Login)
+                  </button>
+                </div>
+              </div>
+            ) : authTab === 'email_link' ? (
+              <div className="space-y-4 animate-fade-in text-slate-800">
+                <div className="text-center space-y-1.5">
+                  <div className="mx-auto w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-1">
+                    <Sparkles size={20} className="text-indigo-500 animate-pulse" />
+                  </div>
+                  <h3 className="font-sans font-black text-indigo-800 text-sm uppercase tracking-wider">Kuingia Bila Nenosiri</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold animate-pulse">
+                    Sio lazima ukumbuke nenosiri lako! Weka barua pepe yako hapa chini na tutakutumia kiungo (link) salama cha kukuunganisha au kukusajili moja kwa moja.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold animate-fade-in">
+                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                    <p>{authError}</p>
+                  </div>
+                )}
+
+                {linkSentMessage && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex gap-2 text-xs text-emerald-800 font-bold animate-fade-in shadow-sm">
+                    <CheckCircle size={18} className="flex-shrink-0 mt-0.5 text-emerald-600 animate-bounce" />
+                    <p className="leading-relaxed font-semibold text-xs text-emerald-950">{linkSentMessage}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleSendEmailLink} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <UserIcon size={12} className="text-slate-400" />
+                      Jina Kamili (Kwa Usajili Mpya - si lazima)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Jane Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      Barua pepe yako (Email)
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-400 font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  >
+                    {authLoading ? 'Inatuma Link...' : 'Tuma Link ya Kuingia/Kusajili'}
+                  </button>
+                </form>
+
+                <div className="text-center pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthError(null);
+                      setLinkSentMessage(null);
                       setAuthTab('login');
                     }}
                     className="text-xs font-black text-cyan-600 hover:text-cyan-700 hover:underline cursor-pointer"
@@ -1338,6 +1601,22 @@ export default function App() {
                     </p>
                   )}
                 </form>
+
+                <div className="text-center pt-3 border-t border-slate-100 flex flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthError(null);
+                      setOtpSuccessMessage(null);
+                      setLinkSentMessage(null);
+                      setAuthTab('email_link');
+                    }}
+                    className="text-xs font-black text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer transition-all flex items-center justify-center gap-1.5 w-full py-1"
+                  >
+                    <Sparkles size={13} className="text-indigo-500 animate-pulse" />
+                    Ingia / Sajili Bila Nenosiri (Email Link)
+                  </button>
+                </div>
               </>
             ) : (
               /* OTP VERIFICATION VIEW */
