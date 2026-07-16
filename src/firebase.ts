@@ -429,6 +429,56 @@ export const fetchDocuments = async (filters?: {
     // Sorting is handled in-memory in the components for better reliability.
     
     const snap = await getDocs(q);
+    
+    // Auto-seed initial documents if collection is empty
+    if (snap.empty && !filters?.uploadedBy) {
+      console.log('Seeding initial documents to Firestore...');
+      const INITIAL_DOCS: Omit<DocumentMetadata, 'id'>[] = [
+        {
+          title: "You Can't Beat God Givin'",
+          description: "Miracle Testimonies from Ordinary People Serving an Extraordinary God. Jifunze kanuni ya kiungu ya baraka kupitia utoaji wa moyo.",
+          category: "Maendeleo Binafsi",
+          subject: "Maendeleo Binafsi",
+          tags: ["Motivation", "Giving", "R.W. Schambach"],
+          fileId: "seed-schambach-book",
+          driveUrl: "https://example.com/books/you-cant-beat-god-givin.pdf",
+          uploadedBy: "system",
+          uploadedByName: "Lupanulla Admin",
+          createdAt: Date.now(),
+          views: 1200,
+          status: "approved",
+          downloadsCount: 450,
+          rating: 5,
+          type: "books"
+        },
+        {
+          title: "NECTA Form 4 Basic Math - 2025",
+          description: "Mtihani wa Taifa wa Kidato cha Nne (CSEE) - Hisabati ya Kawaida. Maswali na Majibu yaliyohakikiwa.",
+          category: "Mathematics",
+          subject: "Mathematics",
+          tags: ["NECTA", "CSEE", "Past Papers"],
+          fileId: "seed-necta-math",
+          driveUrl: "https://necta.go.tz",
+          uploadedBy: "system",
+          uploadedByName: "Lupanulla Admin",
+          createdAt: Date.now() - 86400000,
+          views: 3500,
+          status: "approved",
+          downloadsCount: 890,
+          rating: 4.8,
+          type: "past_papers"
+        }
+      ];
+
+      for (const docData of INITIAL_DOCS) {
+        await saveDocumentMetadata(docData as any);
+      }
+
+      // Re-run query after seeding
+      const reSnap = await getDocs(q);
+      return reSnap.docs.map(d => ({ id: d.id, ...d.data() } as DocumentMetadata));
+    }
+
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as DocumentMetadata));
   } catch (err: any) {
     if (err.code === 'permission-denied') {

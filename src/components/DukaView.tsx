@@ -124,6 +124,15 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       stockQuantity: 50,
       category: 'Maendeleo Binafsi',
       imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1974&auto=format&fit=crop'
+    },
+    {
+      id: 'prod-cant-beat-god-givin',
+      name: "You Can't Beat God Givin' - R.W. Schambach",
+      description: 'Miracle Testimonies from Ordinary People Serving an Extraordinary God. Jifunze kanuni ya kiungu ya baraka kupitia utoaji wa moyo.',
+      price: 15000,
+      stockQuantity: 100,
+      category: 'Maendeleo Binafsi',
+      imageUrl: 'https://images.unsplash.com/photo-1585829365234-70b052c91207?q=80&w=2000&auto=format&fit=crop'
     }
   ];
 

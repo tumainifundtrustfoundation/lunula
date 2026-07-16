@@ -195,6 +195,22 @@ const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
     tags: ['Khan Academy', 'Mathematics', 'Science', 'Physics', 'Free Courses']
   },
   {
+    title: "Kitabu: You Can't Beat God Givin'",
+    description: "Kitabu cha kipekee kutoka kwa R.W. Schambach kikielezea siri za baraka na shuhuda za utoaji. Jifunze kanuni za kiungu za kufanikiwa.",
+    url: '#',
+    category: 'open_education',
+    isVerified: true,
+    clicksCount: 150,
+    recommendationsCount: 45,
+    recommendedByUsers: [],
+    createdAt: Date.now(),
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Schambach Ministries',
+    region: 'International',
+    tags: ['Motivation', 'Giving', 'R.W. Schambach', 'Spiritual Growth']
+  },
+  {
     title: 'NECTA Official Examination Portal',
     description: 'Tovuti rasmi ya Baraza la Mitihani la Tanzania (NECTA). Pata ratiba za mitihani, miongozo ya usahihishaji, na matokeo rasmi ya mitihani yote ya kitaifa.',
     url: 'https://necta.go.tz',

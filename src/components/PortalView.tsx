@@ -381,16 +381,16 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
               </h3>
               <div className="space-y-3.5 divide-y divide-slate-200">
                 <div className="pt-0">
+                  <span className="text-[9px] text-red-500 font-bold block uppercase tracking-wide">Mpya Dukani</span>
+                  <span className="text-xs font-bold text-slate-800 leading-tight block hover:text-cyan-600 cursor-pointer" onClick={() => onNavigate('duka')}>Kitabu: "You Can't Beat God Givin'" - R.W. Schambach sasa kipo Lupanulla.</span>
+                </div>
+                <div className="pt-3">
                   <span className="text-[9px] text-slate-400 font-bold block">Leo hii</span>
                   <span className="text-xs font-bold text-slate-800 leading-tight block hover:text-cyan-600 cursor-pointer">HESLB yafungua rasmi dirisha la maombi ya mikopo ya elimu ya juu.</span>
                 </div>
                 <div className="pt-3">
                   <span className="text-[9px] text-slate-400 font-bold block">Jana</span>
                   <span className="text-xs font-bold text-slate-800 leading-tight block hover:text-cyan-600 cursor-pointer">Kalenda ya mitihani ya NECTA kwa shule za sekondari imesasishwa.</span>
-                </div>
-                <div className="pt-3">
-                  <span className="text-[9px] text-slate-400 font-bold block">Siku 3 zilizopita</span>
-                  <span className="text-xs font-bold text-slate-800 leading-tight block hover:text-cyan-600 cursor-pointer">Tanzania Institute of Education (TIE) yazindua vitabu vipya vya kidijitali.</span>
                 </div>
               </div>
             </div>
