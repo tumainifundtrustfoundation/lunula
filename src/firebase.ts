@@ -39,13 +39,14 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Use initializeFirestore with force long polling and persistent local cache to ensure stable connection in sandboxed preview iframe/network environment
+const firestoreDbId = (firebaseConfig as any).firestoreDatabaseId;
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
   experimentalAutoDetectLongPolling: false,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
-}, (firebaseConfig as any).firestoreDatabaseId || '(default)'); /* CRITICAL: Connects to the live default database */
+}, firestoreDbId && firestoreDbId !== '(default)' ? firestoreDbId : undefined); /* CRITICAL: Connects to the live default database safely */
 
 // --- Firestore Error Handling (Skill Requirement) ---
 export enum OperationType {

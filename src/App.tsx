@@ -39,6 +39,8 @@ import {
   signInAsGuest 
 } from './firebase';
 
+import { runFirebaseDiagnostics, DiagnosticsResult } from './utils/firebaseDiagnostics';
+
 import metadata from '../metadata.json';
 
 import Navbar from './components/Navbar';
@@ -190,6 +192,13 @@ export default function App() {
   const [unauthorizedDomainInfo, setUnauthorizedDomainInfo] = useState<{ hostname: string; projectId: string } | null>(null);
   const [domainCopied, setDomainCopied] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [diagnosticsRunning, setDiagnosticsRunning] = useState<boolean>(false);
+  const [diagnosticsResult, setDiagnosticsResult] = useState<DiagnosticsResult | null>(null);
+
+  // Create refs to prevent stale closure in global event listener
+  const userRef = React.useRef(user);
+  userRef.current = user;
+  const refreshProfileRef = React.useRef<any>(null);
 
   // Global event listeners to open Login and Signup Modals
   useEffect(() => {
@@ -205,8 +214,8 @@ export default function App() {
     window.addEventListener('open-signup-modal', handleOpenSignup);
     
     const handleRefreshProfile = () => {
-      if (user) {
-        refreshProfile(user.uid, user.displayName || 'Mwanafunzi Lupanulla');
+      if (userRef.current) {
+        refreshProfileRef.current(userRef.current.uid, userRef.current.displayName || 'Mwanafunzi Lupanulla');
       }
     };
     window.addEventListener('refresh-user-profile', handleRefreshProfile);
@@ -573,6 +582,7 @@ export default function App() {
       setProfileLoading(false);
     }
   };
+  refreshProfileRef.current = refreshProfile;
 
   const handleAwardPoints = async (points: number, minutes: number) => {
     if (!userProfile?.uid) return;
@@ -708,13 +718,26 @@ export default function App() {
       } else if (err.code === 'auth/operation-not-allowed') {
         errorMsg = 'Njia ya kuingia kwa Barua Pepe na Nenosiri haijawezeshwa bado kwenye Firebase Console. Tafadhali wasiliana na msimamizi kuiruhusu kwenye: (Build > Authentication > Sign-in method), au tumia kitufe cha "Endelea na Google" kuingia sasa.';
       } else if (err.code === 'auth/internal-error' || err.message?.includes('internal') || err.message?.includes('auth/')) {
-        errorMsg = `Hitilafu ya ndani ya mfumo (${err.code || 'Internal Error'}): ${err.message || 'Hali haijaruhusiwa'}. Tafadhali tumia njia mbadala ya "Endelea na Google" au "Ingia kama Mgeni" kuanza kusoma mara moja bila kusubiri!`;
+        errorMsg = `Hitilafu ya Firebase (${err.code || 'auth/internal-error'}): Tafadhali hakikisha kwamba: 1. Umeruhusu mbinu ya "Email/Password" kwenye Firebase Console yako (Authentication > Sign-in method). 2. Umeongeza domain yako "lupanulla.co.tz" na domain za AI Studio kwenye orodha ya Authorized Domains katika Firebase Console yako (Authentication > Settings). 3. API Key yako haina vizuizi vya kuzuia domain hizi kwenye Google Cloud Console > Credentials. Kama bado inaleta shida, tumia kitufe cha "Endelea na Google" au "Ingia kama Mgeni" uendelee mara moja!`;
       } else if (err.message) {
         errorMsg = `Hitilafu: ${err.message}`;
       }
       setAuthError(errorMsg);
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const handleRunDiagnostics = async () => {
+    setDiagnosticsRunning(true);
+    setDiagnosticsResult(null);
+    try {
+      const result = await runFirebaseDiagnostics();
+      setDiagnosticsResult(result);
+    } catch (e: any) {
+      console.error('Diagnostics failed:', e);
+    } finally {
+      setDiagnosticsRunning(false);
     }
   };
 
@@ -1373,9 +1396,52 @@ export default function App() {
                 </div>
 
                 {authError && (
-                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2 text-xs text-red-700 font-semibold">
-                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-                    <p>{authError}</p>
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-4 space-y-3 text-xs text-red-700 font-semibold animate-fade-in text-left">
+                    <div className="flex gap-2.5">
+                      <AlertCircle size={18} className="flex-shrink-0 mt-0.5 text-red-600" />
+                      <p className="leading-relaxed">{authError}</p>
+                    </div>
+                    
+                    <div className="pt-2.5 border-t border-red-200/50 flex flex-col gap-2">
+                      <p className="text-[10px] font-black uppercase text-red-900 tracking-wider">Kukagua Hitilafu (Troubleshoot):</p>
+                      <button
+                        type="button"
+                        onClick={handleRunDiagnostics}
+                        disabled={diagnosticsRunning}
+                        className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-350 text-white font-extrabold text-[11px] py-2 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        {diagnosticsRunning ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            Inachunguza huduma ya Firebase...
+                          </>
+                        ) : (
+                          'Bofya Hapa Kukagua Mipangilio ya Firebase (Diagnose Key)'
+                        )}
+                      </button>
+
+                      {diagnosticsResult && (
+                        <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl space-y-2.5 border border-slate-800 text-left font-sans mt-1">
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                            <span className="text-[10px] font-black uppercase text-cyan-400 tracking-wider">Ripoti ya Mfumo (Diagnostic Report)</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${diagnosticsResult.success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                              {diagnosticsResult.success ? 'SALAMA (OK)' : 'HITILAFU (FAIL)'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] space-y-2 font-medium leading-relaxed">
+                            <p><strong className="text-slate-400">Sababu (Reason):</strong> {diagnosticsResult.rawMessage}</p>
+                            <div className="bg-slate-850 p-3 rounded-lg border border-slate-800/85 text-amber-300/95 space-y-1 text-[11px] font-semibold">
+                              <p className="font-extrabold uppercase text-[9.5px] text-amber-400 tracking-wide">Ufumbuzi (Swahili Solution):</p>
+                              <p className="leading-relaxed">{diagnosticsResult.adviceSwahili}</p>
+                            </div>
+                            <div className="bg-slate-850 p-3 rounded-lg border border-slate-800/85 text-blue-300/95 space-y-1 text-[11px] font-semibold">
+                              <p className="font-extrabold uppercase text-[9.5px] text-blue-400 tracking-wide">English Solution:</p>
+                              <p className="leading-relaxed">{diagnosticsResult.adviceEnglish}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
