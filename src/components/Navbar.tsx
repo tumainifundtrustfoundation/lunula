@@ -29,6 +29,7 @@ import {
   Palette,
   Video,
   Award,
+  CheckCircle2,
   Globe
 } from 'lucide-react';
 import { UserProfile, AppNotification, AppTheme } from '../types';
@@ -118,6 +119,7 @@ export default function Navbar({
   ];
 
   const toolsMenuItems = [
+    { id: 'necta-progress', label: 'Maendeleo ya NECTA', icon: CheckCircle2 },
     { id: 'combinations', label: 'Kombination 2025/2026', icon: Award },
     { id: 'resources', label: 'Hub ya Vyanzo vya Elimu', icon: Globe },
     { id: 'forum', label: 'Jukwaa la Jamii', icon: MessageSquare },

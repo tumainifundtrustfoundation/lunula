@@ -19,7 +19,8 @@ import {
   Check,
   ChevronRight,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Printer
 } from 'lucide-react';
 import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks } from '../firebase';
 import { DocumentMetadata, HighlightAnnotation, UserBookmark } from '../types';
@@ -988,6 +989,14 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
           >
             <Sparkles size={14} className="text-amber-300" /> Pakua Notisi (PDF Offline)
           </button>
+
+          <button 
+            onClick={() => window.print()}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-slate-900 hover:bg-slate-800 text-white border border-slate-700"
+            title="Chapa au Hamisha Notisi hizi kwenda PDF kwa kutumia chombo cha chapa cha kivinjari (Browser Print)"
+          >
+            <Printer size={14} /> Chapa / Hamisha PDF
+          </button>
         </div>
       </div>
 
@@ -1054,6 +1063,13 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
                     title="Pakua notisi hizi kama faili la PDF kwa kusoma bila bando"
                   >
                     <Download size={13} /> Pakua Notisi (PDF)
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Chapa au Hamisha Notisi hizi kwenda PDF"
+                  >
+                    <Printer size={13} /> Chapa / Hamisha PDF
                   </button>
                 </div>
               </div>
@@ -1238,6 +1254,75 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
           </div>
         </div>
 
+      </div>
+
+      {/* Printable Document Container (Only visible during print) */}
+      <div className="hidden print:block print-only-container">
+        <div className="border-b-2 border-slate-300 pb-4 flex justify-between items-end">
+          <div>
+            <span className="text-xs font-black tracking-widest text-cyan-600">LUPANULLA ELIMU HUB</span>
+            <h1 className="text-2xl font-black mt-1 uppercase">{doc.title}</h1>
+          </div>
+          <div className="text-right text-xs text-slate-400 font-semibold">
+            <div>{doc.category || 'Mada ya Masomo'}</div>
+            <div>{doc.year ? `Mwaka: ${doc.year}` : ''} &bull; {doc.type || 'NECTA'}</div>
+          </div>
+        </div>
+
+        {doc.description && (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs italic text-slate-600 mt-4">
+            <strong>Maelezo ya Nyaraka:</strong> {doc.description}
+          </div>
+        )}
+
+        <div className="space-y-6 mt-6">
+          <h2 className="text-lg font-black border-b border-slate-200 pb-1.5 uppercase text-slate-800">
+            Muhtasari wa Somo na Notisi Mahiri (Smart Notes)
+          </h2>
+          <div className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed space-y-4">
+            {(smartNotes || `Sura ya Revision: ${doc.title}\n\nNotisi bado zinatayarishwa na mfumo wa AI...`).split('\n\n').map((para, idx) => {
+              if (para.startsWith('SURA') || para.startsWith('Sura') || para.startsWith('Chapter') || para.match(/^\d+\./)) {
+                return (
+                  <h3 key={idx} className="font-bold text-slate-900 text-sm sm:text-base pt-3 border-b pb-1 border-slate-100 uppercase tracking-tight">
+                    {para}
+                  </h3>
+                );
+              }
+              return (
+                <p key={idx} className="text-slate-700 whitespace-pre-line">
+                  {para}
+                </p>
+              );
+            })}
+          </div>
+        </div>
+
+        {highlights.length > 0 && (
+          <div className="space-y-4 pt-6 border-t border-slate-200 mt-8">
+            <h2 className="text-lg font-black border-b border-slate-200 pb-1.5 uppercase text-slate-800">
+              Vipengele Muhimu Vilivyowekewa Alama (Highlights & Notes)
+            </h2>
+            <div className="space-y-4">
+              {highlights.map((h, idx) => (
+                <div key={h.id || idx} className="border-l-4 border-cyan-500 pl-4 py-1 space-y-1">
+                  <p className="text-xs sm:text-sm italic text-slate-700 font-medium">"{h.text}"</p>
+                  {h.note && (
+                    <p className="text-xs font-bold text-cyan-700">
+                      📝 Maelezo yangu: {h.note}
+                    </p>
+                  )}
+                  <span className="text-[10px] text-slate-400 font-semibold block uppercase">
+                    Imehifadhiwa: {new Date(h.createdAt).toLocaleDateString('sw-TZ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="border-t border-slate-200 pt-6 mt-8 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          Hati hii imetengenezwa na Lupanulla Elimu Hub. © {new Date().getFullYear()} Lupanulla Elimu Hub. Haki zote zimehifadhiwa.
+        </div>
       </div>
 
       <FlashcardsModal 

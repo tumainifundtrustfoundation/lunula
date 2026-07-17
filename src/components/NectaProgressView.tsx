@@ -1,0 +1,608 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  CheckCircle, 
+  Clock, 
+  HelpCircle, 
+  BookOpen, 
+  Filter, 
+  TrendingUp, 
+  Save, 
+  AlertCircle, 
+  CheckCircle2, 
+  ChevronRight, 
+  Edit3, 
+  X, 
+  Award,
+  Search,
+  Book,
+  FileText
+} from 'lucide-react';
+import { fetchNectaProgress, saveNectaProgress } from '../firebase';
+import { NectaProgress, NectaProgressStatus } from '../types';
+
+interface NectaProgressViewProps {
+  userProfile: any;
+  onNavigate: (view: string, docId?: string) => void;
+}
+
+const NECTA_LEVELS = [
+  { id: 'std7', name: 'Darasa la 7 (PSLE)', description: 'Mitihani ya Kuhitimu Elimu ya Msingi' },
+  { id: 'f2', name: 'Kidato cha 2 (FTSEE)', description: 'Upimaji wa Kitaifa Kidato cha Pili' },
+  { id: 'f4', name: 'Kidato cha 4 (CSEE)', description: 'Mtihani wa Kuhitimu Elimu ya Sekondari' },
+  { id: 'f6', name: 'Kidato cha 6 (ACSEE)', description: 'Mtihani wa Kidato cha Sita na Vyuo' },
+];
+
+const NECTA_SUBJECTS: Record<string, { id: string; name: string; color: string }[]> = {
+  std7: [
+    { id: 'mathematics', name: 'Mathematics (Hisabati)', color: 'border-l-orange-500 bg-orange-50/5' },
+    { id: 'science', name: 'Science & Tech (Sayansi)', color: 'border-l-emerald-500 bg-emerald-50/5' },
+    { id: 'social-studies', name: 'Social Studies (Maarifa ya Jamii)', color: 'border-l-cyan-500 bg-cyan-50/5' },
+    { id: 'civic-moral', name: 'Civic & Moral (Uraia na Maadili)', color: 'border-l-purple-500 bg-purple-50/5' },
+    { id: 'english', name: 'English Language (Kiingereza)', color: 'border-l-blue-500 bg-blue-50/5' },
+    { id: 'kiswahili', name: 'Kiswahili', color: 'border-l-red-500 bg-red-50/5' },
+  ],
+  f2: [
+    { id: 'basic-math', name: 'Basic Mathematics', color: 'border-l-orange-500 bg-orange-50/5' },
+    { id: 'physics', name: 'Physics (Fizikia)', color: 'border-l-blue-500 bg-blue-50/5' },
+    { id: 'chemistry', name: 'Chemistry (Kemia)', color: 'border-l-cyan-500 bg-cyan-50/5' },
+    { id: 'biology', name: 'Biology (Biolojia)', color: 'border-l-emerald-500 bg-emerald-50/5' },
+    { id: 'geography', name: 'Geography (Jiografia)', color: 'border-l-yellow-500 bg-yellow-50/5' },
+    { id: 'history', name: 'History (Historia)', color: 'border-l-rose-500 bg-rose-50/5' },
+    { id: 'civics', name: 'Civics (Uraia)', color: 'border-l-purple-500 bg-purple-50/5' },
+    { id: 'english', name: 'English Language', color: 'border-l-indigo-500 bg-indigo-50/5' },
+    { id: 'kiswahili', name: 'Kiswahili', color: 'border-l-red-500 bg-red-50/5' },
+  ],
+  f4: [
+    { id: 'basic-math', name: 'Basic Mathematics', color: 'border-l-orange-500 bg-orange-50/5' },
+    { id: 'physics', name: 'Physics (Fizikia)', color: 'border-l-blue-500 bg-blue-50/5' },
+    { id: 'chemistry', name: 'Chemistry (Kemia)', color: 'border-l-cyan-500 bg-cyan-50/5' },
+    { id: 'biology', name: 'Biology (Biolojia)', color: 'border-l-emerald-500 bg-emerald-50/5' },
+    { id: 'geography', name: 'Geography (Jiografia)', color: 'border-l-yellow-500 bg-yellow-50/5' },
+    { id: 'history', name: 'History (Historia)', color: 'border-l-rose-500 bg-rose-50/5' },
+    { id: 'civics', name: 'Civics (Uraia)', color: 'border-l-purple-500 bg-purple-50/5' },
+    { id: 'english', name: 'English Language', color: 'border-l-indigo-500 bg-indigo-50/5' },
+    { id: 'kiswahili', name: 'Kiswahili', color: 'border-l-red-500 bg-red-50/5' },
+    { id: 'commerce', name: 'Commerce (Biashara)', color: 'border-l-teal-500 bg-teal-50/5' },
+    { id: 'bookkeeping', name: 'Book-keeping', color: 'border-l-amber-500 bg-amber-50/5' },
+  ],
+  f6: [
+    { id: 'physics', name: 'Physics (Fizikia)', color: 'border-l-blue-500 bg-blue-50/5' },
+    { id: 'chemistry', name: 'Chemistry (Kemia)', color: 'border-l-cyan-500 bg-cyan-50/5' },
+    { id: 'biology', name: 'Biology (Biolojia)', color: 'border-l-emerald-500 bg-emerald-50/5' },
+    { id: 'adv-math', name: 'Advanced Mathematics', color: 'border-l-orange-500 bg-orange-50/5' },
+    { id: 'geography', name: 'Geography (Jiografia)', color: 'border-l-yellow-500 bg-yellow-50/5' },
+    { id: 'history', name: 'History (Historia)', color: 'border-l-rose-500 bg-rose-50/5' },
+    { id: 'english', name: 'English Language', color: 'border-l-indigo-500 bg-indigo-50/5' },
+    { id: 'kiswahili', name: 'Kiswahili', color: 'border-l-red-500 bg-red-50/5' },
+    { id: 'general-studies', name: 'General Studies', color: 'border-l-slate-500 bg-slate-50/5' },
+  ],
+};
+
+const YEARS = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
+
+const MOTIVATIONAL_QUOTES = [
+  "Elimu ni ufunguo wa maisha. Endelea kufanya mazoezi ya mtihani!",
+  "Mafanikio huja kwa wale wanaojiandaa. Kila karatasi unayomaliza inakuweka karibu na Division I.",
+  "Kukata tamaa si chaguo. Weka bidii leo, ufurahie matokeo kesho.",
+  "Kujisomea kwa mpango thabiti ndiyo siri ya ushindi wa kitaifa."
+];
+
+export default function NectaProgressView({ userProfile, onNavigate }: NectaProgressViewProps) {
+  const [progressList, setProgressList] = useState<NectaProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  
+  // Selection / Filter States
+  const [selectedLevel, setSelectedLevel] = useState<string>('f4'); // Default to Form 4
+  const [searchSubjectQuery, setSearchSubjectQuery] = useState('');
+  
+  // Modal / Detail edit state
+  const [editingItem, setEditingItem] = useState<{
+    level: string;
+    subject: { id: string; name: string };
+    year: string;
+    currentStatus: NectaProgressStatus;
+    currentNotes: string;
+  } | null>(null);
+  
+  const [notesInput, setNotesInput] = useState('');
+  const [statusInput, setStatusInput] = useState<NectaProgressStatus>('not_started');
+  const [randomQuote, setRandomQuote] = useState('');
+
+  // Fetch progress on load
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    
+    const loadProgress = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchNectaProgress(userProfile.uid);
+        setProgressList(data);
+      } catch (err) {
+        console.error('Failed to load NECTA progress:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProgress();
+    setRandomQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
+  }, [userProfile?.uid]);
+
+  // Helper to find existing progress item
+  const getProgressState = (level: string, subjectId: string, year: string) => {
+    return progressList.find(p => p.level === level && p.subject === subjectId && p.year === year);
+  };
+
+  // Quick toggle status directly from the dashboard
+  const handleQuickStatusChange = async (level: string, subjectId: string, year: string, currentStatus: NectaProgressStatus) => {
+    if (!userProfile?.uid) return;
+
+    let nextStatus: NectaProgressStatus = 'not_started';
+    if (currentStatus === 'not_started') nextStatus = 'in_progress';
+    else if (currentStatus === 'in_progress') nextStatus = 'completed';
+    else nextStatus = 'not_started';
+
+    const tempId = `${userProfile.uid}_${level}_${subjectId}_${year}`;
+    setSavingId(tempId);
+
+    try {
+      const existing = getProgressState(level, subjectId, year);
+      await saveNectaProgress(
+        userProfile.uid,
+        level,
+        subjectId,
+        year,
+        nextStatus,
+        existing?.notes || ''
+      );
+
+      // Update local state instantly
+      setProgressList(prev => {
+        const filtered = prev.filter(p => p.id !== tempId);
+        return [...filtered, {
+          id: tempId,
+          userId: userProfile.uid,
+          level,
+          subject: subjectId,
+          year,
+          status: nextStatus,
+          notes: existing?.notes || '',
+          updatedAt: Date.now()
+        }];
+      });
+    } catch (err) {
+      console.error('Failed to save progress:', err);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // Open the detailed editing modal
+  const openEditModal = (level: string, subject: { id: string; name: string }, year: string) => {
+    const existing = getProgressState(level, subject.id, year);
+    const itemStatus = existing?.status || 'not_started';
+    const itemNotes = existing?.notes || '';
+
+    setEditingItem({
+      level,
+      subject,
+      year,
+      currentStatus: itemStatus,
+      currentNotes: itemNotes
+    });
+    setStatusInput(itemStatus);
+    setNotesInput(itemNotes);
+  };
+
+  // Save changes from modal
+  const handleSaveModalChanges = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userProfile?.uid || !editingItem) return;
+
+    const tempId = `${userProfile.uid}_${editingItem.level}_${editingItem.subject.id}_${editingItem.year}`;
+    setSavingId(tempId);
+
+    try {
+      await saveNectaProgress(
+        userProfile.uid,
+        editingItem.level,
+        editingItem.subject.id,
+        editingItem.year,
+        statusInput,
+        notesInput
+      );
+
+      setProgressList(prev => {
+        const filtered = prev.filter(p => p.id !== tempId);
+        return [...filtered, {
+          id: tempId,
+          userId: userProfile.uid,
+          level: editingItem.level,
+          subject: editingItem.subject.id,
+          year: editingItem.year,
+          status: statusInput,
+          notes: notesInput,
+          updatedAt: Date.now()
+        }];
+      });
+
+      setEditingItem(null);
+    } catch (err) {
+      console.error('Failed to save detailed progress:', err);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // Compute stats for current active level
+  const activeSubjects = NECTA_SUBJECTS[selectedLevel] || [];
+  const filteredSubjects = activeSubjects.filter(sub => 
+    sub.name.toLowerCase().includes(searchSubjectQuery.toLowerCase())
+  );
+
+  const totalPossiblePapers = activeSubjects.length * YEARS.length;
+  const levelProgressList = progressList.filter(p => p.level === selectedLevel);
+  const completedCount = levelProgressList.filter(p => p.status === 'completed').length;
+  const inProgressCount = levelProgressList.filter(p => p.status === 'in_progress').length;
+  const completionPercentage = totalPossiblePapers > 0 
+    ? Math.round((completedCount / totalPossiblePapers) * 100) 
+    : 0;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans">
+      
+      {/* Upper header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <span className="text-xs font-extrabold tracking-widest text-cyan-600 uppercase flex items-center gap-1.5">
+            <Award size={14} /> MFUATILIAJI WA MTAALAA (REVISION JOURNAL)
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 mt-1 uppercase">
+            Maendeleo ya Mitihani ya NECTA
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-semibold max-w-2xl">
+            Sajili karatasi za mitihani ya kitaifa ya miaka iliyopita (Past Papers) ulizozifanyia mazoezi, 
+            fuatilia kiwango chako cha kujiandaa, na uhifadhi notisi za masahihisho kwa ajili ya mapitio ya baadaye.
+          </p>
+        </div>
+        <button
+          onClick={() => onNavigate('mitihani')}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 self-start md:self-center"
+        >
+          <FileText size={14} /> Fungua Past Papers
+        </button>
+      </div>
+
+      {/* Motivational Banner */}
+      <div className="bg-gradient-to-r from-cyan-900 via-slate-950 to-emerald-950 text-white p-5 rounded-2xl shadow-sm border border-cyan-500/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase font-black tracking-widest text-cyan-400">Nukuu ya Hamasa ya Leo</p>
+          <p className="text-sm font-bold italic text-slate-100">"{randomQuote}"</p>
+        </div>
+        <div className="flex items-center gap-2.5 bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 shrink-0">
+          <div className="text-right">
+            <span className="block text-[9px] font-black uppercase text-slate-400">Uzoefu (XP) wako</span>
+            <span className="text-xs font-black text-white">{userProfile?.xp || 0} XP &bull; {userProfile?.studyTime || 0} Dakika</span>
+          </div>
+          <TrendingUp size={24} className="text-cyan-400" />
+        </div>
+      </div>
+
+      {/* Statistics Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center gap-4 shadow-sm">
+          <div className="p-3 rounded-xl bg-cyan-50 text-cyan-600">
+            <TrendingUp size={20} />
+          </div>
+          <div className="flex-1">
+            <span className="block text-[10px] font-extrabold uppercase text-slate-400">Kiwango cha Mazoezi</span>
+            <span className="text-xl font-black text-slate-900">{completionPercentage}%</span>
+            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+              <div 
+                className="bg-cyan-600 h-1.5 rounded-full transition-all duration-500" 
+                style={{ width: `${completionPercentage}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center gap-4 shadow-sm">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+            <CheckCircle2 size={20} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-extrabold uppercase text-slate-400">Karatasi Zilizokamilika</span>
+            <span className="text-xl font-black text-slate-900">{completedCount}</span>
+            <span className="text-[10px] block text-slate-400 mt-0.5">Kati ya {totalPossiblePapers} zilizopo</span>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center gap-4 shadow-sm">
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
+            <Clock size={20} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-extrabold uppercase text-slate-400">Zinaendelea kufanyiwa kazi</span>
+            <span className="text-xl font-black text-slate-900">{inProgressCount}</span>
+            <span className="text-[10px] block text-slate-400 mt-0.5">Zipo kwenye hatua ya mazoezi</span>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 flex items-center gap-4 shadow-sm">
+          <div className="p-3 rounded-xl bg-slate-100 text-slate-600">
+            <HelpCircle size={20} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-extrabold uppercase text-slate-400">Karasi Zilizobaki</span>
+            <span className="text-xl font-black text-slate-900">{totalPossiblePapers - (completedCount + inProgressCount)}</span>
+            <span className="text-[10px] block text-slate-400 mt-0.5">Anza sasa ili kukamilisha mtaala</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Control Actions & Filtering */}
+      <div className="bg-slate-50 border border-slate-200/60 p-4.5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        {/* NECTA Levels selection */}
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+          {NECTA_LEVELS.map(lvl => (
+            <button
+              key={lvl.id}
+              onClick={() => {
+                setSelectedLevel(lvl.id);
+                setSearchSubjectQuery('');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition-all duration-150 ${
+                selectedLevel === lvl.id
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+              }`}
+            >
+              {lvl.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Search subjects bar */}
+        <div className="relative w-full md:w-72">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+            <Search size={14} className="text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Tafuta somo (e.g. Physics)..."
+            value={searchSubjectQuery}
+            onChange={(e) => setSearchSubjectQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 transition-all text-slate-800"
+          />
+          {searchSubjectQuery && (
+            <button 
+              onClick={() => setSearchSubjectQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* MAIN TRACKING MATRIX (Grid of Subjects containing Year Rows) */}
+      {loading ? (
+        <div className="py-12 text-center space-y-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600 mx-auto"></div>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Inapakia taarifa za maendeleo...</p>
+        </div>
+      ) : filteredSubjects.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+          <div className="text-slate-300 mx-auto flex justify-center mb-3">
+            <BookOpen size={48} />
+          </div>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Hakuna masomo yaliyopatikana</p>
+          <p className="text-[11px] text-slate-400 mt-1">Jaribu kutafuta somo lingine au ubadilishe kiwango cha elimu hapo juu.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredSubjects.map(subj => {
+            return (
+              <div 
+                key={subj.id} 
+                className={`bg-white border border-slate-200/90 rounded-2xl shadow-sm border-l-4 ${subj.color} overflow-hidden`}
+              >
+                {/* Subject Header */}
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                  <div className="flex items-center gap-2.5">
+                    <Book size={16} className="text-slate-500" />
+                    <h3 className="font-display font-extrabold text-sm text-slate-900 uppercase">
+                      {subj.name}
+                    </h3>
+                  </div>
+                  
+                  {/* Small badge count of completed years */}
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                    {levelProgressList.filter(p => p.subject === subj.id && p.status === 'completed').length} / {YEARS.length} Miaka
+                  </span>
+                </div>
+
+                {/* Years Grid */}
+                <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {YEARS.map(year => {
+                    const progress = getProgressState(selectedLevel, subj.id, year);
+                    const status = progress?.status || 'not_started';
+                    const hasNotes = !!progress?.notes;
+                    const isSavingThis = savingId === `${userProfile?.uid}_${selectedLevel}_${subj.id}_${year}`;
+
+                    // Style based on status
+                    let btnStyle = 'border-slate-200 hover:border-slate-300 text-slate-500 bg-white';
+                    let label = 'Sijaanza';
+                    let dotColor = 'bg-slate-300';
+
+                    if (status === 'in_progress') {
+                      btnStyle = 'border-amber-200 bg-amber-50/10 hover:bg-amber-50/20 text-amber-700';
+                      label = 'Inaendelea';
+                      dotColor = 'bg-amber-400';
+                    } else if (status === 'completed') {
+                      btnStyle = 'border-emerald-200 bg-emerald-50/10 hover:bg-emerald-50/20 text-emerald-700 font-extrabold';
+                      label = 'Nimemaliza';
+                      dotColor = 'bg-emerald-500';
+                    }
+
+                    return (
+                      <div 
+                        key={year} 
+                        className={`group relative border rounded-xl p-2.5 flex flex-col justify-between transition-all duration-150 text-left ${btnStyle} min-h-[92px]`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 tracking-tight">{year}</span>
+                          
+                          {/* Indicator Dot & Notes icon */}
+                          <div className="flex items-center gap-1">
+                            {hasNotes && (
+                              <span 
+                                title="Kuna notisi zilizohifadhiwa" 
+                                className="text-cyan-600 text-[10px]"
+                              >
+                                📝
+                              </span>
+                            )}
+                            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
+                          </div>
+                        </div>
+
+                        {/* Middle click to edit detailed progress (opens modal) */}
+                        <div className="mt-2 flex items-center justify-between">
+                          <button
+                            disabled={isSavingThis}
+                            onClick={() => handleQuickStatusChange(selectedLevel, subj.id, year, status)}
+                            className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-slate-900 transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Bofya kubadilisha hali haraka"
+                          >
+                            {isSavingThis ? (
+                              <span className="animate-spin text-[8px]">&bull;</span>
+                            ) : (
+                              <span>{label}</span>
+                            )}
+                          </button>
+
+                          <button 
+                            onClick={() => openEditModal(selectedLevel, subj, year)}
+                            className="p-1 hover:bg-black/5 rounded text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                            title="Hariri dokezo na hadhi"
+                          >
+                            <Edit3 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* DETAILED REVISION NOTES & MODAL EDIT */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150">
+            
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600">Hariri Maendeleo</span>
+                <h3 className="font-display font-black text-sm text-slate-900 uppercase">
+                  {editingItem.subject.name} &bull; {editingItem.year}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setEditingItem(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form body */}
+            <form onSubmit={handleSaveModalChanges} className="p-5 space-y-4">
+              
+              {/* Status Radio Toggles */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-500 tracking-wider">Hali ya Maandalizi</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'not_started', label: 'Sijaanza', color: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' },
+                    { id: 'in_progress', label: 'Inaendelea', color: 'border-amber-200 bg-amber-50/20 text-amber-800 hover:bg-amber-50/40' },
+                    { id: 'completed', label: 'Nimemaliza', color: 'border-emerald-200 bg-emerald-50/20 text-emerald-800 hover:bg-emerald-50/40' }
+                  ].map(opt => (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      onClick={() => setStatusInput(opt.id as NectaProgressStatus)}
+                      className={`px-2.5 py-2 border rounded-xl text-xs font-bold transition-all text-center ${
+                        statusInput === opt.id 
+                          ? 'ring-2 ring-cyan-500 border-transparent font-black shadow-sm' 
+                          : opt.color
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Revision Personal Notes */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-slate-500 tracking-wider">Dokezo & Masahihisho Yangu</label>
+                <textarea
+                  placeholder="Andika matokeo ya mazoezi au maoni yako hapa... (e.g. Nimepata 78%, nimekosea swali la 4 la Optics, nitahitaji kupitia tena notisi zake)"
+                  value={notesInput}
+                  onChange={(e) => setNotesInput(e.target.value)}
+                  rows={4}
+                  className="w-full p-3 border border-slate-200 rounded-xl text-xs font-semibold placeholder:text-slate-400 text-slate-800 focus:outline-none focus:border-cyan-500 transition-all resize-none"
+                />
+              </div>
+
+              {/* Saved feedback */}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="px-4 py-2 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all text-slate-500"
+                >
+                  Ghairi
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingId !== null}
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  {savingId !== null ? (
+                    <span className="animate-spin text-white">&bull;</span>
+                  ) : (
+                    <>
+                      <Save size={13} /> Hifadhi
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Helpful Revision Guideline Box */}
+      <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
+        <h3 className="font-display font-extrabold text-sm text-slate-900 uppercase flex items-center gap-1.5">
+          <BookOpen size={16} className="text-cyan-600" /> Mwongozo wa Mapitio ya NECTA
+        </h3>
+        <ul className="text-xs text-slate-600 space-y-2 leading-relaxed list-disc list-inside">
+          <li><strong>Mpango wa Masomo:</strong> Tunapendekeza kuanza na mitihani ya miaka ya karibuni (e.g., 2023, 2022) kabla ya kwenda miaka ya nyuma.</li>
+          <li><strong>Muda:</strong> Unapofanya mtihani, jaribu kuweka kipima muda (Exam Timer) ili kuiga mazingira halisi ya chumba cha mtihani.</li>
+          <li><strong>Uchambuzi wa Makosa:</strong> Kila mara unapokamilisha (Nimemaliza) karatasi, andika maswali uliyokosea kwenye "Dokezo" hapo juu na upitie mada hizo upya kwenye Maktaba au Masomo.</li>
+        </ul>
+      </div>
+
+    </div>
+  );
+}

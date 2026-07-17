@@ -373,6 +373,15 @@ export interface PaymentTransaction {
   rejectionReason?: string;
 }
 
+export type NectaProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
-
-
+export interface NectaProgress {
+  id: string; // e.g. `${userId}_${level}_${subject}_${year}`
+  userId: string;
+  level: string; // e.g. std7, f2, f4, f6
+  subject: string; // e.g. mathematics, physics, etc.
+  year: string; // e.g. 2023
+  status: NectaProgressStatus;
+  notes?: string;
+  updatedAt: number;
+}

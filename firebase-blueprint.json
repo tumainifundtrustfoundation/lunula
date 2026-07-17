@@ -250,9 +250,31 @@
         "createdAt": { "type": "integer" }
       },
       "required": ["userId", "productId", "productName", "amount", "transactionId", "phoneNumber", "status", "createdAt"]
+    },
+    "NectaProgress": {
+      "title": "NECTA Exam Progress",
+      "description": "Student's marked completion status for specific exam subjects and years.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "level": { "type": "string" },
+        "subject": { "type": "string" },
+        "year": { "type": "string" },
+        "status": { "type": "string", "enum": ["not_started", "in_progress", "completed"] },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "level", "subject", "year", "status", "updatedAt"]
     }
   },
   "firestore": {
+    "/necta_progress/{progressId}": {
+      "schema": {
+        "$ref": "#/entities/NectaProgress"
+      },
+      "description": "Student revision and past paper completion progress logs."
+    },
     "/quick_buy_orders/{orderId}": {
       "schema": {
         "$ref": "#/entities/QuickBuyOrder"

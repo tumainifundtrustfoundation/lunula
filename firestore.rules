@@ -251,6 +251,28 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Necta Progress collection
+    match /necta_progress/{progressId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == progressId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.level is string && request.resource.data.level.size() <= 50
+        && request.resource.data.subject is string && request.resource.data.subject.size() <= 100
+        && request.resource.data.year is string && request.resource.data.year.size() <= 10
+        && (request.resource.data.status == "not_started" || request.resource.data.status == "in_progress" || request.resource.data.status == "completed")
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == progressId
+        && request.resource.data.level == resource.data.level
+        && request.resource.data.subject == resource.data.subject
+        && request.resource.data.year == resource.data.year
+        && (request.resource.data.status == "not_started" || request.resource.data.status == "in_progress" || request.resource.data.status == "completed")
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;

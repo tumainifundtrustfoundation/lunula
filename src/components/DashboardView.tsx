@@ -194,31 +194,48 @@ export default function DashboardView({ onNavigate, userProfile, language = 'sw'
     }
   };
 
-  const handleResultsSubmit = (e: React.FormEvent) => {
+  const handleResultsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resultsNumber.trim()) return;
+    const code = resultsNumber.trim().toUpperCase();
+    if (!code) return;
+    
     setCheckingResults(true);
     setResultsOutput(null);
-    setTimeout(() => {
-      setCheckingResults(false);
-      // Mock results checking for Lupanulla in Kiswahili
-      const regex = /^[sS]\d{4}\/\d{4}$/;
-      if (regex.test(resultsNumber)) {
-        setResultsOutput(`Matokeo ya Namba ${resultsNumber} (CSEE 2025):
-- CIVICS: B
-- HISTORY: B
-- GEOGRAPHY: C
-- KISWAHILI: A
-- ENGLISH: B
-- PHYSICS: C
-- CHEMISTRY: B
-- BIOLOGY: B
-- BASIC MATH: B
-Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
+    try {
+      const response = await fetch('/api/check-necta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ candidateCode: code }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.subjects && data.subjects.length > 0) {
+          const formattedSubjects = data.subjects.map((s: any) => `- ${s.subject.toUpperCase()}: ${s.grade}`).join('\n');
+          setResultsOutput(`Matokeo ya Namba ${data.candidateCode} (${data.examType} ${data.year}):
+Mwanafunzi: ${data.studentName}
+Kituo/Shule: ${data.schoolName}
+
+Masomo na Daraja (Grades):
+${formattedSubjects}
+
+Wastani/Ufaulu: ${data.division} (GPA: ${data.gpa || '0.0'})
+Chanzo: ${data.sourceUrl || 'NECTA Database'}
+Hali ya Uhakiki: Imethibitishwa mtandaoni kwa ufanisi! 🌐`);
+        } else {
+          setResultsOutput(`Samahani! Matokeo ya namba ${code} hayakupatikana mtandaoni au hifadhidata ya NECTA. Hakikisha format ni sahihi na umejumuisha mwaka (Mfano: S0101/0001/2023).`);
+        }
       } else {
-        setResultsOutput(`Namba ${resultsNumber} Haikutambuliwa au Matokeo hayajapakiwa bado. Hakikisha format ni sahihi (Mfano: S0101/0001/2025).`);
+        setResultsOutput(`Namba ${code} haikutambuliwa au imeshindwa kuunganishwa na mfumo wa NECTA kwa sasa.`);
       }
-    }, 1500);
+    } catch (err) {
+      console.error('Error fetching result on dashboard:', err);
+      setResultsOutput(`Hitilafu imetokea wakati wa kuunganisha na mfumo wa NECTA. Tafadhali jaribu tena.`);
+    } finally {
+      setCheckingResults(false);
+    }
   };
 
   const currentStreakAngle = (streakCount / 7) * 360;
@@ -666,6 +683,25 @@ Wastani: Daraja la Kwanza (Division I - Point 15). Hongera sana!`);
             onAwardPoints={onAwardPoints}
           />
           
+          {/* NECTA Exam Progress Revision Journal Card */}
+          <div className="bg-gradient-to-br from-cyan-900 via-slate-950 to-cyan-950 text-white rounded-3xl p-6 shadow-md border border-cyan-500/20 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                <CheckCircle size={18} className="text-cyan-400 animate-pulse" />
+              </div>
+              <h3 className="font-display font-bold text-base uppercase">Maendeleo ya NECTA</h3>
+            </div>
+            <p className="text-slate-200 text-xs leading-relaxed font-medium">
+              Weka rekodi ya Past Papers ulizosoma na kufanyia mazoezi. Fuatilia maendeleo ya kujiandaa na mitihani yako ya kitaifa na uandike masahihisho yako.
+            </p>
+            <button
+              onClick={() => onNavigate('necta-progress')}
+              className="w-full py-2.5 text-xs text-center font-bold bg-white text-slate-950 hover:bg-cyan-100 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+            >
+              Fuatilia Maendeleo Yangu &rarr;
+            </button>
+          </div>
+
           {/* Hub ya Vyanzo vya Elimu Quick Callout Card */}
           <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white rounded-3xl p-6 shadow-md border border-cyan-500/20 space-y-4">
             <div className="flex items-center gap-2">

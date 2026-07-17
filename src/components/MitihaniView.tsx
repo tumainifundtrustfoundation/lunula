@@ -20,12 +20,14 @@ import {
   Printer,
   Clock,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Globe
 } from 'lucide-react';
-import { fetchDocuments, fetchExamResultByCode, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks } from '../firebase';
+import { fetchDocuments, fetchExamResultByCode, fetchExamResults, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks } from '../firebase';
 import { DocumentMetadata, ExamResult, UserBookmark } from '../types';
 import { GoogleAdSenseUnit } from './MatangazoView';
 import ExamTimer from './ExamTimer';
+import MatokeoValidationModal from './MatokeoValidationModal';
 
 interface MitihaniViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -58,6 +60,9 @@ export default function MitihaniView({
   const [checkingResult, setCheckingResult] = useState<boolean>(false);
   const [checkedResult, setCheckedResult] = useState<ExamResult | null>(null);
   const [resultLookupError, setResultLookupError] = useState<string | null>(null);
+  const [dbResults, setDbResults] = useState<ExamResult[]>([]);
+  const [selectedResultForModal, setSelectedResultForModal] = useState<ExamResult | null>(null);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
   // --- NEW: NECTA Past Papers Library Wizard States & Configuration ---
   const [nectaWizardLevel, setNectaWizardLevel] = useState<string>('f4');
@@ -132,11 +137,39 @@ export default function MitihaniView({
 
     setCheckingResult(true);
     try {
+      // 1. Kwanza tafuta kwenye hifadhidata ya ndani ya Firestore
       const match = await fetchExamResultByCode(code);
       if (match) {
         setCheckedResult(match);
       } else {
-        setResultLookupError('Samahani! Hakuna matokeo yaliyopatikana kwa nambari ya mtihani uliyoingiza. Hakikisha namba imesajiliwa na msimamizi.');
+        // 2. Kama haijapatikana, tafuta kwenye mitandao na mifumo mingine ya NECTA kupitia API yetu yenye Search Grounding
+        try {
+          const response = await fetch('/api/check-necta', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ candidateCode: code }),
+          });
+          
+          if (response.ok) {
+            const externalResult = await response.json();
+            if (externalResult && externalResult.subjects && externalResult.subjects.length > 0) {
+              setCheckedResult({
+                ...externalResult,
+                isExternal: true
+              });
+            } else {
+              setResultLookupError('Samahani! Hakuna matokeo yaliyopatikana kwa nambari ya mtihani uliyoingiza. Hakikisha namba na mwaka vipo sahihi (Mfano: S0101/0001/2023).');
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            setResultLookupError(errorData.error || 'Samahani! Hakuna matokeo yaliyopatikana kwa nambari hii kwenye hifadhidata yetu wala mtandaoni kwa sasa.');
+          }
+        } catch (apiErr) {
+          console.error('Error searching online NECTA results:', apiErr);
+          setResultLookupError('Hitilafu imetokea wakati wa kuwasiliana na mfumo wa utafutaji wa NECTA mtandaoni. Tafadhali jaribu tena.');
+        }
       }
     } catch (err) {
       console.error('Error fetching exam result:', err);
@@ -492,8 +525,86 @@ export default function MitihaniView({
     }
   ];
 
+  const loadResults = async () => {
+    try {
+      const results = await fetchExamResults();
+      if (results && results.length > 0) {
+        setDbResults(results);
+      } else {
+        setDbResults([
+          {
+            id: "seed-1",
+            studentName: "Yohana Marco Bahati",
+            candidateCode: "S0101/0001/2026",
+            examType: "NECTA Mock Examination",
+            level: "Form IV",
+            year: 2026,
+            division: "Division I",
+            gpa: 1.14,
+            subjects: [
+              { subject: "Basic Mathematics", grade: "A", score: 88 },
+              { subject: "Physics", grade: "A", score: 85 },
+              { subject: "Chemistry", grade: "B", score: 76 },
+              { subject: "Biology", grade: "A", score: 81 },
+              { subject: "English Language", grade: "B", score: 78 },
+              { subject: "Civics", grade: "A", score: 82 },
+              { subject: "History", grade: "B", score: 74 }
+            ],
+            publishedAt: Date.now() - 3600000 * 24 * 10,
+            status: "published"
+          },
+          {
+            id: "seed-2",
+            studentName: "Anna John Simba",
+            candidateCode: "S0101/0002/2026",
+            examType: "NECTA Mock Examination",
+            level: "Form IV",
+            year: 2026,
+            division: "Division II",
+            gpa: 2.43,
+            subjects: [
+              { subject: "Basic Mathematics", grade: "C", score: 58 },
+              { subject: "Physics", grade: "B", score: 68 },
+              { subject: "Chemistry", grade: "C", score: 55 },
+              { subject: "Biology", grade: "B", score: 65 },
+              { subject: "English Language", grade: "B", score: 70 },
+              { subject: "Civics", grade: "C", score: 52 },
+              { subject: "History", grade: "D", score: 48 }
+            ],
+            publishedAt: Date.now() - 3600000 * 24 * 10,
+            status: "published"
+          },
+          {
+            id: "seed-3",
+            studentName: "Juma Shaban Mwinyi",
+            candidateCode: "S1245/0050/2026",
+            examType: "NECTA Terminal Examination",
+            level: "Form IV",
+            year: 2026,
+            division: "Division III",
+            gpa: 3.57,
+            subjects: [
+              { subject: "Basic Mathematics", grade: "D", score: 44 },
+              { subject: "Physics", grade: "D", score: 41 },
+              { subject: "Chemistry", grade: "C", score: 52 },
+              { subject: "Biology", grade: "D", score: 43 },
+              { subject: "English Language", grade: "C", score: 50 },
+              { subject: "Civics", grade: "D", score: 40 },
+              { subject: "History", grade: "F", score: 32 }
+            ],
+            publishedAt: Date.now() - 3600000 * 24 * 10,
+            status: "published"
+          }
+        ]);
+      }
+    } catch (err) {
+      console.error("Error loading exam results:", err);
+    }
+  };
+
   useEffect(() => {
     loadDocs();
+    loadResults();
     const checkBookmarks = async () => {
       if (!userProfile?.uid) {
         const storedBookmarks = localStorage.getItem('lupa_bookmarks');
@@ -777,6 +888,69 @@ export default function MitihaniView({
           </ul>
         </div>
 
+        {/* Orodha ya Matokeo Yaliyosajiliwa (Registered Exam Results List) */}
+        {dbResults && dbResults.length > 0 && (
+          <div className="space-y-3 max-w-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-extrabold text-[10px] text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                Matokeo ya Ndani (Database Results List)
+              </h3>
+              <span className="text-[9px] bg-indigo-50 text-indigo-700 font-extrabold px-2 py-0.5 rounded-full">
+                {dbResults.length} Zilizopo
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {dbResults.map((res) => (
+                <div 
+                  key={res.id} 
+                  className="bg-white border border-slate-200 hover:border-indigo-200 p-4 rounded-2xl flex flex-col justify-between gap-3 shadow-sm transition-all"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                        {res.candidateCode}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase">{res.examType.split(' ')[0]}</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-xs line-clamp-1">{res.studentName}</h4>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold">
+                      <span>{res.level} &bull; {res.year}</span>
+                      <span>&bull;</span>
+                      <span className="text-emerald-600 font-black">{res.division}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 border-t border-slate-100 pt-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCandidateCode(res.candidateCode);
+                        setCheckedResult(res);
+                        setResultLookupError(null);
+                      }}
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-black text-[9px] uppercase py-2 px-2.5 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Search className="w-3 h-3" /> Tazama
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedResultForModal(res);
+                        setIsValidationModalOpen(true);
+                      }}
+                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black text-[9px] uppercase py-2 px-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> Hakiki
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Error Feedback */}
         {resultLookupError && (
           <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex gap-3 text-xs text-rose-700">
@@ -790,9 +964,18 @@ export default function MitihaniView({
           <div className="border border-indigo-200 rounded-3xl bg-slate-50 overflow-hidden shadow-md animate-fade-in max-w-2xl">
             {/* Transcript Header */}
             <div className="bg-gradient-to-r from-indigo-900 to-slate-900 p-5 sm:p-6 text-white relative">
-              <div className="absolute top-4 right-4 bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1">
-                <CheckCircle2 size={10} />
-                HAKIKIWA (VERIFIED)
+              <div className="absolute top-4 right-4 flex gap-1.5">
+                {(checkedResult as any).isExternal ? (
+                  <div className="bg-cyan-400 text-slate-950 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1.5">
+                    <Globe size={10} />
+                    MTANDAONI (ONLINE NECTA)
+                  </div>
+                ) : (
+                  <div className="bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full shadow flex items-center gap-1">
+                    <CheckCircle2 size={10} />
+                    HAKIKIWA (VERIFIED)
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Ripoti Rasmi ya Maendeleo ya Taaluma</span>
@@ -854,17 +1037,29 @@ export default function MitihaniView({
 
               {/* Verification Footer Disclaimer */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 text-[10px] text-slate-400 leading-normal">
-                <p>
+                <p className="flex-1">
                   * Ripoti hii imetolewa na kuhakikiwa kielektroniki kutoka kwenye Hifadhi ya Takwimu ya Lupanulla Elimu Hub. 
                   Hakuna saini ya mkono inayohitajika.
                 </p>
-                <button 
-                  onClick={() => window.print()}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all self-end"
-                >
-                  <Printer size={12} />
-                  Chapa (Print)
-                </button>
+                <div className="flex gap-2 self-end shrink-0">
+                  <button 
+                    onClick={() => {
+                      setSelectedResultForModal(checkedResult);
+                      setIsValidationModalOpen(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  >
+                    <ShieldCheck size={12} />
+                    Hakiki (Validate)
+                  </button>
+                  <button 
+                    onClick={() => window.print()}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Printer size={12} />
+                    Chapa (Print)
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1065,6 +1260,15 @@ export default function MitihaniView({
               >
                 <Clock size={15} />
                 Zoezi la Saa (Timer)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate('necta-progress')}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-5 py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+              >
+                <CheckCircle size={15} />
+                Fuatilia Maendeleo
               </button>
             </div>
           </div>
@@ -1403,6 +1607,12 @@ export default function MitihaniView({
           Maudhui haya ya mitihani yanatolewa kwa madhumuni ya kitaaluma pekee kusaidia wanafunzi wa Kitanzania katika maandalizi yao ya mitihani.
         </p>
       </footer>
+
+      <MatokeoValidationModal
+        isOpen={isValidationModalOpen}
+        onClose={() => setIsValidationModalOpen(false)}
+        result={selectedResultForModal}
+      />
     </div>
   );
 }

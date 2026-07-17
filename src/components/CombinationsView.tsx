@@ -1105,7 +1105,7 @@ export default function CombinationsView() {
             const isSaved = savedCombinations.includes(combo.code);
             return (
               <motion.div
-                key={combo.code}
+                key={`${combo.code}-${combo.sn}`}
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}

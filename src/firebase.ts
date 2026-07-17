@@ -29,9 +29,10 @@ import {
   orderBy,
   onSnapshot,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  serverTimestamp
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -1648,7 +1649,67 @@ export const deleteWebsiteNews = async (id: string): Promise<void> => {
   }
 };
 
+/**
+ * NECTA Exam Progress functions
+ */
+export const saveNectaProgress = async (
+  userId: string,
+  level: string,
+  subject: string,
+  year: string,
+  status: 'not_started' | 'in_progress' | 'completed',
+  notes?: string
+): Promise<string> => {
+  const path = 'necta_progress';
+  try {
+    const progressId = `${userId}_${level}_${subject}_${year}`;
+    const docRef = doc(db, path, progressId);
+    
+    const payload: any = {
+      id: progressId,
+      userId,
+      level,
+      subject,
+      year,
+      status,
+      updatedAt: serverTimestamp()
+    };
 
+    if (notes !== undefined) {
+      payload.notes = notes;
+    }
 
+    await setDoc(docRef, payload);
+    return progressId;
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+};
 
-
+export const fetchNectaProgress = async (userId: string): Promise<NectaProgress[]> => {
+  const path = 'necta_progress';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    
+    return snap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id,
+        userId: data.userId,
+        level: data.level,
+        subject: data.subject,
+        year: data.year,
+        status: data.status,
+        notes: data.notes,
+        // Convert timestamp if it exists, otherwise use current time as fallback
+        updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : Date.now()
+      } as NectaProgress;
+    });
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};

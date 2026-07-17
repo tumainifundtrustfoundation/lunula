@@ -158,3 +158,29 @@
   animation: spin 8s linear infinite;
 }
 
+/* Specifically style for clean, readable document printing */
+@media print {
+  /* Hide all interactive components and layout scaffolding */
+  html, body, #root, #app, header, nav, footer, sidebar, .no-print, button, select, input, .lucide, [role="tablist"], .bg-slate-200\/60, .lg\:col-span-1 {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: #111827 !important;
+  }
+
+  /* Force display the printable container */
+  .print-only-container {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+}
+

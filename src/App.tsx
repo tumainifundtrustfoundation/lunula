@@ -47,31 +47,31 @@ import Navbar from './components/Navbar';
 import Logo from './components/Logo';
 import AdminView from './components/AdminView';
 
-// Lazy Loaded View Components for Optimized Initial Bundle Size and Faster LCP
-const PortalView = lazy(() => import('./components/PortalView'));
-const DashboardView = lazy(() => import('./components/DashboardView'));
-const MasomoView = lazy(() => import('./components/MasomoView'));
-const MitihaniView = lazy(() => import('./components/MitihaniView'));
-const DukaView = lazy(() => import('./components/DukaView'));
-const FisiMajiView = lazy(() => import('./components/FisiMajiView'));
-const VideosView = lazy(() => import('./components/VideosView'));
-const CalculatorView = lazy(() => import('./components/CalculatorView'));
-const KamusiView = lazy(() => import('./components/KamusiView'));
-const MikoaView = lazy(() => import('./components/MikoaView'));
-const AjiraView = lazy(() => import('./components/AjiraView'));
-const MatangazoView = lazy(() => import('./components/MatangazoView'));
-const FeedbackModal = lazy(() => import('./components/FeedbackModal'));
-const WorkspaceView = lazy(() => import('./components/WorkspaceView'));
-const CombinationsView = lazy(() => import('./components/CombinationsView'));
-const UploadView = lazy(() => import('./components/UploadView'));
-const ReaderView = lazy(() => import('./components/ReaderView'));
-const PremiumView = lazy(() => import('./components/PremiumView'));
-const LibraryView = lazy(() => import('./components/LibraryView'));
-const ForumView = lazy(() => import('./components/ForumView'));
-const LiveClassesView = lazy(() => import('./components/LiveClassesView'));
-const CertificatesView = lazy(() => import('./components/CertificatesView'));
-const LeaderboardView = lazy(() => import('./components/LeaderboardView'));
-const ResourcesView = lazy(() => import('./components/ResourcesView'));
+import PortalView from './components/PortalView';
+import DashboardView from './components/DashboardView';
+import MasomoView from './components/MasomoView';
+import MitihaniView from './components/MitihaniView';
+import DukaView from './components/DukaView';
+import FisiMajiView from './components/FisiMajiView';
+import VideosView from './components/VideosView';
+import CalculatorView from './components/CalculatorView';
+import KamusiView from './components/KamusiView';
+import MikoaView from './components/MikoaView';
+import AjiraView from './components/AjiraView';
+import MatangazoView from './components/MatangazoView';
+import FeedbackModal from './components/FeedbackModal';
+import WorkspaceView from './components/WorkspaceView';
+import CombinationsView from './components/CombinationsView';
+import UploadView from './components/UploadView';
+import ReaderView from './components/ReaderView';
+import PremiumView from './components/PremiumView';
+import LibraryView from './components/LibraryView';
+import ForumView from './components/ForumView';
+import LiveClassesView from './components/LiveClassesView';
+import CertificatesView from './components/CertificatesView';
+import LeaderboardView from './components/LeaderboardView';
+import ResourcesView from './components/ResourcesView';
+import NectaProgressView from './components/NectaProgressView';
 
 // Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
 const ViewLoadingSkeleton = () => (
@@ -995,6 +995,13 @@ export default function App() {
               <ResourcesView 
                 language={language}
                 userProfile={userProfile} 
+              />
+            )}
+
+            {activeView === 'necta-progress' && (
+              <NectaProgressView 
+                userProfile={userProfile}
+                onNavigate={navigateTo}
               />
             )}
 
