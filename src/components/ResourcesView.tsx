@@ -1044,21 +1044,26 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
     setError(null);
     try {
       const data = await fetchEducationalResources();
-      if (data.length === 0) {
+      // Filter out any Tetea resources from Firestore data just in case
+      const cleanData = data.filter(r => !r.url.toLowerCase().includes('tetea.org'));
+      const cleanSeeds = SEED_RESOURCES.filter(r => !r.url.toLowerCase().includes('tetea.org'));
+
+      if (cleanData.length === 0) {
         // If database is completely empty and currentUser is an admin, offer/automatically load seed resources
-        setResources(SEED_RESOURCES.map((r, idx) => ({ ...r, id: `seed-${idx}` }) as EducationalResource));
+        setResources(cleanSeeds.map((r, idx) => ({ ...r, id: `seed-${idx}` }) as EducationalResource));
       } else {
-        // Merge in any static SEED_RESOURCES whose URLs are not present in 'data'
-        const existingUrls = new Set(data.map(d => d.url.toLowerCase().trim()));
-        const missingSeeds = SEED_RESOURCES.filter(r => !existingUrls.has(r.url.toLowerCase().trim()))
+        // Merge in any static cleanSeeds whose URLs are not present in 'cleanData'
+        const existingUrls = new Set(cleanData.map(d => d.url.toLowerCase().trim()));
+        const missingSeeds = cleanSeeds.filter(r => !existingUrls.has(r.url.toLowerCase().trim()))
           .map((r, idx) => ({ ...r, id: `seed-missing-${idx}` }) as EducationalResource);
-        setResources([...data, ...missingSeeds]);
+        setResources([...cleanData, ...missingSeeds]);
       }
     } catch (err: any) {
       console.error('Failed to load educational resources:', err);
       setError(language === 'sw' ? 'Imeshindwa kupakia vyanzo vya elimu.' : 'Failed to load educational resources.');
       // Local fallback
-      setResources(SEED_RESOURCES.map((r, idx) => ({ ...r, id: `seed-${idx}` }) as EducationalResource));
+      const cleanSeeds = SEED_RESOURCES.filter(r => !r.url.toLowerCase().includes('tetea.org'));
+      setResources(cleanSeeds.map((r, idx) => ({ ...r, id: `seed-${idx}` }) as EducationalResource));
     } finally {
       setIsLoading(false);
     }
@@ -1073,7 +1078,8 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
     if (!isAdmin) return;
     setIsLoading(true);
     try {
-      for (const res of SEED_RESOURCES) {
+      const cleanSeeds = SEED_RESOURCES.filter(r => !r.url.toLowerCase().includes('tetea.org'));
+      for (const res of cleanSeeds) {
         await addEducationalResource(res);
       }
       if (userProfile) {
@@ -1508,26 +1514,6 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                 Matokeo ya Mtihani wa Utimilifu wa Elimu ya Sekondari ya Juu (ACSEE) kwa mwaka 2026.
               </p>
-
-              {/* Maktaba Tetea ACSEE Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-indigo-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2008 - 2024):
-                </span>
-                <div className="grid grid-cols-4 gap-1">
-                  {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/ACSEE${year}/index.htm`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-850 border border-slate-150 hover:border-indigo-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
             </div>
             <a
               href="https://matokeo.necta.go.tz/results/2026/acsee/index.htm"
@@ -1616,25 +1602,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education).
               </p>
 
-              {/* Maktaba Tetea DSEE Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-violet-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2014 - 2024):
-                </span>
-                <div className="grid grid-cols-4 gap-1">
-                  {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/DSEE${year}/index.htm`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-violet-50 text-slate-600 hover:text-violet-855 border border-slate-150 hover:border-violet-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <a
               href="https://necta.go.tz/results/view/dsee"
@@ -1665,25 +1633,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 Mkusanyiko rasmi wa matokeo yote ya mitihani ya Kidato cha Nne kutoka NECTA.
               </p>
 
-              {/* Maktaba Tetea CSEE Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-blue-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2010 - 2023):
-                </span>
-                <div className="grid grid-cols-4 gap-1">
-                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/CSEE${year}/index.htm`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-800 border border-slate-150 hover:border-blue-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <a
               href="https://necta.go.tz/results/view/csee"
@@ -1714,25 +1664,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 Matokeo ya Upimaji wa Kitaifa wa Kidato cha Pili (Form Two National Assessment).
               </p>
 
-              {/* Maktaba Tetea FTNA Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-emerald-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2015 - 2023):
-                </span>
-                <div className="grid grid-cols-3 gap-1">
-                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/FTNA${year}/ftna.htm`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-850 border border-slate-150 hover:border-emerald-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <a
               href="https://necta.go.tz/results/view/ftna"
@@ -1763,25 +1695,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 Matokeo ya Mtihani wa Kumaliza Elimu ya Msingi (Primary School Leaving).
               </p>
 
-              {/* Maktaba Tetea PSLE Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-purple-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2015 - 2023):
-                </span>
-                <div className="grid grid-cols-3 gap-1">
-                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/PSLE${year}/index.htm`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-purple-50 text-slate-600 hover:text-purple-800 border border-slate-150 hover:border-purple-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <a
               href="https://necta.go.tz/results/view/psle"
@@ -1812,25 +1726,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
                 Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (Standard Four Assessment).
               </p>
 
-              {/* Maktaba Tetea SFNA Archives Grid */}
-              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
-                <span className="text-[9px] font-black uppercase text-amber-650 tracking-wider flex items-center gap-1">
-                  📚 Maktaba Tetea Archives (2015 - 2023):
-                </span>
-                <div className="grid grid-cols-3 gap-1">
-                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
-                    <a
-                      key={year}
-                      href={`https://maktaba.tetea.org/exam-results/SFNA${year}/sfna.html`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-amber-50 text-slate-600 hover:text-amber-800 border border-slate-150 hover:border-amber-250 rounded-lg transition-all cursor-pointer"
-                    >
-                      {year}
-                    </a>
-                  ))}
-                </div>
-              </div>
+
             </div>
             <a
               href="https://necta.go.tz/results/view/sfna"

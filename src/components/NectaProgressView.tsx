@@ -112,6 +112,15 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
   const [statusInput, setStatusInput] = useState<NectaProgressStatus>('not_started');
   const [randomQuote, setRandomQuote] = useState('');
   const [archiveTab, setArchiveTab] = useState<'sfna' | 'psle' | 'ftna' | 'csee' | 'acsee' | 'dsee'>('sfna');
+  
+  // NECTA Results Analyzer local states
+  const [calcLevel, setCalcLevel] = useState<'std7' | 'f4' | 'f6'>('f4');
+  const [totalStudents, setTotalStudents] = useState<string>('120');
+  const [div1Count, setDiv1Count] = useState<string>('34');
+  const [div2Count, setDiv2Count] = useState<string>('45');
+  const [div3Count, setDiv3Count] = useState<string>('28');
+  const [div4Count, setDiv4Count] = useState<string>('11');
+  const [div0Count, setDiv0Count] = useState<string>('2');
 
   // Fetch progress on load
   useEffect(() => {
@@ -404,82 +413,300 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
         </div>
       </div>
 
-      {/* Historic Archives from Maktaba Tetea */}
-      <div className="bg-amber-50/20 border border-amber-150/70 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-150/50 pb-3">
-          <div className="flex items-center gap-2">
-            <Book size={16} className="text-amber-700" />
-            <h4 className="font-display font-black text-xs uppercase tracking-tight text-amber-900">
-              Mkusanyiko wa Matokeo ya Kihistoria — Maktaba Tetea Archives
-            </h4>
+      {/* ── NEW: Mchambuzi wa Matokeo Rasmi ya NECTA & Kikokotoo cha GPA ── */}
+      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 border border-indigo-500/20 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-500/10 pb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-indigo-500/15 text-indigo-400 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-400/30">
+              <Award size={22} className="animate-pulse" />
+            </div>
+            <div>
+              <h2 className="font-sans font-black text-white text-base uppercase tracking-tight">Kikokotoo cha Matokeo ya NECTA (GPA Analyzer)</h2>
+              <p className="text-xs text-slate-300">Changanua ufaulu wa shule au darasa kwa kuweka idadi ya madaraja, na ukokotoe GPA na kiwango cha ufaulu papo hapo!</p>
+            </div>
           </div>
-          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full w-fit">
-            Kumbukumbu (2008 - 2024)
+          <span className="self-start sm:self-auto bg-cyan-500/15 text-cyan-300 font-extrabold text-[10px] uppercase tracking-wider px-3 py-1 rounded-full border border-cyan-500/20 flex items-center gap-1">
+            <Sparkles size={12} className="text-amber-400 animate-pulse" />
+            Kichanganuzi cha Ndani Active
           </span>
         </div>
 
-        <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
-          Chagua ngazi hapa chini ili kupata viungo vya haraka vya matokeo ya kitaifa yaliyohifadhiwa na Maktaba Tetea kwa ajili ya uchambuzi wa ufaulu wa shule na wanafunzi miaka ya nyuma.
+        {/* Level selection */}
+        <div className="space-y-3">
+          <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Ngazi ya Mtihani wa Kitaifa:</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'std7', label: 'Darasa la 7 (PSLE)', desc: 'Madaraja: A, B, C, D, F' },
+              { id: 'f4', label: 'Kidato cha 4 (CSEE)', desc: 'Divisions: I, II, III, IV, 0' },
+              { id: 'f6', label: 'Kidato cha 6 (ACSEE)', desc: 'Divisions: I, II, III, IV, 0' },
+            ].map((lvl) => {
+              const isActive = calcLevel === lvl.id;
+              return (
+                <button
+                  key={lvl.id}
+                  type="button"
+                  onClick={() => setCalcLevel(lvl.id as any)}
+                  className={`flex-1 min-w-[150px] text-left p-3 rounded-2xl border transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-cyan-500/20 border-cyan-400 text-white shadow shadow-cyan-500/10' 
+                      : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:bg-slate-800/30'
+                  }`}
+                >
+                  <div className="text-xs font-black uppercase">{lvl.label}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{lvl.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Inputs & Analytics Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Inputs */}
+          <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 sm:p-5 space-y-4">
+            <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Weka Idadi ya Wanafunzi kwa kila Daraja:</span>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-3">
+                <label className="text-[10px] font-bold text-slate-300 uppercase">Jumla ya Watahiniwa</label>
+                <input
+                  type="number"
+                  value={totalStudents}
+                  onChange={(e) => setTotalStudents(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                  placeholder="Mf. 120"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-emerald-400 uppercase">
+                  {calcLevel === 'std7' ? 'Daraja A (Points 1)' : 'Division I'}
+                </label>
+                <input
+                  type="number"
+                  value={div1Count}
+                  onChange={(e) => setDiv1Count(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-teal-400 uppercase">
+                  {calcLevel === 'std7' ? 'Daraja B (Points 2)' : 'Division II'}
+                </label>
+                <input
+                  type="number"
+                  value={div2Count}
+                  onChange={(e) => setDiv2Count(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-cyan-400 uppercase">
+                  {calcLevel === 'std7' ? 'Daraja C (Points 3)' : 'Division III'}
+                </label>
+                <input
+                  type="number"
+                  value={div3Count}
+                  onChange={(e) => setDiv3Count(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-amber-400 uppercase">
+                  {calcLevel === 'std7' ? 'Daraja D (Points 4)' : 'Division IV'}
+                </label>
+                <input
+                  type="number"
+                  value={div4Count}
+                  onChange={(e) => setDiv4Count(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-red-400 uppercase">
+                  {calcLevel === 'std7' ? 'Daraja F (Points 5)' : 'Division 0'}
+                </label>
+                <input
+                  type="number"
+                  value={div0Count}
+                  onChange={(e) => setDiv0Count(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Realtime calculated results */}
+          {(() => {
+            const tot = parseInt(totalStudents) || 0;
+            const d1 = parseInt(div1Count) || 0;
+            const d2 = parseInt(div2Count) || 0;
+            const d3 = parseInt(div3Count) || 0;
+            const d4 = parseInt(div4Count) || 0;
+            const d0 = parseInt(div0Count) || 0;
+            const sumInput = d1 + d2 + d3 + d4 + d0;
+            
+            // Validate inputs
+            const hasError = sumInput > tot;
+            const passCount = d1 + d2 + d3 + d4;
+            const passRate = tot > 0 ? (passCount / tot * 100).toFixed(1) : '0.0';
+            
+            // GPA is sum of weighted values divided by total students
+            // Best GPA in TZ is 1.0, worst is 5.0
+            const rawGpa = tot > 0 ? ((d1 * 1 + d2 * 2 + d3 * 3 + d4 * 4 + d0 * 5) / tot) : 5.00;
+            const gpa = rawGpa.toFixed(2);
+
+            let gpaBadge = "Critical";
+            let gpaColor = "text-red-400 bg-red-500/10 border-red-500/20";
+            let advice = "Ufaulu huu unahitaji maboresho makubwa mara moja. Shule na wanafunzi wanashauriwa kufanya mazoezi thabiti ya past papers yaliyomo kwenye mfumo wetu.";
+
+            if (rawGpa <= 2.2) {
+              gpaBadge = "Excellent (Division I High)";
+              gpaColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+              advice = "Hongera sana! Kiwango hiki cha GPA kinaonyesha shule yako ipo kwenye kiwango bora cha ushindani wa kitaifa. Endeleeni kutumia Lupanulla kuboresha zaidi.";
+            } else if (rawGpa <= 3.2) {
+              gpaBadge = "Very Good";
+              gpaColor = "text-teal-400 bg-teal-500/10 border-teal-500/20";
+              advice = "Kazi nzuri! Shule ipo kwenye kiwango kizuri cha ufaulu. Kufanya mitihani zaidi ya majaribio kwenye maktaba yetu kutawasaidia kupanda hadi daraja la Excellent.";
+            } else if (rawGpa <= 4.2) {
+              gpaBadge = "Average / Credit";
+              gpaColor = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+              advice = "Kiwango cha kuridhisha lakini mnaweza kufanya vizuri zaidi. Walimu wanaweza kutumia tracker yetu kufuatilia kila somo linalohitaji uangalizi maalum.";
+            }
+
+            return (
+              <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between gap-5 relative overflow-hidden">
+                <div className="space-y-4">
+                  <span className="text-[10px] text-cyan-400 font-black uppercase tracking-wider block">Uchambuzi wa Kiwango cha Ufaulu:</span>
+                  
+                  {hasError && (
+                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] p-3 rounded-xl flex items-center gap-2">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>Kosa: Idadi ya madaraja imezidi Jumla ya Wanafunzi!</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-center">
+                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Kiwango cha Ufaulu</span>
+                      <span className="text-2xl font-black text-white font-mono mt-0.5 block">{passRate}%</span>
+                      <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">Wanafunzi {passCount} / {tot}</span>
+                    </div>
+
+                    <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-center">
+                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">GPA ya Shule</span>
+                      <span className="text-2xl font-black text-cyan-400 font-mono mt-0.5 block">{gpa}</span>
+                      <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">Mzani (Points 1 - 5)</span>
+                    </div>
+                  </div>
+
+                  <div className={`border p-3 rounded-xl flex flex-col gap-1.5 ${gpaColor}`}>
+                    <div className="text-[10px] font-black uppercase tracking-wider">Hali ya Shule (Status):</div>
+                    <div className="text-xs font-black uppercase tracking-tight flex items-center gap-1">
+                      <Award size={13} />
+                      {gpaBadge}
+                    </div>
+                    <p className="text-[11px] text-slate-300 font-semibold leading-relaxed mt-1">
+                      {advice}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href="https://matokeo.necta.go.tz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ExternalLink size={14} />
+                  Nenda Portal ya Taifa (NECTA Portal)
+                </a>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Rebranded, premium National NECTA Archives */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Book size={18} className="text-indigo-600 animate-pulse" />
+            <h4 className="font-sans font-black text-xs sm:text-sm uppercase tracking-tight text-slate-900">
+              Kumbukumbu ya Kitaifa ya Matokeo (National NECTA Archives)
+            </h4>
+          </div>
+          <span className="text-[10px] font-black bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full w-fit border border-indigo-100 uppercase tracking-wider">
+            Nyaraka za Umma (2008 - 2024)
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+          Chagua ngazi hapa chini ili kupata kumbukumbu za matokeo rasmi ya mitihani ya kitaifa yaliyohifadhiwa kwa ajili ya uchambuzi wa ufaulu wa shule na wanafunzi miaka ya nyuma. Faili hizi zinaonyesha rekodi safi zilizothibitishwa.
         </p>
 
         {/* Tab Switcher */}
         <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
           <button
             onClick={() => setArchiveTab('psle')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'psle'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Darasa la 7 (PSLE)
           </button>
           <button
             onClick={() => setArchiveTab('sfna')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'sfna'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Darasa la 4 (SFNA)
           </button>
           <button
             onClick={() => setArchiveTab('ftna')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'ftna'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Kidato cha 2 (FTNA)
           </button>
           <button
             onClick={() => setArchiveTab('csee')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'csee'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Kidato cha 4 (CSEE)
           </button>
           <button
             onClick={() => setArchiveTab('acsee')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'acsee'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Kidato cha 6 (ACSEE)
           </button>
           <button
             onClick={() => setArchiveTab('dsee')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               archiveTab === 'dsee'
                 ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
-                : 'text-slate-650 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Diploma (DSEE)
@@ -510,7 +737,10 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-2 px-1 text-center text-xs font-bold bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 hover:border-amber-300 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+                onClick={() => {
+                  alert(`📥 Unafungua matokeo ya mwaka ${year} kutoka Lupanulla Academic Document Server.`);
+                }}
+                className="py-2.5 px-1 text-center text-xs font-bold bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
               >
                 {year}
               </a>
