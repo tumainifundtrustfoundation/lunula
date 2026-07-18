@@ -72,6 +72,7 @@ import CertificatesView from './components/CertificatesView';
 import LeaderboardView from './components/LeaderboardView';
 import ResourcesView from './components/ResourcesView';
 import NectaProgressView from './components/NectaProgressView';
+import RotatingBanner from './components/RotatingBanner';
 
 // Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
 const ViewLoadingSkeleton = () => (
@@ -878,6 +879,10 @@ export default function App() {
           </div>
         ) : (
           <Suspense fallback={<ViewLoadingSkeleton />}>
+            {user && !userProfile?.isSuspended && ['portal', 'dashboard', 'masomo', 'mitihani', 'fisimaji', 'duka', 'library', 'forum'].includes(activeView) && (
+              <RotatingBanner onNavigate={navigateTo} />
+            )}
+
             {activeView === 'portal' && (
               <PortalView 
                 onNavigate={navigateTo} 

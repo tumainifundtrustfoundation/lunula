@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { addNotification } from '../firebase';
 import PremiumLock from './PremiumLock';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface Attachment {
   name: string;
@@ -503,30 +504,8 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
                           ? 'bg-slate-50 border border-slate-150 text-slate-800' 
                           : 'bg-cyan-600 text-white shadow-md'
                       }`}>
-                        <div className="space-y-2 whitespace-pre-wrap">
-                          {msg.content.split('\n\n').map((para, idx) => {
-                            let formatted = para;
-                            const boldRegex = /\*\*(.*?)\*\*/g;
-                            let match;
-                            const segments = [];
-                            let lastIndex = 0;
-                            while ((match = boldRegex.exec(para)) !== null) {
-                              if (match.index > lastIndex) {
-                                segments.push(para.substring(lastIndex, match.index));
-                              }
-                              segments.push(<strong key={match.index} className="font-extrabold">{match[1]}</strong>);
-                              lastIndex = boldRegex.lastIndex;
-                            }
-                            if (lastIndex < para.length) {
-                              segments.push(para.substring(lastIndex));
-                            }
-
-                            return (
-                              <p key={idx}>
-                                {segments.length > 0 ? segments : para}
-                              </p>
-                            );
-                          })}
+                        <div className="space-y-1">
+                          <MarkdownRenderer content={msg.content} />
                         </div>
 
                         {/* Rendering attached files indicators in history */}

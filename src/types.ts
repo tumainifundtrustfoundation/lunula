@@ -17,6 +17,8 @@ export interface UserProfile {
   xp?: number;
   studyTime?: number;
   favorites?: string[]; // Array of topic titles or compound IDs for favorite notes
+  completedSubtopics?: Record<string, string[]>;
+  personalNotes?: Record<string, string>;
 }
 
 export interface AuditLog {
