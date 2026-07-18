@@ -27,6 +27,7 @@ import {
 import { fetchDocuments, fetchUserBookmarks, toggleBookmark } from '../firebase';
 import { DocumentMetadata, UserBookmark } from '../types';
 import FocusTimer from './FocusTimer';
+import CalendarBanner from './CalendarBanner';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -338,6 +339,9 @@ Hali ya Uhakiki: Imethibitishwa mtandaoni kwa ufanisi! 🌐`);
           </div>
         </div>
       </section>
+
+      {/* ── Interactive Date & Calendar Planner Banner ── */}
+      <CalendarBanner userProfile={userProfile} onNavigate={onNavigate} />
 
       {/* ── Bookmarks Section (Hifadhi Zangu) ── */}
       <section className="space-y-4">

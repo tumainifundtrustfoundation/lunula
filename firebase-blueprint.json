@@ -266,9 +266,31 @@
         "updatedAt": { "type": "integer" }
       },
       "required": ["id", "userId", "level", "subject", "year", "status", "updatedAt"]
+    },
+    "StudyEvent": {
+      "title": "Study Event / Task",
+      "description": "Calendar task or study event for planning revision schedules.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "subject": { "type": "string" },
+        "notes": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "title", "date", "isCompleted", "createdAt"]
     }
   },
   "firestore": {
+    "/study_events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/StudyEvent"
+      },
+      "description": "Student study schedule and event logs."
+    },
     "/necta_progress/{progressId}": {
       "schema": {
         "$ref": "#/entities/NectaProgress"

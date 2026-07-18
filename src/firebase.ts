@@ -32,7 +32,7 @@ import {
   persistentMultipleTabManager,
   serverTimestamp
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress, StudyEvent } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -1711,5 +1711,63 @@ export const fetchNectaProgress = async (userId: string): Promise<NectaProgress[
   } catch (error: any) {
     handleFirestoreError(error, OperationType.LIST, path);
     return [];
+  }
+};
+
+/**
+ * Study Events / Calendar Planner functions
+ */
+export const saveStudyEvent = async (event: Omit<StudyEvent, 'createdAt' | 'id'> & { id?: string }): Promise<string> => {
+  const path = 'study_events';
+  try {
+    const id = event.id || doc(collection(db, path)).id;
+    const docRef = doc(db, path, id);
+    const payload = {
+      ...event,
+      id,
+      createdAt: Date.now()
+    };
+    await setDoc(docRef, payload, { merge: true });
+    return id;
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+};
+
+export const fetchStudyEvents = async (userId: string): Promise<StudyEvent[]> => {
+  const path = 'study_events';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    
+    return snap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id,
+        userId: data.userId,
+        title: data.title,
+        date: data.date,
+        subject: data.subject,
+        notes: data.notes,
+        isCompleted: !!data.isCompleted,
+        createdAt: data.createdAt || Date.now()
+      } as StudyEvent;
+    });
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+};
+
+export const deleteStudyEvent = async (eventId: string): Promise<void> => {
+  const path = 'study_events';
+  try {
+    const docRef = doc(db, path, eventId);
+    await deleteDoc(docRef);
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    throw error;
   }
 };

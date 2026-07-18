@@ -273,6 +273,19 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Study Events / Calendar collection
+    match /study_events/{eventId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == eventId
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.date is string && request.resource.data.date.size() <= 15;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == eventId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;

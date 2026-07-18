@@ -385,3 +385,14 @@ export interface NectaProgress {
   notes?: string;
   updatedAt: number;
 }
+
+export interface StudyEvent {
+  id: string;
+  userId: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  subject?: string;
+  notes?: string;
+  isCompleted: boolean;
+  createdAt: number;
+}

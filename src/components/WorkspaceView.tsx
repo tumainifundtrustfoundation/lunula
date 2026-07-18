@@ -159,6 +159,34 @@ export default function WorkspaceView({ theme, onChangeTheme }: WorkspaceViewPro
     }
   }, [token]);
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'GOOGLE_PICKER_IMAGE_SELECTED') {
+        const selectedFile = {
+          id: event.data.fileId,
+          name: event.data.name,
+          mimeType: event.data.mimeType,
+          url: event.data.url,
+          thumbnailUrl: event.data.thumbnailUrl,
+        };
+        
+        setPickedFiles(prev => {
+          const existingIds = new Set(prev.map(f => f.id));
+          if (existingIds.has(selectedFile.id)) return prev;
+          return [selectedFile, ...prev];
+        });
+
+        setFeedbackMessage({ 
+          type: 'success', 
+          text: `Picha "${selectedFile.name}" imechaguliwa kutoka kwenye Ukurasa wa Google Picker!` 
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Handle Compose Email submission
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -484,13 +512,26 @@ export default function WorkspaceView({ theme, onChangeTheme }: WorkspaceViewPro
                           Njia rahisi na ya haraka ya kutazama, kuchagua, na kufungua faili zako moja kwa moja kutoka Google Drive visual pop-up interface.
                         </p>
                       </div>
-                      <button
-                        onClick={handleLaunchPicker}
-                        className="px-5 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-2xl transition-all shadow-md active:scale-98 shrink-0 flex items-center gap-2 text-xs uppercase tracking-wider"
-                      >
-                        <Search className="w-4 h-4" />
-                        <span>Fungua Google Picker</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-3 shrink-0">
+                        <button
+                          onClick={handleLaunchPicker}
+                          className="px-4 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-2xl transition-all shadow-md active:scale-98 flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+                        >
+                          <Search className="w-4 h-4" />
+                          <span>Inline Picker</span>
+                        </button>
+                        <a
+                          href="/picker.html"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all shadow-md active:scale-98 flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer text-center"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                          </svg>
+                          <span>Kiteuzi Kamili (HTML Page)</span>
+                        </a>
+                      </div>
                     </div>
 
                     {/* Display Picked Files from Google Picker */}

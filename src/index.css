@@ -158,6 +158,22 @@
   animation: spin 8s linear infinite;
 }
 
+/* Left-to-Right Floating Marquee Ticker */
+@keyframes marquee-ltr {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee-ltr {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-ltr 30s linear infinite;
+}
+
+.animate-marquee-ltr:hover {
+  animation-play-state: paused;
+}
+
 /* Specifically style for clean, readable document printing */
 @media print {
   /* Hide all interactive components and layout scaffolding */
