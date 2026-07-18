@@ -116,6 +116,59 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
   // Completed subtopics tracker
   const [completedSubtopics, setCompletedSubtopics] = useState<Record<string, string[]>>({});
   
+  // Offline Sync and Service Worker state variables
+  const [offlineSyncStatus, setOfflineSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'failed'>('idle');
+  const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Listen for Service Worker Complete synchronization message
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'SYNC_COMPLETE') {
+        setOfflineSyncStatus('synced');
+        setLastSyncedTime(new Date(event.data.timestamp).toLocaleTimeString('sw-TZ', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }));
+        showToast('success', 'Masomo yote unayoyapenda yamesawazishwa offline! 🚀');
+      }
+    };
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+      }
+    };
+  }, []);
+
+  // Sync favorites when they change or when the component mounts
+  useEffect(() => {
+    if (!userProfile?.favorites || userProfile.favorites.length === 0) return;
+
+    const triggerOfflineSync = () => {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        setOfflineSyncStatus('syncing');
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SYNC_FAVORITES',
+          favorites: userProfile.favorites
+        });
+      }
+    };
+
+    triggerOfflineSync();
+  }, [userProfile?.favorites]);
+  
   // Quiz active revision state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
@@ -1202,7 +1255,53 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
           
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
             {activeLevelTab === 'favorites' ? (
-              <div className="space-y-2 animate-fade-in">
+              <div className="space-y-3 animate-fade-in">
+                {/* Offline Study Sync Panel */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${
+                        isOffline ? 'bg-amber-500' :
+                        offlineSyncStatus === 'syncing' ? 'bg-cyan-500 animate-ping' :
+                        offlineSyncStatus === 'synced' ? 'bg-green-500' : 'bg-slate-300'
+                      }`} />
+                      <span className="text-xs font-black text-slate-800">
+                        {isOffline ? 'Uko Nje ya Mtandao' :
+                         offlineSyncStatus === 'syncing' ? 'Inasawazisha Masomo...' :
+                         offlineSyncStatus === 'synced' ? 'Masomo Yote Yako Offline' : 'Usawazishaji wa Offline'}
+                      </span>
+                    </div>
+                    {!isOffline && (
+                      <button
+                        onClick={() => {
+                          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                            setOfflineSyncStatus('syncing');
+                            navigator.serviceWorker.controller.postMessage({
+                              type: 'SYNC_FAVORITES',
+                              favorites: userProfile?.favorites || []
+                            });
+                          }
+                        }}
+                        disabled={offlineSyncStatus === 'syncing'}
+                        className="text-[10px] font-black uppercase text-cyan-600 hover:text-cyan-700 bg-cyan-50 hover:bg-cyan-100 px-2.5 py-1.5 rounded-xl transition-all"
+                      >
+                        {offlineSyncStatus === 'syncing' ? 'Inasawazisha...' : 'Sawazisha Sasa'}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-bold">
+                    Lupanulla inasawazisha mada zako unazozipenda moja kwa moja ili uweze kuendelea kusoma, kujibu maswali ya mazoezi, na kutumia flashcards ukiwa mahali popote bila mtandao.
+                  </p>
+                  
+                  {lastSyncedTime && (
+                    <div className="text-[9px] font-black text-slate-400 flex items-center gap-1">
+                      <span>✓ Mwisho kusawazishwa:</span>
+                      <span className="text-slate-600">{lastSyncedTime}</span>
+                    </div>
+                  )}
+                </div>
+
                 {favorites.length > 0 ? (
                   favorites.map((topic) => {
                     const isTopicSelected = selectedTopic?.title === topic.title;

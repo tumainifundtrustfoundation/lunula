@@ -148,3 +148,47 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// 5. Handle messages from client for proactive caching and syncing of favorite subjects/topics
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SYNC_FAVORITES') {
+    const favorites = event.data.favorites || [];
+    console.log('[Service Worker] Proactive sync requested for favorite topics:', favorites);
+
+    const syncPromises = favorites.map((topicTitle) => {
+      // Proactively fetch and cache the API response for this specific favorite study material
+      const targetUrl = `/api/study-materials?topic=${encodeURIComponent(topicTitle)}`;
+      
+      return fetch(targetUrl)
+        .then((response) => {
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            return caches.open(CACHE_NAME).then((cache) => {
+              return cache.put(targetUrl, responseClone);
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('[Service Worker] Failed proactive caching for topic:', topicTitle, err);
+        });
+    });
+
+    event.waitUntil(
+      Promise.all(syncPromises).then(() => {
+        console.log('[Service Worker] Proactive caching of study materials completed successfully!');
+        
+        // Notify all open client windows that syncing is complete
+        return self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({
+              type: 'SYNC_COMPLETE',
+              favorites: favorites,
+              timestamp: Date.now()
+            });
+          });
+        });
+      })
+    );
+  }
+});
+

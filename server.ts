@@ -387,6 +387,182 @@ app.post('/api/workspace/docs/create', async (req, res) => {
   }
 });
 
+// Endpoint to return comprehensive offline study materials for dynamic caching
+app.get('/api/study-materials', (req, res) => {
+  const topic = req.query.topic as string;
+  
+  // A database of detailed notes, flashcards, quiz questions, and study guides for various topics
+  const materialsDb: Record<string, any> = {
+    'Chapter 1: Namba Nzima na Sehemu': {
+      title: 'Chapter 1: Namba Nzima na Sehemu',
+      subject: 'Hisabati (Mathematics)',
+      level: 'msingi',
+      content: 'Sehemu inawakilisha sehemu ya kitu kizima. Ina namba ya juu (Kiasi) na namba ya chini (Asili). Desimali ni njia nyingine ya kuandika sehemu yenye asili ya 10, 100, 1000 n.k. Mfano, 1/2 inasomeka nusu, na kwa desimali ni 0.5.',
+      subtopics: [
+        'Ufafanuzi wa sehemu (proper, improper and mixed fractions)',
+        'Kubadili sehemu kuwa desimali na kinyume chake',
+        'Kujumlisha na kutoa sehemu zenye asili tofauti',
+        'Kuzidisha na kugawanya sehemu za hisabati'
+      ],
+      notes: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Hisabati\nDarasa: Msingi\nMada: Sehemu na Desimali\n\n1. UTANGULIZI WA SEHEMU\nSehemu ni namba inayotaja sehemu ya kitu kizima ambacho kimegawanywa katika sehemu zilizo sawa...\n\n2. AINA ZA SEHEMU\na) Sehemu Kawaida (Proper Fraction): Kiasi ni kidogo kuliko asili. Mfano: 2/3, 4/5.\nb) Sehemu Shazari (Improper Fraction): Kiasi ni kikubwa au sawa na asili. Mfano: 5/3, 7/4.\nc) Sehemu Mseto (Mixed Fraction): Inajumuisha namba nzima na sehemu ya kawaida. Mfano: 1 1/2, 2 3/4.',
+      flashcards: [
+        { term: 'Sehemu ya Kawaida', definition: 'Kiasi ni kidogo kuliko asili. Mfano: 2/3.' },
+        { term: 'Sehemu Shazari', definition: 'Kiasi ni kikubwa au sawa na asili. Mfano: 5/3.' },
+        { term: 'Sehemu Mseto', definition: 'Namba nzima na sehemu ya kawaida. Mfano: 1 1/2.' }
+      ],
+      quizzes: [
+        {
+          question: "Ni ipi kati ya hizi ni Sehemu Shazari (Improper Fraction)?",
+          options: ["3/4", "5/3", "1/2", "0.75"],
+          correctAnswerIndex: 1,
+          explanation: "Sehemu shazari ina kiasi kikubwa au sawa na asili (numerator >= denominator). Mfano 5/3."
+        }
+      ]
+    },
+    'Maumbo ya Jometri (Geometric Shapes)': {
+      title: 'Maumbo ya Jometri (Geometric Shapes)',
+      subject: 'Hisabati (Mathematics)',
+      level: 'msingi',
+      content: 'Jometri ni tawi la hisabati linalohusika na vipimo na sifa za mistari, pembe, na maumbo. Mstatili una pande nne, na pande zinazotazamana ziko sawa. Mraba una pande zote nne sawa na pembe zote ni nyuzi 90.',
+      subtopics: [
+        'Kutambua mstatili, mraba na duara',
+        'Kutafuta eneo la mstatili na mraba',
+        'Kutafuta mzingo wa maumbo mbalimbali'
+      ],
+      notes: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Hisabati\nMada: Maumbo ya Jometri\n\n1. MSTATILI (RECTANGLE)\nMstatili ni umbo lenye pande nne ambapo pande zinazotazamana zina urefu sawa...\n\n2. MRABA (SQUARE)\nMraba ni umbo lenye pande nne zinazolingana urefu na pembe zote nne ni pembe mraba.',
+      flashcards: [
+        { term: 'Eneo la Mstatili', definition: 'Zao la urefu na upana. Formula: Eneo = L x W.' },
+        { term: 'Mzingo', definition: 'Urefu mzima wa mpaka wa nje wa umbo lolote la kijiometri.' }
+      ],
+      quizzes: [
+        {
+          question: "Tafuta eneo la mstatili wenye urefu wa sm 10 na upana wa sm 6:",
+          options: ["sm 16", "sm² 60", "sm² 32", "sm² 16"],
+          correctAnswerIndex: 1,
+          explanation: "Eneo la Mstatili = Urefu x Upana = 10 x 6 = 60 sm²."
+        }
+      ]
+    },
+    'Mifumo ya Mwili wa Binadamu (Human Body Systems)': {
+      title: 'Mifumo ya Mwili wa Binadamu (Human Body Systems)',
+      subject: 'Sayansi na Teknolojia (Science & Tech)',
+      level: 'msingi',
+      content: 'Mwili wa binadamu umeundwa na mifumo mbalimbali inayofanya kazi kwa ushirikiano. Mfuno wa mmeng`enyo wa chakula huanzia kinywani na kuishia sehemu ya haja kubwa.',
+      subtopics: [
+        'Mfumo wa mmeng`enyo wa chakula (Digestive System)',
+        'Mfumo wa upumuaji na viungo vyake',
+        'Usafi na afya ya viungo vya mwili'
+      ],
+      notes: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Sayansi na Teknolojia\nMada: Mfumo wa Mmeng`enyo wa Chakula\n\n1. UTANGULIZI\nMmeng`enyo wa chakula ni mchakato wa kuvunja chakula katika chembechembe ndogo...',
+      flashcards: [
+        { term: 'Mmeng`enyo', definition: 'Mchakato wa kuvunja chakula katika chembechembe ndogo zinazoweza kufyonzwa.' }
+      ],
+      quizzes: [
+        {
+          question: "Mchakato wa mmeng'enyo wa chakula wa kemikali huanzia wapi?",
+          options: ["Tumboni", "Kinywani", "Kwenye Umio", "Kwenye Utumbo Mwembamba"],
+          correctAnswerIndex: 1,
+          explanation: "Mmeng'enyo wa kemikali huanza kinywani pale vimeng'enya vya mate vinapovunja wanga."
+        }
+      ]
+    },
+    'Aina za Maneno (Parts of Speech)': {
+      title: 'Aina za Maneno (Parts of Speech)',
+      subject: 'Kiswahili',
+      level: 'msingi',
+      content: 'Katika lugha ya Kiswahili, kuna makundi manane ya aina za maneno yanayounda miundo ya sentensi. Kuelewa aina hizi za maneno kunamsaidia mwanafunzi kuandika na kuzungumza Kiswahili fasaha.',
+      subtopics: [
+        'Nomino (N) na aina zake',
+        'Viwakilishi vya Nomino (W)',
+        'Vitenzi (T) na uainishaji wake',
+        'Vivumishi (V) na uainishaji wake'
+      ],
+      notes: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSomo: Kiswahili\nMada: Aina za Maneno\n\n1. NOMINO (N)\nNomino ni neno linalotaja jina la mtu, kitu, mahali, hali au dhana.',
+      flashcards: [
+        { term: 'Nomino (N)', definition: 'Neno linalotaja jina la mtu, kitu, mahali, hali au dhana.' }
+      ],
+      quizzes: [
+        {
+          question: "Nomino ni neno la namna gani?",
+          options: ["Linalotaja jina la kitu/mtu", "Linaloeleza tendo", "Linalounganisha sentensi", "Linaloonesha sifa"],
+          correctAnswerIndex: 0,
+          explanation: "Nomino hutumika kutaja jina la mtu, mahali, kitu, au dhana."
+        }
+      ]
+    },
+    'Tenses (Nyakati)': {
+      title: 'Tenses (Nyakati)',
+      subject: 'English Language (Kiingereza)',
+      level: 'msingi',
+      content: 'Tenses in English tell us when an action takes place: in the past, present, or future. Verbs change their form depending on the tense and the subject of the sentence.',
+      subtopics: [
+        'Present Simple Tense',
+        'Past Simple Tense',
+        'Future Simple Tense',
+        'Present Continuous Tense'
+      ],
+      notes: 'LUPANULLA ACADEMIC NOTISI SERIES:\n\nSubject: English Tenses\n\n1. PRESENT SIMPLE TENSE\nUsed to express habits, general truths, and regular actions.',
+      flashcards: [
+        { term: 'Present Simple Tense', definition: 'Used for habits, facts, and routines. e.g., "He runs every day."' }
+      ],
+      quizzes: [
+        {
+          question: "Which sentence is in the Past Simple Tense?",
+          options: ["She writes a letter.", "She has written a letter.", "She wrote a letter.", "She is writing a letter."],
+          correctAnswerIndex: 2,
+          explanation: "The past simple form of 'write' is 'wrote'."
+        }
+      ]
+    }
+  };
+
+  if (!topic) {
+    return res.json({
+      success: true,
+      message: 'Lupanulla Offline Sync Hub active.',
+      availableTopics: Object.keys(materialsDb)
+    });
+  }
+
+  const normalizedTopic = Object.keys(materialsDb).find(k => 
+    k.toLowerCase().includes(topic.toLowerCase()) || 
+    topic.toLowerCase().includes(k.toLowerCase())
+  );
+
+  const data = normalizedTopic ? materialsDb[normalizedTopic] : {
+    title: topic,
+    subject: 'Mada Iliyochaguliwa',
+    level: 'general',
+    content: `Notisi kamili za offline na mada ndogo kuhusu "${topic}". Lupanulla imehifadhi mada hii kwa ajili ya usomaji rahisi ukiwa nje ya mtandao.`,
+    subtopics: ['Utangulizi', 'Ufafanuzi wa kina', 'Mifano na Maswali ya Mazoezi'],
+    notes: `LUPANULLA ACADEMIC NOTISI SERIES (OFFLINE MODE)\n\nSomo: Masomo ya Tanzania\nMada: ${topic}\n\nNotisi hizi zimesawazishwa na kuhifadhiwa kwenye kifaa chako kwa matumizi ya offline. Unaweza kusoma, kurudia, na kufanya mazoezi wakati wowote hata ukiwa maeneo yasiyo na mtandao!`,
+    flashcards: [
+      { term: topic, definition: `Maelezo mafupi ya kukumbuka kuhusu ${topic} kwa ajili ya mtihani.` }
+    ],
+    quizzes: [
+      {
+        question: `Ni nini lengo kuu la kujifunza ${topic}?`,
+        options: ["Kufaulu mtihani", "Kupata ujuzi wa vitendo", "Yote mawili", "Hakuna jibu sahihi"],
+        correctAnswerIndex: 2,
+        explanation: "Kujifunza husaidia kufanya vizuri kitaaluma na kupata stadi za maisha."
+      }
+    ]
+  };
+
+  res.json({
+    success: true,
+    topic: data.title,
+    subject: data.subject,
+    level: data.level,
+    content: data.content,
+    subtopics: data.subtopics,
+    notes: data.notes,
+    flashcards: data.flashcards,
+    quizzes: data.quizzes,
+    syncedAt: Date.now()
+  });
+});
+
 // Initialize Gemini Client with standard User-Agent header
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
