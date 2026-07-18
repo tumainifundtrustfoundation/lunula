@@ -59,6 +59,11 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
   const [isForSale, setIsForSale] = useState(false);
   const [price, setPrice] = useState('0');
   
+  // Copyright & Source Attribution Form Fields
+  const [sourceName, setSourceName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [copyrightAccepted, setCopyrightAccepted] = useState(false);
+  
   // Status states
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -183,6 +188,11 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setError('Maelezo (description) ni marefu mno. Tafadhali punguza yasizidi herufi 1000.');
       return;
     }
+
+    if (!copyrightAccepted) {
+      setError('Tafadhali thibitisha na kukubali vigezo vya hakimiliki kwa kuweka alama ya vyema kwenye kisanduku cha makubaliano chini ya fomu.');
+      return;
+    }
     
     if (uploadMethod === 'file') {
       if (!selectedFile && !pickedFromDrive) {
@@ -255,7 +265,11 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         sizeKB: sizeKB,
         documentType: documentType,
         isForSale: isForSale,
-        price: isForSale ? (parseInt(price, 10) || 0) : 0
+        price: isForSale ? (parseInt(price, 10) || 0) : 0,
+        sourceName: sourceName.trim(),
+        sourceUrl: sourceUrl.trim(),
+        copyrightAccepted: copyrightAccepted,
+        reportCount: 0
       };
 
       const docId = await saveDocumentMetadata(docPayload);
@@ -270,6 +284,9 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setIsForSale(false);
       setPrice('0');
       setDocumentType('Notes');
+      setSourceName('');
+      setSourceUrl('');
+      setCopyrightAccepted(false);
 
     } catch (err: any) {
       console.error('File upload error:', err);
@@ -486,6 +503,53 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
                   placeholder="Mfano: Mathematics, CSEE, NECTA, Form IV" 
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
                 />
+              </div>
+
+              {/* Copyright & Source Attribution Section */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-250/60 pb-2.5">
+                  <ShieldAlert size={16} className="text-cyan-600" />
+                  <h4 className="text-xs font-extrabold text-slate-900 uppercase">Hati ya Hakimiliki & Chanzo cha Nyaraka</h4>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Chanzo Halisi (Source Name - Optional)</label>
+                    <input 
+                      type="text" 
+                      value={sourceName}
+                      onChange={(e) => setSourceName(e.target.value)}
+                      placeholder="Mfano: Maktaba Tetea, NECTA, au Mwandishi" 
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Kiungo cha Chanzo (Source URL - Optional)</label>
+                    <input 
+                      type="url" 
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://example.com/original-file" 
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      required
+                      checked={copyrightAccepted}
+                      onChange={(e) => setCopyrightAccepted(e.target.checked)}
+                      className="mt-0.5 rounded text-cyan-600 focus:ring-cyan-500 border-slate-350"
+                    />
+                    <span className="text-[10.5px] text-slate-600 font-bold leading-normal select-none">
+                      Ninathibitisha kuwa rasilimali hii haikiuki hakimiliki ya mtu au tovuti yoyote. Nakubali kuwa nikipakia maudhui yenye hati miliki bila idhini, rasilimali hii itaondolewa mara moja.
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>

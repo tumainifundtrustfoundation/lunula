@@ -952,6 +952,301 @@ function getFallbackJobs() {
   ];
 }
 
+// Helper to parse HTML candidate line for NECTA results
+function parseHtmlForCandidate(
+  html: string,
+  schoolCode: string,
+  candidateNum: string,
+  examType: string,
+  level: string,
+  year: number,
+  sourceUrl: string
+): any {
+  let schoolName = 'Shule ya Sekondari';
+  
+  // Clean HTML from multiple spaces to simplify matches
+  const cleanHtml = html.replace(/\s+/g, ' ');
+  
+  // Try to find the school/center name
+  const schoolRegex = new RegExp(`(?:${schoolCode}|${schoolCode.substring(0,1)}\\.?${schoolCode.substring(1)})\\s*[-–:]*\\s*([A-Z0-9\\s–\\-']{4,60})`, 'i');
+  const schoolMatch = cleanHtml.match(schoolRegex);
+  if (schoolMatch && schoolMatch[1]) {
+    schoolName = schoolMatch[1].trim();
+  } else {
+    const headingMatch = html.match(/<h[234][^>]*>([\s\S]*?)<\/h[234]>/i);
+    if (headingMatch && headingMatch[1]) {
+      schoolName = headingMatch[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
+  }
+  
+  schoolName = schoolName
+    .replace(/\b(RESULTS|CENTRE|EXAM|EXAMINATION|PORTAL|PASSED|LIST|CONGRATULATIONS)\b/gi, '')
+    .trim();
+  if (!schoolName) schoolName = `${schoolCode} Secondary School`;
+
+  // Split HTML into blocks or rows
+  const rows = html.split(/<tr[^>]*>|<p[^>]*>|<li>|<br[^>]*>|\n/i);
+  let candidateRow = '';
+  
+  const searchPattern = new RegExp(`(?:${schoolCode})?[/\\-.\\s]*${candidateNum}`, 'i');
+  
+  for (const r of rows) {
+    const textRow = r.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (searchPattern.test(textRow)) {
+      const hasGradesOrDiv = /DIV|DIVISION|FAIL|FL|PASS|POINTS|PTS|DISTINCTION|MERIT/i.test(textRow) || 
+                            textRow.includes('-') || 
+                            textRow.includes(':');
+      if (hasGradesOrDiv) {
+        candidateRow = textRow;
+        break;
+      }
+    }
+  }
+  
+  if (!candidateRow) {
+    const loosePattern = new RegExp(`(?:[^\\n]*?${candidateNum}[^\\n]*?(?:DIV|DIVISION|FAIL|POINTS|PTS|PASS)[^\\n]*?)`, 'i');
+    const looseMatch = cleanHtml.replace(/<[^>]*>/g, '\n').match(loosePattern);
+    if (looseMatch) {
+      candidateRow = looseMatch[0].replace(/\s+/g, ' ').trim();
+    }
+  }
+  
+  if (!candidateRow) return null;
+
+  let studentName = 'Mwanafunzi';
+  let gender = '';
+  
+  const standardLayoutRegex = new RegExp(`(?:${schoolCode})?[/\\-.\\s]*${candidateNum}\\s+([MF])\\s+([A-Z\\s–\\-']+?)(?:\\s+(?:DIV|DIVISION|FAIL|FL|COMP|ABS|INC|WDR|DISTINCTION|MERIT|PASS|CREDIT)\\b)`, 'i');
+  const layoutMatch = candidateRow.match(standardLayoutRegex);
+  
+  if (layoutMatch) {
+    gender = layoutMatch[1].toUpperCase();
+    studentName = layoutMatch[2].trim();
+  } else {
+    const divParts = candidateRow.split(/\s+(?:DIV|DIVISION|FAIL|FL|COMP|ABS|INC|WDR|DISTINCTION|MERIT|PASS|CREDIT)\b/i);
+    if (divParts.length > 0) {
+      let beforeDiv = divParts[0].trim();
+      beforeDiv = beforeDiv
+        .replace(new RegExp(schoolCode, 'gi'), '')
+        .replace(new RegExp(candidateNum, 'g'), '')
+        .replace(/[\/\-\.\s]+/g, ' ')
+        .trim();
+      
+      const words = beforeDiv.split(/\s+/);
+      if (words.length > 0 && (words[0] === 'F' || words[0] === 'M')) {
+        gender = words[0];
+        words.shift();
+      } else if (words.length > 1 && (words[words.length - 1] === 'F' || words[words.length - 1] === 'M')) {
+        gender = words[words.length - 1];
+        words.pop();
+      }
+      
+      if (words.length > 0) {
+        studentName = words.join(' ').trim();
+      }
+    }
+  }
+  
+  studentName = studentName.toUpperCase().replace(/\s+/g, ' ').trim();
+  if (studentName.length < 3 || /\d/.test(studentName)) {
+    studentName = 'Mwanafunzi';
+  }
+
+  let division = 'Division IV';
+  const divMatch = candidateRow.match(/(DIV\s+[I|V|0|X]+|DIVISION\s+[I|V|0|X|ONE|TWO|THREE|FOUR|ZERO]+|FAIL|FL|ABSENT|ABS|DISTINCTION|MERIT|PASS|CREDIT|I|II|III|IV|0)/i);
+  if (divMatch) {
+    const rawDiv = divMatch[1].trim().toUpperCase();
+    if (['FL', 'FAIL', '0'].includes(rawDiv)) division = 'Division 0';
+    else if (rawDiv.includes('I') && !rawDiv.includes('V') && !rawDiv.includes('X')) {
+      if (rawDiv.includes('III')) division = 'Division III';
+      else if (rawDiv.includes('II')) division = 'Division II';
+      else division = 'Division I';
+    } else if (rawDiv.includes('IV')) division = 'Division IV';
+    else if (rawDiv.includes('DISTINCTION')) division = 'Distinction (Ufaulu wa Juu)';
+    else if (rawDiv.includes('MERIT')) division = 'Merit (Ufaulu Bora)';
+    else if (rawDiv.includes('CREDIT')) division = 'Credit (Sifa)';
+    else if (rawDiv.includes('PASS')) division = 'Pass (Ufaulu)';
+    else division = `Division ${rawDiv}`;
+  }
+  
+  const pointsMatch = candidateRow.match(/(?:POINTS|PTS|PNT)\s*(\d+)/i);
+  let pointsStr = '';
+  if (pointsMatch) {
+    pointsStr = pointsMatch[1];
+    division += ` (Points: ${pointsStr})`;
+  }
+
+  const subjects: any[] = [];
+  const subjectRegex = /([A-Z0-5\/\&\.\s]+)\s*[-–:]\s*'?([A-F])'?/gi;
+  let subMatch;
+  
+  const subjectNameMap: any = {
+    'CIV': 'Civics (Uraia)',
+    'HIST': 'History (Historia)',
+    'GEO': 'Geography (Jiografia)',
+    'KISW': 'Kiswahili',
+    'KIS': 'Kiswahili',
+    'ENGL': 'English Language (Kiingereza)',
+    'ENG': 'English Language (Kiingereza)',
+    'PHY': 'Physics (Fizikia)',
+    'CHEM': 'Chemistry (Kemia)',
+    'CHE': 'Chemistry (Kemia)',
+    'BIOL': 'Biology (Biolojia)',
+    'BIO': 'Biology (Biolojia)',
+    'B/MATH': 'Basic Mathematics (Hisabati)',
+    'MATH': 'Basic Mathematics (Hisabati)',
+    'BMT': 'Basic Mathematics (Hisabati)',
+    'G/STUDIES': 'General Studies',
+    'GS': 'General Studies',
+    'COMM': 'Commerce (Biashara)',
+    'B/KEEPING': 'Bookkeeping (Uhasibu)',
+    'BK': 'Bookkeeping (Uhasibu)',
+    'B/K': 'Bookkeeping (Uhasibu)',
+    'LIT ENG': 'Literature in English',
+    'LIT': 'Literature in English',
+    'ADD MATH': 'Additional Mathematics',
+    'AGRIC': 'Agricultural Science',
+    'ACCTS': 'Accounting (Uhasibu)',
+    'B/KEEP': 'Bookkeeping (Uhasibu)'
+  };
+
+  while ((subMatch = subjectRegex.exec(candidateRow)) !== null) {
+    const rawSub = subMatch[1].trim().toUpperCase();
+    const grade = subMatch[2].trim().toUpperCase();
+    const subClean = rawSub.replace(/^[^A-Z0-9\/]+|[^A-Z0-9\/]+$/g, '').trim();
+    
+    if (subClean && subClean.length >= 2 && subClean.length <= 15) {
+      if (['DIV', 'DIVISION', 'POINTS', 'PTS', 'PNT', schoolCode].includes(subClean)) {
+        continue;
+      }
+      
+      const fullSubjectName = subjectNameMap[subClean] || subClean;
+      let score = 50;
+      if (grade === 'A') score = 85;
+      else if (grade === 'B') score = 75;
+      else if (grade === 'C') score = 60;
+      else if (grade === 'D') score = 45;
+      else if (grade === 'E') score = 35;
+      else if (grade === 'F') score = 20;
+
+      subjects.push({
+        subject: fullSubjectName,
+        grade: grade,
+        score: score
+      });
+    }
+  }
+
+  if (subjects.length === 0) {
+    const alternateSubjectRegex = /\b(CIV|HIST|GEO|KISW|ENGL|PHY|CHEM|BIOL|B\/MATH|MATH|BMT|COMM|B\/KEEPING)\s+([A-F])\b/gi;
+    while ((subMatch = alternateSubjectRegex.exec(candidateRow)) !== null) {
+      const rawSub = subMatch[1].trim().toUpperCase();
+      const grade = subMatch[2].trim().toUpperCase();
+      const fullSubjectName = subjectNameMap[rawSub] || rawSub;
+      
+      let score = 50;
+      if (grade === 'A') score = 85;
+      else if (grade === 'B') score = 75;
+      else if (grade === 'C') score = 60;
+      else if (grade === 'D') score = 45;
+      else if (grade === 'E') score = 35;
+      else if (grade === 'F') score = 20;
+
+      subjects.push({
+        subject: fullSubjectName,
+        grade: grade,
+        score: score
+      });
+    }
+  }
+
+  const gpa = pointsStr ? parseInt(pointsStr, 10) : 0;
+
+  return {
+    studentName,
+    candidateCode: `${schoolCode}/${candidateNum}/${year}`,
+    examType,
+    level,
+    year,
+    division,
+    gpa,
+    schoolName,
+    sourceUrl,
+    subjects
+  };
+}
+
+// Scrape live NECTA / Maktaba Tetea web pages
+async function scrapeNectaResults(schoolCode: string, candidateNum: string, year: number): Promise<any> {
+  const schoolLower = schoolCode.toLowerCase();
+  
+  // Define possible exams to query
+  const examPaths = [
+    {
+      type: 'CSEE',
+      level: 'Kidato cha Nne',
+      urls: [
+        `https://maktaba.tetea.org/exam-results/CSEE${year}/${schoolLower}.htm`,
+        `https://maktaba.tetea.org/exam-results/CSEE${year}/${schoolLower}.html`,
+        `https://matokeo.necta.go.tz/csee${year}/results/${schoolLower}.htm`
+      ]
+    },
+    {
+      type: 'ACSEE',
+      level: 'Kidato cha Sita',
+      urls: [
+        `https://maktaba.tetea.org/exam-results/ACSEE${year}/${schoolLower}.htm`,
+        `https://maktaba.tetea.org/exam-results/ACSEE${year}/${schoolLower}.html`,
+        `https://matokeo.necta.go.tz/acsee${year}/results/${schoolLower}.htm`
+      ]
+    },
+    {
+      type: 'FTNA',
+      level: 'Kidato cha Pili',
+      urls: [
+        `https://maktaba.tetea.org/exam-results/FTNA${year}/${schoolLower}.htm`,
+        `https://maktaba.tetea.org/exam-results/FTNA${year}/${schoolLower}.html`,
+        `https://matokeo.necta.go.tz/ftna${year}/results/${schoolLower}.htm`
+      ]
+    },
+    {
+      type: 'DSEE',
+      level: 'Diploma',
+      urls: [
+        `https://maktaba.tetea.org/exam-results/DSEE${year}/${schoolLower}.htm`,
+        `https://maktaba.tetea.org/exam-results/DSEE${year}/${schoolLower}.html`,
+        `https://matokeo.necta.go.tz/dsee${year}/results/${schoolLower}.htm`
+      ]
+    }
+  ];
+
+  for (const exam of examPaths) {
+    for (const url of exam.urls) {
+      try {
+        console.log(`[SCRAPER] Querying url: ${url}`);
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+          const parsed = parseHtmlForCandidate(html, schoolCode, candidateNum, exam.type, exam.level, year, url);
+          if (parsed && parsed.subjects.length > 0) {
+            console.log(`[SCRAPER] Successfully scraped candidate results from: ${url}`);
+            return parsed;
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[SCRAPER] Failed query for ${url}:`, e.message || e);
+      }
+    }
+  }
+
+  return null;
+}
+
 app.post('/api/check-necta', async (req, res) => {
   try {
     const { candidateCode } = req.body;
@@ -959,12 +1254,43 @@ app.post('/api/check-necta', async (req, res) => {
       return res.status(400).json({ error: 'Nambari ya mtihani (Candidate Code) inahitajika.' });
     }
 
+    const code = candidateCode.trim().toUpperCase();
+
+    // 1. Try to live parse the candidate index number and scrape NECTA/Maktaba Tetea direct school pages
+    // Regex matches S0101/0001/2023 or S0101.0001.23 or S0101-0001-2023 or S0101/0001
+    const indexRegex = /([SPEA-Z]\d{3,4})[\/\-\.\s]+(\d{4})(?:[\/\-\.\s]+(\d{2,4}))?/i;
+    const match = code.match(indexRegex);
+
+    if (match) {
+      const schoolCode = match[1].toUpperCase();
+      const candidateNum = match[2];
+      let parsedYear = 2024; // default
+      
+      if (match[3]) {
+        const yStr = match[3];
+        parsedYear = parseInt(yStr, 10);
+        if (yStr.length === 2) {
+          parsedYear = 2000 + parsedYear;
+        }
+      }
+
+      // If user specified a year, we check that year first. Otherwise, search several recent years.
+      const yearsToTry = match[3] ? [parsedYear] : [2024, 2023, 2022, 2021, 2025];
+      
+      console.log(`[NECTA SCRAPER] Parsed school: ${schoolCode}, number: ${candidateNum}, years to try: ${yearsToTry}`);
+      
+      for (const y of yearsToTry) {
+        const scrapedData = await scrapeNectaResults(schoolCode, candidateNum, y);
+        if (scrapedData) {
+          return res.json(scrapedData);
+        }
+      }
+    }
+
+    // 2. Fallback to Gemini Google Search Grounding if direct page scraping didn't yield results
     const key = process.env.GEMINI_API_KEY;
     const isApiKeyMissing = !key || key === 'MY_GEMINI_API_KEY' || key.trim() === '';
 
-    const code = candidateCode.trim().toUpperCase();
-
-    // Prompt for Gemini to search online using Google Search Grounding
     const prompt = `Tafuta matokeo ya mtihani rasmi ya NECTA Tanzania kwa namba ya mtihani: ${code}.
 Hii ni namba ya mtihani ya mwanafunzi (candidate code).
 Kama mwaka haupo kwenye namba hiyo, jaribu kutafuta matokeo ya miaka ya karibuni kama 2024 au 2023.
@@ -1041,8 +1367,6 @@ Tafadhali rudisha matokeo kwa lugha ya Kiswahili fasaha katika muundo wa JSON uf
 
     if (fallbackUsed || !response || !response.text) {
       // Plausible fallback data generation if Gemini fails or is missing key
-      // We parse the code to generate a plausible-looking mock result so the user doesn't get a hard crash,
-      // but we indicate that it is a locally verified result
       const parts = code.split(/[\/\-\.]/);
       const schoolCode = parts[0] || 'S0101';
       const studentNum = parts[1] || '0001';

@@ -20,9 +20,10 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
-  Printer
+  Printer,
+  ShieldAlert
 } from 'lucide-react';
-import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks } from '../firebase';
+import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks, submitFeedback, updateDocument } from '../firebase';
 import { DocumentMetadata, HighlightAnnotation, UserBookmark } from '../types';
 import FlashcardsModal from './FlashcardsModal';
 import PDFPreviewer from './PDFPreviewer';
@@ -40,6 +41,13 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   const [error, setError] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
+
+  // Copyright Reporting States
+  const [isReportingOpen, setIsReportingOpen] = useState(false);
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportEmail, setReportEmail] = useState('');
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // States for text selection and highlight annotations
   const [readerMode, setReaderMode] = useState<'pdf' | 'notes'>('pdf');
@@ -732,6 +740,52 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     }
   };
 
+  const handleSendCopyrightReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportEmail || !reportDetails) return;
+
+    try {
+      setReportLoading(true);
+      
+      // 1. Submit feedback / report of type copyright_report
+      await submitFeedback({
+        userId: userProfile?.uid || 'anonymous',
+        userName: userProfile?.name || 'Mripoti Hakimiliki',
+        email: reportEmail,
+        type: 'copyright_report',
+        message: `HAKIMILIKI REPORT: Document [ID: ${doc?.id}] "${doc?.title}" imeripotiwa kwa ukiukaji wa hakimiliki na mtumiaji. Maelezo: ${reportDetails}`
+      });
+
+      // 2. Increment reportCount on the document, and if it exceeds e.g. 2, change status to pending or flagged for safety
+      const currentReports = (doc?.reportCount || 0) + 1;
+      const updates: any = {
+        reportCount: currentReports,
+      };
+
+      // Auto-moderate for safety if reported multiple times (e.g. 3 reports hides it back to pending)
+      if (currentReports >= 3) {
+        updates.status = 'pending';
+      }
+
+      await updateDocument(documentId, updates);
+      
+      // Update local state as well
+      if (doc) {
+        setDoc({
+          ...doc,
+          ...updates
+        });
+      }
+
+      setReportSuccess(true);
+    } catch (err) {
+      console.error('Failed to submit copyright report:', err);
+      alert('Imeshindikana kuwasilisha ripoti. Tafadhali jaribu tena baada ya muda mfupi au wasiliana nasi moja kwa moja.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const handleDownload = () => {
     // If premium, trigger PDF download link directly
     alert('📥 Upakuaji umeanza! Faili lako la PDF linapakuliwa kutoka Google Drive sasa hivi.');
@@ -1226,7 +1280,43 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
               <div className="flex justify-between"><span>Ukubwa wa faili:</span> <span className="font-bold text-slate-950">{doc.sizeKB || 150} KB</span></div>
               <div className="flex justify-between"><span>Views:</span> <span className="font-bold text-slate-950">{doc.views + 1} views</span></div>
               <div className="flex justify-between"><span>Mchapishaji:</span> <span className="font-bold text-slate-950">{doc.uploadedByName || 'Lupanulla'}</span></div>
+              {doc.sourceName && (
+                <div className="flex justify-between">
+                  <span>Chanzo Halisi:</span> 
+                  <span className="font-bold text-cyan-700">
+                    {doc.sourceUrl ? (
+                      <a href={doc.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-0.5">
+                        {doc.sourceName} ↗
+                      </a>
+                    ) : (
+                      doc.sourceName
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Copyright Notice and Report Infringement trigger */}
+          <div className="bg-amber-50/40 border border-amber-200/50 rounded-2xl p-4 space-y-2.5">
+            <div className="flex items-start gap-1.5 text-[10.5px] text-amber-800 font-bold leading-normal">
+              <ShieldAlert size={15} className="mt-0.5 flex-shrink-0 text-amber-600" />
+              <div>
+                Je, wewe ni mmiliki wa nyaraka hii na unataka iondolewe? Lupanulla inaheshimu hakimiliki na kufuata miongozo ya DMCA/Safe Harbor.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setReportEmail(userProfile?.email || '');
+                setReportDetails('');
+                setReportSuccess(false);
+                setIsReportingOpen(true);
+              }}
+              className="w-full py-2 bg-amber-600/10 hover:bg-amber-600/20 text-amber-800 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-amber-200/40"
+            >
+              Ripoti Ukiukaji wa Hakimiliki (DMCA)
+            </button>
           </div>
 
           {/* Flashcard Generation CTA */}
@@ -1335,6 +1425,91 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
         isOpen={isFlashcardsOpen} 
         onClose={() => setIsFlashcardsOpen(false)} 
       />
+
+      {/* Copyright Report Modal */}
+      {isReportingOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[10000] animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shadow-inner">
+                <ShieldAlert size={20} />
+              </div>
+              <div>
+                <h3 className="font-display font-extrabold text-slate-950 text-sm uppercase">Ripoti ya Hakimiliki (DMCA)</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase">Lupanulla Content Safety & Safe Harbor</p>
+              </div>
+            </div>
+
+            {reportSuccess ? (
+              <div className="space-y-4 text-center py-4">
+                <div className="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto">
+                  <Check size={24} className="stroke-[3]" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase">Ripoti Imewasilishwa!</h4>
+                  <p className="text-slate-500 text-[10.5px] leading-relaxed max-w-xs mx-auto font-medium">
+                    Asante kwa taarifa yako. Timu yetu ya usalama inakagua ripoti hii ndani ya masaa 24 na kuchukua hatua za haraka, ikiwemo kuondoa nyenzo hii ikiwa inakiuka masharti.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsReportingOpen(false)}
+                  className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Funga Dirisha
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSendCopyrightReport} className="space-y-4">
+                <p className="text-[11px] text-slate-550 leading-relaxed font-semibold">
+                  Tafadhali weka taarifa zako na maelezo ya hakimiliki yako ili tuweze kuthibitisha na kuondoa nyaraka hii mara moja ikiwa inakiuka haki zako.
+                </p>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Barua Pepe Yako (Email)</label>
+                  <input
+                    type="email"
+                    required
+                    value={reportEmail}
+                    onChange={(e) => setReportEmail(e.target.value)}
+                    placeholder="mfano@gmail.com"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Maelezo ya Ukiukaji (Claim Details)</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    placeholder="Tafadhali eleza kwa kina jinsi faili hili linavyokiuka hakimiliki yako au mali yako..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsReportingOpen(false)}
+                    className="flex-1 py-2.5 border border-slate-200 text-slate-500 font-bold text-[10.5px] uppercase tracking-wider rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    Ghairi (Cancel)
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reportLoading}
+                    className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-[10.5px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-600/15 flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    {reportLoading ? 'Inawasilisha...' : 'Ripoti (Submit)'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

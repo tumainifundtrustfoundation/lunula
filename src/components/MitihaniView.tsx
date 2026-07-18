@@ -23,7 +23,11 @@ import {
   Sparkles,
   Globe,
   User,
-  X
+  X,
+  Atom,
+  Compass,
+  Scale,
+  GraduationCap
 } from 'lucide-react';
 import { fetchDocuments, fetchExamResultByCode, fetchExamResults, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks, saveOrder } from '../firebase';
 import { DocumentMetadata, ExamResult, UserBookmark } from '../types';
@@ -833,6 +837,147 @@ export default function MitihaniView({
     return doc.category || 'Masomo Mengine';
   };
 
+  const getSubjectTheme = (subjectName: string) => {
+    const sub = subjectName.toLowerCase();
+    
+    if (sub.includes('math') || sub.includes('hisabati')) {
+      return {
+        gradient: 'from-blue-600 to-indigo-800',
+        accentColor: 'text-blue-200',
+        icon: Compass,
+        pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:12px_12px]'
+      };
+    }
+    if (sub.includes('physics') || sub.includes('fizikia')) {
+      return {
+        gradient: 'from-violet-700 to-indigo-950',
+        accentColor: 'text-indigo-200',
+        icon: Atom,
+        pattern: 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] [background-size:10px_10px]'
+      };
+    }
+    if (sub.includes('chemistry') || sub.includes('kemia')) {
+      return {
+        gradient: 'from-teal-600 to-emerald-950',
+        accentColor: 'text-teal-200',
+        icon: Sparkles,
+        pattern: 'bg-[radial-gradient(#ffffff0c_1.5px,transparent_1.5px)] [background-size:16px_16px]'
+      };
+    }
+    if (sub.includes('biology') || sub.includes('biolojia')) {
+      return {
+        gradient: 'from-emerald-600 to-teal-900',
+        accentColor: 'text-emerald-100',
+        icon: GraduationCap,
+        pattern: 'bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:8px_8px]'
+      };
+    }
+    if (sub.includes('history') || sub.includes('historia')) {
+      return {
+        gradient: 'from-amber-800 to-red-950',
+        accentColor: 'text-amber-200',
+        icon: FileText,
+        pattern: 'bg-[repeating-linear-gradient(45deg,#ffffff03_0px,#ffffff03_2px,transparent_2px,transparent_10px)]'
+      };
+    }
+    if (sub.includes('geography') || sub.includes('jiografia')) {
+      return {
+        gradient: 'from-sky-600 to-blue-900',
+        accentColor: 'text-sky-200',
+        icon: Globe,
+        pattern: 'bg-[radial-gradient(#ffffff0d_1.5px,transparent_1.5px)] [background-size:14px_14px]'
+      };
+    }
+    if (sub.includes('civics') || sub.includes('uraia')) {
+      return {
+        gradient: 'from-red-600 to-rose-950',
+        accentColor: 'text-red-200',
+        icon: Scale,
+        pattern: 'bg-[linear-gradient(45deg,#ffffff04_25%,transparent_25%,transparent_75%,#ffffff04_75%,#ffffff04),linear-gradient(45deg,#ffffff04_25%,transparent_25%,transparent_75%,#ffffff04_75%,#ffffff04)] [background-size:16px_16px] [background-position:0_0,8px_8px]'
+      };
+    }
+    if (sub.includes('english') || sub.includes('kiingereza')) {
+      return {
+        gradient: 'from-fuchsia-700 to-rose-950',
+        accentColor: 'text-fuchsia-200',
+        icon: BookOpen,
+        pattern: 'bg-[repeating-linear-gradient(to_right,#ffffff03_0px,#ffffff03_1px,transparent_1px,transparent_12px)]'
+      };
+    }
+    if (sub.includes('kiswahili')) {
+      return {
+        gradient: 'from-orange-600 to-amber-950',
+        accentColor: 'text-orange-200',
+        icon: BookOpen,
+        pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:10px_10px]'
+      };
+    }
+    if (sub.includes('commerce') || sub.includes('biashara') || sub.includes('bookkeeping') || sub.includes('uhasibu')) {
+      return {
+        gradient: 'from-cyan-600 to-indigo-950',
+        accentColor: 'text-cyan-200',
+        icon: FileText,
+        pattern: 'bg-[linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] [background-size:10px_8px]'
+      };
+    }
+    
+    // Default fallback
+    return {
+      gradient: 'from-slate-600 to-slate-900',
+      accentColor: 'text-slate-300',
+      icon: BookOpen,
+      pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:12px_12px]'
+    };
+  };
+
+  const renderBookCover = (doc: DocumentMetadata) => {
+    const subject = getDocSubject(doc);
+    const theme = getSubjectTheme(subject);
+    const IconComponent = theme.icon;
+    
+    const year = doc.year || 2024;
+    const typeLabel = doc.type || (doc.tags.includes('NECTA') ? 'NECTA' : 'Mock');
+
+    return (
+      <div className={`relative w-[95px] h-[135px] sm:w-[105px] sm:h-[145px] rounded-2xl overflow-hidden shadow-lg flex-shrink-0 bg-gradient-to-br ${theme.gradient} flex flex-col justify-between p-3 text-white select-none group-hover:scale-[1.03] transition-transform duration-300 border border-white/10`}>
+        {/* Shine overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/20 pointer-events-none" />
+        
+        {/* Book spine simulation on the left */}
+        <div className="absolute top-0 bottom-0 left-0 w-2 bg-black/25 rounded-l-2xl blur-[0.5px]" />
+        <div className="absolute top-0 bottom-0 left-[1px] w-[0.5px] bg-white/15 rounded-l-2xl" />
+
+        {/* Diagonal stripes or background pattern */}
+        <div className={`absolute inset-0 opacity-10 pointer-events-none ${theme.pattern}`} />
+
+        {/* Header/Badge on cover */}
+        <div className="relative z-10 flex justify-between items-start">
+          <span className="text-[7.5px] font-black uppercase tracking-wider bg-white/15 backdrop-blur-xs px-1.5 py-0.5 rounded border border-white/10">
+            {typeLabel}
+          </span>
+          <span className="text-[8px] font-mono font-black text-white/90">
+            {year}
+          </span>
+        </div>
+
+        {/* Central subject graphic */}
+        <div className="relative z-10 flex flex-col items-center justify-center my-auto py-1 text-center">
+          <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center shadow-inner border border-white/10 mb-1 group-hover:rotate-6 transition-transform">
+            <IconComponent size={14} className={theme.accentColor} />
+          </div>
+          <span className="text-[8px] font-black uppercase tracking-wider leading-tight max-w-[85px] line-clamp-2 text-white">
+            {subject.replace(/\s*\(.*\)/, '')}
+          </span>
+        </div>
+
+        {/* Footer info/Lupanulla seal */}
+        <div className="relative z-10 border-t border-white/15 pt-1.5 text-[6px] font-black uppercase tracking-widest text-white/60 text-center">
+          ELIMU HUB
+        </div>
+      </div>
+    );
+  };
+
   // Sort application
   const sortedDocs = [...filteredDocs].sort((a, b) => {
     if (sortBy === 'subjectYear') {
@@ -1377,24 +1522,32 @@ export default function MitihaniView({
               <div 
                 key={paper.id}
                 onClick={() => onNavigate('reader', paper.id)}
-                className={`bg-white border-l-4 ${docAccent} border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between`}
+                className={`bg-white border-l-4 ${docAccent} border border-slate-200 p-4 rounded-3xl shadow-sm hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex gap-4 min-h-[11rem] h-auto group`}
               >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
-                    <span className="uppercase">{paper.type || 'NECTA'} &bull; {paper.year || 2023}</span>
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{paper.category}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
-                    {paper.title}
-                  </h3>
-                  <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">
-                    {paper.description}
-                  </p>
-                </div>
+                {/* Beautiful Book Cover Thumbnail */}
+                {renderBookCover(paper)}
 
-                <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-4 text-[10px] text-slate-400 font-bold">
-                  <span>{paper.views} views</span>
-                  <span className="text-cyan-600 flex items-center gap-1">Fungua Mtihani <ArrowRight size={10} /></span>
+                {/* Details */}
+                <div className="flex-1 flex flex-col justify-between min-w-0">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span>{paper.type || 'NECTA'} &bull; {paper.year || 2023}</span>
+                      <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[8px]">{paper.category}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-950 text-xs sm:text-sm leading-snug line-clamp-2 group-hover:text-cyan-600 transition-colors">
+                        {paper.title}
+                      </h3>
+                      <p className="text-slate-500 text-[10.5px] line-clamp-2 leading-normal mt-0.5 font-medium">
+                        {paper.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-bold mt-1.5">
+                    <span>{paper.views} views</span>
+                    <span className="text-cyan-600 flex items-center gap-0.5 font-extrabold">Fungua &rarr;</span>
+                  </div>
                 </div>
               </div>
             );
@@ -1555,57 +1708,62 @@ export default function MitihaniView({
                         <div 
                           key={doc.id}
                           onClick={() => handleDocClick(doc)}
-                          className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between min-h-[14rem] h-auto pb-4 hover:scale-[1.01]`}
+                          className="bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex gap-4 min-h-[11rem] h-auto hover:scale-[1.01] group"
                         >
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] bg-slate-100 text-slate-700 font-extrabold px-2 py-0.5 rounded uppercase">{typeLabel}</span>
-                                {isPremium && (
-                                  <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                                    <Crown size={10} /> PREMIUM
-                                  </span>
-                                )}
-                                {doc.isForSale ? (
-                                  <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
-                                    TSh {(doc.price || 0).toLocaleString()}
-                                  </span>
-                                ) : (
-                                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
-                                    BURE
-                                  </span>
-                                )}
+                          {/* Beautiful Book Cover Thumbnail */}
+                          {renderBookCover(doc)}
+
+                          {/* Details / Info on Right */}
+                          <div className="flex-1 flex flex-col justify-between min-w-0">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-start gap-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {isPremium && (
+                                    <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                      <Crown size={10} /> PRO
+                                    </span>
+                                  )}
+                                  {doc.isForSale ? (
+                                    <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                                      TSh {(doc.price || 0).toLocaleString()}
+                                    </span>
+                                  ) : (
+                                    <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                                      BURE
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <button 
+                                  onClick={(e) => handleToggleBookmark(doc, e)}
+                                  className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                                >
+                                  <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
+                                </button>
                               </div>
-                              
-                              <button 
-                                onClick={(e) => handleToggleBookmark(doc, e)}
-                                className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
-                              >
-                                <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
-                              </button>
+
+                              <div>
+                                <h3 className="font-bold text-slate-950 text-xs sm:text-sm leading-snug line-clamp-2 group-hover:text-cyan-600 transition-colors">
+                                  {doc.title}
+                                </h3>
+                                <p className="text-slate-500 text-[10.5px] line-clamp-2 leading-normal mt-0.5 font-medium">
+                                  {doc.description}
+                                </p>
+                                <div className="text-[9.5px] text-slate-400 font-bold flex items-center gap-1 pt-1.5">
+                                  <User size={9} className="text-slate-400 shrink-0" />
+                                  <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
+                                </div>
+                              </div>
                             </div>
 
-                            <div>
-                              <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
-                                {doc.title}
-                              </h3>
-                              <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
-                                {doc.description}
-                              </p>
-                              <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1">
-                                <User size={10} className="text-slate-400 shrink-0" />
-                                <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
-                              </div>
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-bold mt-1.5">
+                              <span className="flex items-center gap-0.5 text-[9px]">
+                                {fileKB} KB
+                              </span>
+                              <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
+                                SOMA &rarr;
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3 text-[10px] text-slate-400 font-bold">
-                            <span className="flex items-center gap-1">
-                              <Calendar size={12} /> {doc.year || 2024} &bull; {fileKB} KB
-                            </span>
-                            <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
-                              SOMA SASA &rarr;
-                            </span>
                           </div>
 
                         </div>
@@ -1628,57 +1786,62 @@ export default function MitihaniView({
                   <div 
                     key={doc.id}
                     onClick={() => handleDocClick(doc)}
-                    className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between min-h-[14rem] h-auto pb-4 hover:scale-[1.01]`}
+                    className="bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex gap-4 min-h-[11rem] h-auto hover:scale-[1.01] group"
                   >
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] bg-slate-100 text-slate-700 font-extrabold px-2 py-0.5 rounded uppercase">{typeLabel}</span>
-                          {isPremium && (
-                            <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                              <Crown size={10} /> PREMIUM
-                            </span>
-                          )}
-                          {doc.isForSale ? (
-                            <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
-                              TSh {(doc.price || 0).toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
-                              BURE
-                            </span>
-                          )}
+                    {/* Beautiful Book Cover Thumbnail */}
+                    {renderBookCover(doc)}
+
+                    {/* Details / Info on Right */}
+                    <div className="flex-1 flex flex-col justify-between min-w-0">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-start gap-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {isPremium && (
+                              <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                <Crown size={10} /> PRO
+                              </span>
+                            )}
+                            {doc.isForSale ? (
+                              <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                                TSh {(doc.price || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                                BURE
+                              </span>
+                            )}
+                          </div>
+                          
+                          <button 
+                            onClick={(e) => handleToggleBookmark(doc, e)}
+                            className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                          >
+                            <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
+                          </button>
                         </div>
-                        
-                        <button 
-                          onClick={(e) => handleToggleBookmark(doc, e)}
-                          className={`p-1.5 rounded-lg border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
-                        >
-                          <Bookmark size={14} className={isBookmarked ? 'fill-current' : ''} />
-                        </button>
+
+                        <div>
+                          <h3 className="font-bold text-slate-950 text-xs sm:text-sm leading-snug line-clamp-2 group-hover:text-cyan-600 transition-colors">
+                            {doc.title}
+                          </h3>
+                          <p className="text-slate-500 text-[10.5px] line-clamp-2 leading-normal mt-0.5 font-medium">
+                            {doc.description}
+                          </p>
+                          <div className="text-[9.5px] text-slate-400 font-bold flex items-center gap-1 pt-1.5">
+                            <User size={9} className="text-slate-400 shrink-0" />
+                            <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2 hover:text-cyan-600 transition-colors">
-                          {doc.title}
-                        </h3>
-                        <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
-                          {doc.description}
-                        </p>
-                        <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1">
-                          <User size={10} className="text-slate-400 shrink-0" />
-                          <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
-                        </div>
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-bold mt-1.5">
+                        <span className="flex items-center gap-0.5 text-[9px]">
+                          {fileKB} KB
+                        </span>
+                        <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
+                          SOMA &rarr;
+                        </span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-3 text-[10px] text-slate-400 font-bold">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={12} /> {doc.year || 2024} &bull; {fileKB} KB
-                      </span>
-                      <span className="text-cyan-600 font-extrabold inline-flex items-center gap-0.5 hover:underline">
-                        SOMA SASA &rarr;
-                      </span>
                     </div>
 
                   </div>

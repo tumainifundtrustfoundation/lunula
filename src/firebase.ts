@@ -30,6 +30,8 @@ import {
   onSnapshot,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
+  getDocFromServer,
   serverTimestamp
 } from 'firebase/firestore';
 import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress, StudyEvent } from './types';
@@ -39,15 +41,70 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Use initializeFirestore with force long polling and persistent local cache to ensure stable connection in sandboxed preview iframe/network environment
+// Use initializeFirestore with a highly resilient fallback chain to handle sandboxed iframe restrictions and proxy limitations
 const firestoreDbId = (firebaseConfig as any).firestoreDatabaseId;
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: false,
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-}, firestoreDbId && firestoreDbId !== '(default)' ? firestoreDbId : undefined); /* CRITICAL: Connects to the live default database safely */
+const dbId = firestoreDbId && firestoreDbId !== '(default)' ? firestoreDbId : undefined;
+
+let dbInstance: any;
+
+try {
+  // Try 1: Standard connection (WebSockets) with persistent cache (best performance)
+  dbInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, dbId);
+} catch (err1) {
+  console.warn("Standard persistent cache init failed, trying memory cache:", err1);
+  try {
+    // Try 2: Standard connection (WebSockets) with memory cache (resolves blocked IndexedDB in iframes)
+    dbInstance = initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    }, dbId);
+  } catch (err2) {
+    console.warn("Standard memory cache init failed, trying force long polling with persistent cache:", err2);
+    try {
+      // Try 3: Long polling with persistent cache (fallback for blocked WebSockets)
+      dbInstance = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        experimentalAutoDetectLongPolling: false,
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      }, dbId);
+    } catch (err3) {
+      console.warn("Long polling with persistent cache failed, trying long polling with memory cache:", err3);
+      try {
+        // Try 4: Long polling with memory cache (safe absolute fallback)
+        dbInstance = initializeFirestore(app, {
+          experimentalForceLongPolling: true,
+          experimentalAutoDetectLongPolling: false,
+          localCache: memoryLocalCache()
+        }, dbId);
+      } catch (err4) {
+        console.error("All Firestore initializations failed, falling back to default:", err4);
+        dbInstance = initializeFirestore(app, {}, dbId);
+      }
+    }
+  }
+}
+
+export const db = dbInstance;
+
+// Validate Connection to Firestore (Skill Requirement)
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firestore connection test completed successfully.");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn("Firestore offline mode active: Please check your Firebase configuration if you expect live sync.");
+    } else {
+      console.warn("Firestore offline warning / validation check info:", error);
+    }
+  }
+}
+testConnection();
 
 // --- Firestore Error Handling (Skill Requirement) ---
 export enum OperationType {

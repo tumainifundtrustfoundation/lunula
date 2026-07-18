@@ -82,7 +82,7 @@ export interface Feedback {
   userId: string;
   userName: string;
   email: string;
-  type: 'missing_notes' | 'improvement' | 'bug' | 'other';
+  type: 'missing_notes' | 'improvement' | 'bug' | 'copyright_report' | 'other';
   message: string;
   createdAt: number;
   status: 'new' | 'reviewed' | 'resolved';
@@ -114,6 +114,10 @@ export interface DocumentMetadata {
   isForSale?: boolean;
   price?: number;
   documentType?: 'Notes' | 'Books' | 'Past Papers';
+  sourceName?: string;
+  sourceUrl?: string;
+  copyrightAccepted?: boolean;
+  reportCount?: number;
 }
 
 export interface Comment {

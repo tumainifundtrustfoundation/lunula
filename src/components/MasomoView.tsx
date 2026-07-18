@@ -43,6 +43,15 @@ import { jsPDF } from 'jspdf';
 import { toggleTopicFavorite, awardStudyPoints, updateUserProfile, db } from '../firebase';
 import { getQuizQuestions, QuizQuestion } from './MasomoQuizData';
 import { getExamTips } from './MasomoNectaTips';
+import { getFlashcardsForTopic, Flashcard as MasomoFlashcard } from './MasomoFlashcardData';
+import { 
+  Brain, 
+  Shuffle, 
+  RotateCw, 
+  ChevronLeft, 
+  ChevronRight, 
+  CheckCircle2 
+} from 'lucide-react';
 
 interface MasomoViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -81,10 +90,17 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
   const [pdfSuccess, setPdfSuccess] = useState(false);
   
   // Custom Workspace states
-  const [activeReaderTab, setActiveReaderTab] = useState<'notes' | 'quiz' | 'tips' | 'notepad'>('notes');
+  const [activeReaderTab, setActiveReaderTab] = useState<'notes' | 'quiz' | 'tips' | 'notepad' | 'flashcards'>('notes');
   const [notesDraft, setNotesDraft] = useState('');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftSavedToast, setDraftSavedToast] = useState(false);
+
+  // Interactive Flashcards state variables
+  const [flashcardsList, setFlashcardsList] = useState<MasomoFlashcard[]>([]);
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [learnedCardIndices, setLearnedCardIndices] = useState<number[]>([]);
+  const [isFlashcardSpeaking, setIsFlashcardSpeaking] = useState(false);
 
   // Text to Speech (Soma kwa Sauti) state
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -515,7 +531,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     }
   }, [selectedTopic?.title, userProfile?.personalNotes]);
 
-  // Reset quiz state ONLY when the selected topic's title actually changes
+  // Reset quiz & flashcard state ONLY when the selected topic's title actually changes
   useEffect(() => {
     setCurrentQuestionIndex(0);
     setSelectedOptionIndex(null);
@@ -523,7 +539,24 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     setQuizFinished(false);
     setShowExplanation(false);
     setQuizCorrectCount(0);
+
+    // Flashcard state resetting & data seeding
+    setFlashcardIndex(0);
+    setIsCardFlipped(false);
+    setLearnedCardIndices([]);
+    if (selectedTopic) {
+      setFlashcardsList(getFlashcardsForTopic(selectedTopic.title));
+    } else {
+      setFlashcardsList([]);
+    }
   }, [selectedTopic?.title]);
+
+  // Cancel speech synthesis when switching tabs or topics
+  useEffect(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsFlashcardSpeaking(false);
+  }, [activeReaderTab, selectedTopic?.title]);
 
   // Focus stopwatch timer ticking effect
   useEffect(() => {
@@ -1435,11 +1468,12 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
                 </div>
               </div>
 
-              {/* ── Active Reader Tabs (Official, Quiz, Tips, Notebook) ── */}
+              {/* ── Active Reader Tabs (Official, Quiz, Flashcards, Tips, Notebook) ── */}
               <div className="flex border-b border-slate-100 gap-1 overflow-x-auto pb-px">
                 {[
                   { id: 'notes', name: 'Notisi Rasmi', icon: BookOpen },
                   { id: 'quiz', name: 'Zoezi / Quizzes', icon: Award },
+                  { id: 'flashcards', name: 'Kadi za Masomo', icon: Brain },
                   { id: 'tips', name: 'Mbinu za NECTA', icon: Compass },
                   { id: 'notepad', name: 'Notepad Yangu', icon: PenTool }
                 ].map((tab) => {
@@ -1522,13 +1556,281 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
                       </h4>
                       <div className="bg-slate-900 text-slate-200 border border-slate-800 rounded-2xl p-4 sm:p-5 font-mono text-[11px] overflow-x-auto whitespace-pre leading-relaxed shadow-inner max-h-[300px] overflow-y-auto">
                         {selectedTopic.notesSample}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* ── Tab: Flashcards ── */}
+              {activeReaderTab === 'flashcards' && (() => {
+                const totalCards = flashcardsList.length;
+                if (totalCards === 0) {
+                  return (
+                    <div className="text-center p-8 text-slate-500 text-xs font-bold bg-slate-50 border border-slate-100 rounded-3xl animate-fade-in">
+                      <Brain className="mx-auto text-slate-300 mb-2 animate-pulse" size={32} />
+                      Hakuna kadi za kumbukumbu zilizotayarishwa kwa mada hii bado.
+                    </div>
+                  );
+                }
+
+                const currentCard = flashcardsList[flashcardIndex];
+                const isLearned = learnedCardIndices.includes(flashcardIndex);
+                const learnedPercent = Math.round((learnedCardIndices.length / totalCards) * 100);
+
+                const handleToggleFlashcardSpeech = (card: MasomoFlashcard, part: 'term' | 'definition') => {
+                  if (isFlashcardSpeaking) {
+                    window.speechSynthesis.cancel();
+                    setIsFlashcardSpeaking(false);
+                  } else {
+                    window.speechSynthesis.cancel();
+                    const textToRead = part === 'term' ? card.term : card.definition;
+                    const utterance = new SpeechSynthesisUtterance(textToRead);
+                    
+                    // Simple Swahili detection
+                    const hasSwahiliWords = /[aeiou]za\b|[aeiou]ya\b|ni\b|kwa\b|la\b|katika\b|na\b|ya\b|wa\b|kuhusu\b|ni\s|mbinu|kadi|maana|ndogo|mbele|nyuma|shujaa|taifa|mifumo|aina|maneno|sehemu|kawaida|shazari/i.test(textToRead);
+                    utterance.lang = hasSwahiliWords ? 'sw-TZ' : 'en-US';
+                    utterance.rate = speechRate;
+                    
+                    utterance.onend = () => setIsFlashcardSpeaking(false);
+                    utterance.onerror = () => setIsFlashcardSpeaking(false);
+                    
+                    window.speechSynthesis.speak(utterance);
+                    setIsFlashcardSpeaking(true);
+                    showToast('success', `Inasoma: "${textToRead.slice(0, 25)}..."`);
+                  }
+                };
+
+                const handleNextCard = () => {
+                  setIsCardFlipped(false);
+                  window.speechSynthesis.cancel();
+                  setIsFlashcardSpeaking(false);
+                  setTimeout(() => {
+                    setFlashcardIndex((prev) => (prev + 1) % totalCards);
+                  }, 150);
+                };
+
+                const handlePrevCard = () => {
+                  setIsCardFlipped(false);
+                  window.speechSynthesis.cancel();
+                  setIsFlashcardSpeaking(false);
+                  setTimeout(() => {
+                    setFlashcardIndex((prev) => (prev - 1 + totalCards) % totalCards);
+                  }, 150);
+                };
+
+                const handleToggleLearned = () => {
+                  if (isLearned) {
+                    setLearnedCardIndices(prev => prev.filter(idx => idx !== flashcardIndex));
+                  } else {
+                    setLearnedCardIndices(prev => [...prev, flashcardIndex]);
+                    // Award 2 XP for marking a card as learned
+                    if (userProfile?.uid) {
+                      awardStudyPoints(userProfile.uid, 2, 0).then(() => {
+                        window.dispatchEvent(new CustomEvent('refresh-user-profile'));
+                      }).catch(console.error);
+                    }
+                    showToast('success', 'Hongera! Umeelewa dhana hii (+2 XP)');
+                  }
+                };
+
+                const handleShuffleCards = () => {
+                  setIsCardFlipped(false);
+                  window.speechSynthesis.cancel();
+                  setIsFlashcardSpeaking(false);
+                  const shuffled = [...flashcardsList].sort(() => Math.random() - 0.5);
+                  setFlashcardsList(shuffled);
+                  setFlashcardIndex(0);
+                  showToast('info', 'Kadi zimechanganywa!');
+                };
+
+                const handleResetCards = () => {
+                  setIsCardFlipped(false);
+                  window.speechSynthesis.cancel();
+                  setIsFlashcardSpeaking(false);
+                  setFlashcardIndex(0);
+                  setLearnedCardIndices([]);
+                  if (selectedTopic) {
+                    setFlashcardsList(getFlashcardsForTopic(selectedTopic.title));
+                  }
+                  showToast('info', 'Umeanzisha upya kadi zote!');
+                };
+
+                return (
+                  <div className="space-y-6 animate-fade-in max-w-xl mx-auto pb-6">
+                    {/* Header and Progress stats */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-black text-cyan-600 tracking-widest block">Kadi za Kumbukumbu (Flashcards)</span>
+                        <h4 className="text-sm font-black text-slate-800">Kadi {flashcardIndex + 1} ya {totalCards}</h4>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
+                        <div className="text-right">
+                          <span className="block text-emerald-600 font-extrabold">Uelewa: {learnedCardIndices.length}/{totalCards} ({learnedPercent}%)</span>
+                          <span className="text-[9.5px] text-slate-400">Pata +2 XP kwa kila kadi unayoielewa</span>
+                        </div>
+                        <div className="w-16 bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${learnedPercent}%` }} />
+                        </div>
                       </div>
                     </div>
 
-                  </div>
-                )}
+                    {/* 3D-Like Flipping Card Container */}
+                    <div className="perspective-1000 h-64 cursor-pointer" onClick={() => {
+                      setIsCardFlipped(!isCardFlipped);
+                      window.speechSynthesis.cancel();
+                      setIsFlashcardSpeaking(false);
+                    }}>
+                      <div 
+                        className={`relative w-full h-full duration-500 preserve-3d transition-transform ${isCardFlipped ? 'rotate-y-180' : ''}`}
+                      >
+                        {/* Card Front Side */}
+                        <div className="absolute w-full h-full backface-hidden bg-white border border-slate-200/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-cyan-300 transition-all">
+                          <div className="flex justify-between items-start w-full">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] bg-cyan-100 text-cyan-800 font-black px-2 py-0.5 rounded uppercase tracking-wider">Mbele (Front)</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleFlashcardSpeech(currentCard, 'term');
+                                }}
+                                className={`p-1 rounded-md border transition-all ${
+                                  isFlashcardSpeaking 
+                                    ? 'bg-cyan-100 border-cyan-200 text-cyan-600 animate-pulse' 
+                                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                                }`}
+                                title="Soma kwa Sauti"
+                              >
+                                {isFlashcardSpeaking ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                              </button>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleLearned();
+                              }}
+                              className={`p-1.5 rounded-xl border transition-all ${
+                                isLearned 
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                              }`}
+                              title={isLearned ? 'Ondoa alama' : 'Weka alama kuwa umeelewa'}
+                            >
+                              <CheckCircle2 size={15} className={isLearned ? 'fill-current' : ''} />
+                            </button>
+                          </div>
 
-                {/* ── Tab 2: Revision Quizzes ── */}
+                          <div className="flex-1 flex flex-col items-center justify-center text-center px-4 my-2">
+                            <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                              {currentCard?.term}
+                            </h3>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold w-full border-t border-slate-100 pt-3">
+                            <span className="flex items-center gap-1">
+                              <RotateCw size={11} className="text-cyan-500 animate-spin-slow" /> Bofya kadi kuona maana
+                            </span>
+                            <span>{isLearned ? 'Umeelewa ✓' : 'Bado kusoma'}</span>
+                          </div>
+                        </div>
+
+                        {/* Card Back Side (Flipped) */}
+                        <div className="absolute w-full h-full backface-hidden bg-gradient-to-br from-cyan-900 to-slate-900 text-white rounded-3xl p-6 flex flex-col justify-between shadow-lg rotate-y-180 border border-cyan-500/10">
+                          <div className="flex justify-between items-start w-full">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] bg-white/10 text-cyan-200 font-black px-2 py-0.5 rounded uppercase tracking-wider">Nyuma (Back)</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleFlashcardSpeech(currentCard, 'definition');
+                                }}
+                                className={`p-1 rounded-md border transition-all ${
+                                  isFlashcardSpeaking 
+                                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 animate-pulse' 
+                                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
+                                }`}
+                                title="Soma kwa Sauti"
+                              >
+                                {isFlashcardSpeaking ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                              </button>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleLearned();
+                              }}
+                              className={`p-1.5 rounded-xl border border-white/10 transition-all ${
+                                isLearned 
+                                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' 
+                                  : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              <CheckCircle2 size={15} className={isLearned ? 'fill-current' : ''} />
+                            </button>
+                          </div>
+
+                          <div className="flex-1 flex flex-col items-center justify-center text-center px-4 my-2 overflow-y-auto max-h-[120px]">
+                            <p className="text-xs sm:text-sm font-semibold leading-relaxed text-slate-100">
+                              {currentCard?.definition}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold w-full border-t border-white/10 pt-3">
+                            <span className="flex items-center gap-1 text-cyan-300">
+                              <RotateCw size={11} /> Bofya kurudi mbele
+                            </span>
+                            <span className={isLearned ? 'text-emerald-400 font-extrabold' : 'text-slate-300'}>
+                              {isLearned ? 'Umeelewa ✓' : 'Bofya alama ya tiki kama umeelewa'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card controls & Actions */}
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                      {/* Navigation Arrows */}
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={handlePrevCard}
+                          className="p-2.5 bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl hover:bg-slate-50 transition-all active:scale-95"
+                          title="Kadi Iliyopita"
+                        >
+                          <ChevronLeft size={16} className="text-slate-700" />
+                        </button>
+                        <span className="text-xs font-extrabold text-slate-500 px-3 py-1 bg-slate-100 rounded-lg">
+                          {flashcardIndex + 1} / {totalCards}
+                        </span>
+                        <button 
+                          onClick={handleNextCard}
+                          className="p-2.5 bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl hover:bg-slate-50 transition-all active:scale-95"
+                          title="Kadi Inayofuata"
+                        >
+                          <ChevronRight size={16} className="text-slate-700" />
+                        </button>
+                      </div>
+
+                      {/* Shuffle and reset actions */}
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={handleShuffleCards}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95"
+                        >
+                          <Shuffle size={13} /> Changanya
+                        </button>
+                        <button 
+                          onClick={handleResetCards}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95"
+                        >
+                          <RotateCcw size={13} /> Anza Upya
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Tab 2: Revision Quizzes ── */}
                 {activeReaderTab === 'quiz' && (() => {
                   const questions = getQuizQuestions(selectedTopic.title);
                   const totalQuestions = questions.length;
