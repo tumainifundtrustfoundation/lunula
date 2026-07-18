@@ -48,37 +48,35 @@ const dbId = firestoreDbId && firestoreDbId !== '(default)' ? firestoreDbId : un
 let dbInstance: any;
 
 try {
-  // Try 1: Standard connection (WebSockets) with persistent cache (best performance)
+  // Try 1: Resilient long polling connection with persistent cache (best compatibility in sandboxed iframes & proxies)
   dbInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager()
     })
   }, dbId);
 } catch (err1) {
-  console.warn("Standard persistent cache init failed, trying memory cache:", err1);
+  console.warn("Long-polling persistent cache init failed, trying memory cache with long-polling:", err1);
   try {
-    // Try 2: Standard connection (WebSockets) with memory cache (resolves blocked IndexedDB in iframes)
+    // Try 2: Resilient long-polling connection with memory cache (resolves blocked IndexedDB inside iframes)
     dbInstance = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
       localCache: memoryLocalCache()
     }, dbId);
   } catch (err2) {
-    console.warn("Standard memory cache init failed, trying force long polling with persistent cache:", err2);
+    console.warn("Long-polling memory cache init failed, trying standard connection with persistent cache:", err2);
     try {
-      // Try 3: Long polling with persistent cache (fallback for blocked WebSockets)
+      // Try 3: Standard connection (WebSockets) with persistent cache
       dbInstance = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: false,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager()
         })
       }, dbId);
     } catch (err3) {
-      console.warn("Long polling with persistent cache failed, trying long polling with memory cache:", err3);
+      console.warn("Standard persistent cache failed, trying standard with memory cache:", err3);
       try {
-        // Try 4: Long polling with memory cache (safe absolute fallback)
+        // Try 4: Standard connection with memory cache
         dbInstance = initializeFirestore(app, {
-          experimentalForceLongPolling: true,
-          experimentalAutoDetectLongPolling: false,
           localCache: memoryLocalCache()
         }, dbId);
       } catch (err4) {
