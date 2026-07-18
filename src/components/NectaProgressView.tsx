@@ -13,9 +13,12 @@ import {
   Edit3, 
   X, 
   Award,
+  Sparkles,
   Search,
   Book,
-  FileText
+  FileText,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { fetchNectaProgress, saveNectaProgress } from '../firebase';
 import { NectaProgress, NectaProgressStatus } from '../types';
@@ -78,7 +81,7 @@ const NECTA_SUBJECTS: Record<string, { id: string; name: string; color: string }
   ],
 };
 
-const YEARS = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
+const YEARS = Array.from({ length: 2026 - 1994 + 1 }, (_, i) => (2026 - i).toString());
 
 const MOTIVATIONAL_QUOTES = [
   "Elimu ni ufunguo wa maisha. Endelea kufanya mazoezi ya mtihani!",
@@ -266,12 +269,22 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
             fuatilia kiwango chako cha kujiandaa, na uhifadhi notisi za masahihisho kwa ajili ya mapitio ya baadaye.
           </p>
         </div>
-        <button
-          onClick={() => onNavigate('mitihani')}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 self-start md:self-center"
-        >
-          <FileText size={14} /> Fungua Past Papers
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center">
+          <a
+            href="https://necta.go.tz/news"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/50 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-indigo-950/5 hover:scale-[1.01]"
+          >
+            <Globe size={14} className="text-indigo-600 animate-pulse" /> Taarifa & Habari za NECTA
+          </a>
+          <button
+            onClick={() => onNavigate('mitihani')}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-slate-950/5 cursor-pointer"
+          >
+            <FileText size={14} /> Fungua Past Papers
+          </button>
+        </div>
       </div>
 
       {/* Motivational Banner */}
@@ -286,6 +299,107 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
             <span className="text-xs font-black text-white">{userProfile?.xp || 0} XP &bull; {userProfile?.studyTime || 0} Dakika</span>
           </div>
           <TrendingUp size={24} className="text-cyan-400" />
+        </div>
+      </div>
+
+      {/* NECTA Official News & Updates Banner */}
+      <div className="bg-indigo-50/40 border border-indigo-150 p-4.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl shrink-0">
+            <Globe size={18} className="animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-display font-black text-xs text-indigo-950 uppercase tracking-tight flex items-center gap-1.5">
+              Habari, Tangazo na Updates za NECTA
+              <span className="bg-red-500 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md animate-bounce tracking-wide">Mpya</span>
+            </h4>
+            <p className="text-xs text-slate-600 leading-normal font-semibold max-w-3xl">
+              Fuatilia matokeo rasmi ya mitihani yote, miongozo mipya ya masomo, mabadiliko ya tarehe na taratibu, pamoja na habari za hivi punde moja kwa moja kutoka tovuti ya Baraza la Mitihani la Tanzania (NECTA).
+            </p>
+          </div>
+        </div>
+        <a
+          href="https://necta.go.tz/news"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm shadow-indigo-950/10 cursor-pointer hover:scale-[1.01]"
+        >
+          Tembelea NECTA News <ExternalLink size={13} />
+        </a>
+      </div>
+
+      {/* NECTA 2026 Results Quick Links */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-indigo-650 animate-pulse" />
+          <h4 className="font-display font-black text-xs uppercase tracking-tight text-slate-850">
+            Viungo Haraka vya Matokeo ya NECTA 2026 & Kudumu
+          </h4>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <a
+            href="https://matokeo.necta.go.tz/results/2026/acsee/index.htm"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya ACSEE 2026</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://matokeo.necta.go.tz/results/2026/dpee/index.htm"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya DPEE 2026</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://matokeo.necta.go.tz/results/2026/dppee/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya DPPEE 2026</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://necta.go.tz/results/view/csee"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya CSEE (Kidato 4)</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://necta.go.tz/results/view/psle"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya PSLE (La 7)</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://necta.go.tz/results/view/sfna"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl border border-slate-150 hover:border-indigo-200 transition-all text-xs font-bold text-slate-700 cursor-pointer"
+          >
+            <span>Matokeo ya SFNA (La 4)</span>
+            <ExternalLink size={12} className="shrink-0 text-slate-400 group-hover:text-indigo-600" />
+          </a>
+          <a
+            href="https://necta.go.tz/news/read/71"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="col-span-2 sm:col-span-3 lg:col-span-2 flex items-center justify-between p-3 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 rounded-xl border border-indigo-150 hover:border-indigo-250 transition-all text-xs font-extrabold cursor-pointer"
+          >
+            <span>Soma Tangazo la NECTA la Ufaulu (News #71)</span>
+            <ExternalLink size={12} className="shrink-0 text-indigo-600" />
+          </a>
         </div>
       </div>
 

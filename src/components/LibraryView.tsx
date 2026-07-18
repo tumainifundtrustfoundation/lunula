@@ -21,9 +21,10 @@ import {
   X,
   RefreshCw,
   Clock,
-  Bookmark
+  Bookmark,
+  User
 } from 'lucide-react';
-import { fetchDocuments, fetchLibraryConfig, incrementDocumentViews, incrementDocumentDownloads, LibraryConfig, DEFAULT_LIBRARY_CONFIG, toggleBookmark, fetchUserBookmarks } from '../firebase';
+import { fetchDocuments, fetchLibraryConfig, incrementDocumentViews, incrementDocumentDownloads, LibraryConfig, DEFAULT_LIBRARY_CONFIG, toggleBookmark, fetchUserBookmarks, saveOrder } from '../firebase';
 import { DocumentMetadata, UserProfile, UserBookmark } from '../types';
 
 interface LibraryViewProps {
@@ -57,6 +58,15 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Purchase/Order State for Paid Documents
+  const [purchasingDoc, setPurchasingDoc] = useState<DocumentMetadata | null>(null);
+  const [purchaseAction, setPurchaseAction] = useState<'read' | 'download'>('read');
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerNetwork, setBuyerNetwork] = useState('M-Pesa');
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [orderSaving, setOrderSaving] = useState(false);
 
   // Bookmarks State
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
@@ -167,12 +177,96 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
     }, 4000);
   };
 
+  const canAccessDirectly = (doc: DocumentMetadata) => {
+    if (!doc.isForSale) return true;
+    if (userProfile && (doc.uploadedBy === userProfile.uid || userProfile.role === 'admin' || userProfile.role === 'super_admin')) return true;
+    return false;
+  };
+
+  const handlePurchasePrompt = (doc: DocumentMetadata, action: 'read' | 'download') => {
+    setPurchasingDoc(doc);
+    setPurchaseAction(action);
+    setBuyerName(userProfile?.name || '');
+    setBuyerPhone(userProfile?.phone || '');
+    setBuyerNetwork('M-Pesa');
+    setShowPurchaseModal(true);
+  };
+
+  const handleConfirmPurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!purchasingDoc) return;
+
+    try {
+      setOrderSaving(true);
+
+      const orderPayload: any = {
+        userId: userProfile?.uid || 'guest',
+        customerName: buyerName,
+        customerPhone: buyerPhone,
+        paymentMethod: buyerNetwork,
+        items: [{
+          id: purchasingDoc.id,
+          name: purchasingDoc.title,
+          price: purchasingDoc.price,
+          quantity: 1,
+          type: purchasingDoc.documentType || 'document'
+        }],
+        totalAmount: purchasingDoc.price || 0,
+        status: 'pending',
+        notes: `Ombi la kununua nyaraka: ${purchasingDoc.title} (Aina: ${purchasingDoc.documentType || 'Nyaraka'})`
+      };
+
+      // Save order to Firebase
+      const orderId = await saveOrder(orderPayload);
+
+      // Create WhatsApp purchase message
+      let waMessage = `📋 *AGIZO JIPYA LA NYARAKA - LUPANULLA ELIMU HUB*\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `*Namba ya Agizo:* #${orderId.substring(0, 7).toUpperCase()}\n`;
+      waMessage += `*Mteja:* ${buyerName}\n`;
+      waMessage += `*Simu:* ${buyerPhone}\n`;
+      waMessage += `*Njia ya Malipo:* ${buyerNetwork}\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `*NYENZO INAYOAGIZWA:*\n`;
+      waMessage += `1. *${purchasingDoc.title}*\n`;
+      waMessage += `   _Mwandishi/Mpakiaji:_ ${purchasingDoc.uploadedByName || 'Mwanachama'}\n`;
+      waMessage += `   _Bei:_ TSh ${(purchasingDoc.price || 0).toLocaleString()}\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `💰 *JUMLA YA KULIPIA:* TSh ${(purchasingDoc.price || 0).toLocaleString()}\n\n`;
+      waMessage += `Tafadhali wasilisha agizo langu na unipe maelekezo ya jinsi ya kutuma malipo ili nipate nyenzo hii. Asante!`;
+
+      const encodedMessage = encodeURIComponent(waMessage);
+      const waUrl = `https://wa.me/255699479032?text=${encodedMessage}`;
+
+      showToast(`Agizo limetengenezwa! Unahamishiwa WhatsApp kukamilisha malipo...`);
+      setShowPurchaseModal(false);
+
+      setTimeout(() => {
+        window.open(waUrl, '_blank');
+      }, 1200);
+
+    } catch (err) {
+      console.error('Purchase order saving error:', err);
+      alert('Imeshindwa kutengeneza agizo. Tafadhali jaribu tena.');
+    } finally {
+      setOrderSaving(false);
+    }
+  };
+
   const handlePreview = async (doc: DocumentMetadata) => {
+    if (!canAccessDirectly(doc)) {
+      handlePurchasePrompt(doc, 'read');
+      return;
+    }
     await incrementDocumentViews(doc.id);
     onNavigate('reader', doc.id);
   };
 
   const handleDownload = async (doc: DocumentMetadata) => {
+    if (!canAccessDirectly(doc)) {
+      handlePurchasePrompt(doc, 'download');
+      return;
+    }
     const isBook = doc.type?.toLowerCase() === 'books' || doc.category?.toLowerCase() === 'books' || (doc as any).documentType?.toLowerCase() === 'books';
     const isPremiumUser = userProfile?.subscription === 'premium' || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
 
@@ -406,15 +500,9 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
               className="w-full px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
             >
               <option value="All">Miaka Yote</option>
-              {dynamicYears.length > 0 ? (
-                dynamicYears.map(yr => (
-                  <option key={yr} value={yr}>{yr}</option>
-                ))
-              ) : (
-                ['2026', '2025', '2024', '2023', '2022', '2021'].map(yr => (
-                  <option key={yr} value={yr}>{yr}</option>
-                ))
-              )}
+              {Array.from({ length: 2026 - 1994 + 1 }, (_, i) => 2026 - i).map(yr => (
+                <option key={yr} value={yr.toString()}>{yr}</option>
+              ))}
             </select>
           </div>
 
@@ -583,6 +671,19 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                       PREMIUM
                     </div>
                   )}
+
+                  {/* Price Tag badge */}
+                  <div className="absolute bottom-3 left-3 z-10 flex gap-1">
+                    {doc.isForSale ? (
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-950 bg-amber-400 border border-amber-500 rounded-md shadow-md flex items-center gap-0.5">
+                        TSh {(doc.price || 0).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white bg-emerald-600 border border-emerald-500 rounded-md shadow-md">
+                        BURE
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Card Content body */}
@@ -610,6 +711,12 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                     <p className="text-slate-500 font-semibold text-xs line-clamp-2 leading-relaxed">
                       {doc.description || 'Hakuna maelezo ya ziada yaliyotolewa kwa nyaraka hii.'}
                     </p>
+
+                    {/* Uploader info (Mpakiaji) */}
+                    <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1">
+                      <User size={10} className="text-slate-400 shrink-0" />
+                      <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
+                    </div>
                   </div>
 
                   {/* Metadata and Actions footer */}
@@ -765,6 +872,88 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                 Gharama nafuu ya TZS 3,000 tu kwa mwezi!
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAID DOCUMENT PURCHASE MODAL OVERLAY */}
+      {showPurchaseModal && purchasingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white text-slate-800 w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl relative space-y-6 border border-slate-100">
+            <button 
+              onClick={() => setShowPurchaseModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-all cursor-pointer p-1 rounded-full hover:bg-slate-100"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="text-center space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase tracking-widest border border-amber-200">
+                <Sparkles size={10} /> Nyenzo Inauzwa
+              </span>
+              <h3 className="font-sans font-extrabold text-slate-900 text-base sm:text-lg">
+                Lipia Kupata Nyaraka Hii
+              </h3>
+              <p className="text-slate-500 font-semibold text-xs leading-relaxed max-w-sm mx-auto">
+                Nyaraka <span className="text-emerald-600 font-extrabold">"{purchasingDoc.title}"</span> imeandaliwa na mwandishi <span className="text-slate-700 font-extrabold">{purchasingDoc.uploadedByName || 'Mwanachama'}</span> na inauzwa kwa <span className="text-emerald-600 font-black">TSh {(purchasingDoc.price || 0).toLocaleString()}</span>.
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmPurchase} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Jina Lako Kamili</label>
+                <input 
+                  type="text" 
+                  required
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  placeholder="Mfano: Juma Ally"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Namba yako ya Simu ya Malipo</label>
+                <input 
+                  type="tel" 
+                  required
+                  value={buyerPhone}
+                  onChange={(e) => setBuyerPhone(e.target.value)}
+                  placeholder="Mfano: 0712345678"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mtandao wa Malipo</label>
+                <select 
+                  value={buyerNetwork}
+                  onChange={(e) => setBuyerNetwork(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                >
+                  <option value="M-Pesa">Vodacom M-Pesa</option>
+                  <option value="Tigo Pesa">Tigo Pesa</option>
+                  <option value="Airtel Money">Airtel Money</option>
+                  <option value="Halopesa">Halotel Halopesa</option>
+                </select>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-[10px] text-slate-500 leading-relaxed space-y-1 font-semibold">
+                <p className="font-extrabold text-slate-700">📌 Jinsi ya kukamilisha:</p>
+                <p>1. Bonyeza "Agiza Sasa hapa chini" ili kuhifadhi agizo lako.</p>
+                <p>2. Utaelekezwa moja kwa moja kwenye WhatsApp ya kituo cha huduma Lupanulla.</p>
+                <p>3. Tuma ujumbe huo ili upokee maelekezo ya jinsi ya kulipia kwa urahisi na kupokea nyaraka yako.</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={orderSaving}
+                className="w-full py-3 px-5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {orderSaving ? 'Inatengeneza Agizo...' : `Agiza Sasa hivi (TSh ${(purchasingDoc.price || 0).toLocaleString()})`}
+                <ArrowRight size={14} />
+              </button>
+            </form>
           </div>
         </div>
       )}

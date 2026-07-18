@@ -24,7 +24,8 @@ import {
   CheckCircle,
   BookOpen,
   ShieldAlert,
-  LogOut
+  LogOut,
+  Cookie
 } from 'lucide-react';
 
 import { UserProfile, AppTheme } from './types';
@@ -162,6 +163,24 @@ export default function App() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [authTab, setAuthTab] = useState<'login' | 'signup' | 'verify' | 'forgot_password' | 'email_link'>('login');
   const [activePolicyDoc, setActivePolicyDoc] = useState<'privacy' | 'terms' | null>(null);
+  
+  // Cookie Consent State
+  const [showCookieConsent, setShowCookieConsent] = useState<boolean>(false);
+
+  useEffect(() => {
+    const hasConsented = localStorage.getItem('lupanulla-cookie-consent');
+    if (!hasConsented) {
+      const timer = setTimeout(() => {
+        setShowCookieConsent(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleAcceptCookies = () => {
+    localStorage.setItem('lupanulla-cookie-consent', 'accepted');
+    setShowCookieConsent(false);
+  };
   
   // Passwordless Email Link states
   const [emailLinkVerifying, setEmailLinkVerifying] = useState<boolean>(false);
@@ -2055,6 +2074,45 @@ export default function App() {
                 {language === 'sw' ? 'Nimeelewa na Kukubali' : 'I Understand & Accept'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cookie Consent Banner */}
+      {showCookieConsent && (
+        <div 
+          id="cookie-consent-banner"
+          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-[420px] bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/80 shadow-2xl p-5 sm:p-6 z-50 flex flex-col gap-4 animate-fade-in transition-all duration-300"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-amber-50 text-amber-500 rounded-2xl shrink-0">
+              <Cookie size={20} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-display font-black text-slate-950 text-sm tracking-tight">
+                {language === 'sw' ? 'Taarifa Kuhusu Vidakuzi (Cookies)' : 'Cookie Consent Notice'}
+              </h4>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                {language === 'sw' 
+                  ? 'Lupanulla Elimu Hub inatumia vidakuzi (cookies) kuboresha uzoefu wako wa kusoma, usalama wa akaunti yako, na kuonyesha matangazo yanayokufaa ya Google AdSense.'
+                  : 'Lupanulla Elimu Hub uses cookies to enhance your learning experience, ensure account security, and deliver personalized Google AdSense ads.'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-end gap-2.5 pt-1.5 border-t border-slate-100/80">
+            <button
+              onClick={() => setActivePolicyDoc('privacy')}
+              className="px-3.5 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-900 transition-colors"
+            >
+              {language === 'sw' ? 'Sera ya Faragha' : 'Privacy Policy'}
+            </button>
+            <button
+              onClick={handleAcceptCookies}
+              className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-[11px] tracking-tight rounded-xl cursor-pointer shadow-md shadow-slate-950/10 transition-all duration-200"
+            >
+              {language === 'sw' ? 'Nimeelewa na Kukubali' : 'I Accept'}
+            </button>
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
   subscription: SubscriptionTier;
   createdAt?: number;
@@ -110,6 +111,9 @@ export interface DocumentMetadata {
   sizeKB?: number;
   accent?: string;
   subject?: string;
+  isForSale?: boolean;
+  price?: number;
+  documentType?: 'Notes' | 'Books' | 'Past Papers';
 }
 
 export interface Comment {

@@ -847,7 +847,7 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
                     2. Mitihani ya Kitaifa ya NECTA na Mock Updates
                   </h4>
                   <p className="text-xs font-semibold leading-relaxed">
-                    Kalenda ya mitihani ya CSEE na ACSEE imesasishwa rasmi. Tumeongeza mitihani mipya ya majaribio (Mock Exams) kutoka mikoa yote ya Tanzania (Dar es Salaam, Arusha, Mwanza, Kilimanjaro, Dodoma, Morogoro, n.k.) ikiwa na majibu yake sahihi. Bonyeza <span className="text-indigo-600 font-bold hover:underline cursor-pointer" onClick={() => { setShowNewsPopup(false); onNavigate('mitihani'); }}>hapa kupata Past Papers</span>.
+                    Kalenda ya mitihani ya CSEE na ACSEE imesasishwa rasmi. Tumeongeza mitihani mipya ya majaribio (Mock Exams) kutoka mikoa yote ya Tanzania (Dar es Salaam, Arusha, Mwanza, Kilimanjaro, Dodoma, Morogoro, n.k.) ikiwa na majibu yake sahihi. Bonyeza <span className="text-indigo-600 font-bold hover:underline cursor-pointer" onClick={() => { setShowNewsPopup(false); onNavigate('mitihani'); }}>hapa kupata Past Papers</span> au fuatilia <a href="https://necta.go.tz/news" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold hover:underline inline-flex items-center gap-0.5">taarifa na matangazo rasmi ya NECTA hapa</a>.
                   </p>
                 </div>
                 

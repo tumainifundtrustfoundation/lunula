@@ -21,9 +21,11 @@ import {
   Clock,
   BookOpen,
   Sparkles,
-  Globe
+  Globe,
+  User,
+  X
 } from 'lucide-react';
-import { fetchDocuments, fetchExamResultByCode, fetchExamResults, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks } from '../firebase';
+import { fetchDocuments, fetchExamResultByCode, fetchExamResults, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks, saveOrder } from '../firebase';
 import { DocumentMetadata, ExamResult, UserBookmark } from '../types';
 import { GoogleAdSenseUnit } from './MatangazoView';
 import ExamTimer from './ExamTimer';
@@ -54,6 +56,93 @@ export default function MitihaniView({
   const [sortBy, setSortBy] = useState<string>('subjectYear'); // 'subjectYear', 'newest', 'views', 'alphabetical'
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [showTimer, setShowTimer] = useState(false);
+
+  // Purchase states for Paid Documents
+  const [purchasingDoc, setPurchasingDoc] = useState<DocumentMetadata | null>(null);
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerNetwork, setBuyerNetwork] = useState('M-Pesa');
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [orderSaving, setOrderSaving] = useState(false);
+
+  const canAccessDirectly = (doc: DocumentMetadata) => {
+    if (!doc.isForSale) return true;
+    if (userProfile && (doc.uploadedBy === userProfile.uid || userProfile.role === 'admin' || userProfile.role === 'super_admin')) return true;
+    return false;
+  };
+
+  const handleDocClick = (doc: DocumentMetadata) => {
+    if (!canAccessDirectly(doc)) {
+      setPurchasingDoc(doc);
+      setBuyerName(userProfile?.name || '');
+      setBuyerPhone(userProfile?.phone || '');
+      setBuyerNetwork('M-Pesa');
+      setShowPurchaseModal(true);
+      return;
+    }
+    onNavigate('reader', doc.id);
+  };
+
+  const handleConfirmPurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!purchasingDoc) return;
+
+    try {
+      setOrderSaving(true);
+
+      const orderPayload: any = {
+        userId: userProfile?.uid || 'guest',
+        customerName: buyerName,
+        customerPhone: buyerPhone,
+        paymentMethod: buyerNetwork,
+        items: [{
+          id: purchasingDoc.id,
+          name: purchasingDoc.title,
+          price: purchasingDoc.price,
+          quantity: 1,
+          type: purchasingDoc.documentType || 'document'
+        }],
+        totalAmount: purchasingDoc.price || 0,
+        status: 'pending',
+        notes: `Ombi la kununua nyaraka: ${purchasingDoc.title} (Aina: ${purchasingDoc.documentType || 'Nyaraka'})`
+      };
+
+      // Save order to Firebase
+      const orderId = await saveOrder(orderPayload);
+
+      // Create WhatsApp purchase message
+      let waMessage = `📋 *AGIZO JIPYA LA NYARAKA - LUPANULLA ELIMU HUB*\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `*Namba ya Agizo:* #${orderId.substring(0, 7).toUpperCase()}\n`;
+      waMessage += `*Mteja:* ${buyerName}\n`;
+      waMessage += `*Simu:* ${buyerPhone}\n`;
+      waMessage += `*Njia ya Malipo:* ${buyerNetwork}\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `*NYENZO INAYOAGIZWA:*\n`;
+      waMessage += `1. *${purchasingDoc.title}*\n`;
+      waMessage += `   _Mwandishi/Mpakiaji:_ ${purchasingDoc.uploadedByName || 'Mwanachama'}\n`;
+      waMessage += `   _Bei:_ TSh ${(purchasingDoc.price || 0).toLocaleString()}\n`;
+      waMessage += `------------------------------------------------\n`;
+      waMessage += `💰 *JUMLA YA KULIPIA:* TSh ${(purchasingDoc.price || 0).toLocaleString()}\n\n`;
+      waMessage += `Tafadhali wasilisha agizo langu na unipe maelekezo ya jinsi ya kutuma malipo ili nipate nyenzo hii. Asante!`;
+
+      const encodedMessage = encodeURIComponent(waMessage);
+      const waUrl = `https://wa.me/255699479032?text=${encodedMessage}`;
+
+      alert(`Agizo limetengenezwa! Unahamishiwa WhatsApp kukamilisha malipo...`);
+      setShowPurchaseModal(false);
+
+      setTimeout(() => {
+        window.open(waUrl, '_blank');
+      }, 1200);
+
+    } catch (err) {
+      console.error('Purchase order saving error:', err);
+      alert('Imeshindwa kutengeneza agizo. Tafadhali jaribu tena.');
+    } finally {
+      setOrderSaving(false);
+    }
+  };
 
   // --- NEW: Exam Results Check States ---
   const [candidateCode, setCandidateCode] = useState<string>('');
@@ -122,7 +211,7 @@ export default function MitihaniView({
     ],
   };
 
-  const NECTA_YEARS = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010'];
+  const NECTA_YEARS = Array.from({ length: 2026 - 1994 + 1 }, (_, i) => (2026 - i).toString());
 
   // Load active publisher configuration
   const [adsenseActive, setAdsenseActive] = useState<boolean>(() => localStorage.getItem('lup_adsense_active') !== 'false');
@@ -1389,11 +1478,9 @@ export default function MitihaniView({
               className="w-full bg-slate-50 border border-slate-250 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer"
             >
               <option value="">Miaka Yote</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-              <option value="2021">2021</option>
-              <option value="2020">2020</option>
+              {Array.from({ length: 2026 - 1994 + 1 }, (_, i) => 2026 - i).map(yr => (
+                <option key={yr} value={yr.toString()}>{yr}</option>
+              ))}
             </select>
           </div>
 
@@ -1467,8 +1554,8 @@ export default function MitihaniView({
                       return (
                         <div 
                           key={doc.id}
-                          onClick={() => onNavigate('reader', doc.id)}
-                          className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-56 hover:scale-[1.01]`}
+                          onClick={() => handleDocClick(doc)}
+                          className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between min-h-[14rem] h-auto pb-4 hover:scale-[1.01]`}
                         >
                           <div className="space-y-3">
                             <div className="flex justify-between items-start">
@@ -1477,6 +1564,15 @@ export default function MitihaniView({
                                 {isPremium && (
                                   <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                                     <Crown size={10} /> PREMIUM
+                                  </span>
+                                )}
+                                {doc.isForSale ? (
+                                  <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                                    TSh {(doc.price || 0).toLocaleString()}
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                                    BURE
                                   </span>
                                 )}
                               </div>
@@ -1496,6 +1592,10 @@ export default function MitihaniView({
                               <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
                                 {doc.description}
                               </p>
+                              <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1">
+                                <User size={10} className="text-slate-400 shrink-0" />
+                                <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
+                              </div>
                             </div>
                           </div>
 
@@ -1527,8 +1627,8 @@ export default function MitihaniView({
                 return (
                   <div 
                     key={doc.id}
-                    onClick={() => onNavigate('reader', doc.id)}
-                    className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-56 hover:scale-[1.01]`}
+                    onClick={() => handleDocClick(doc)}
+                    className={`bg-white border-t-4 ${docAccent} border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between min-h-[14rem] h-auto pb-4 hover:scale-[1.01]`}
                   >
                     <div className="space-y-3">
                       <div className="flex justify-between items-start">
@@ -1537,6 +1637,15 @@ export default function MitihaniView({
                           {isPremium && (
                             <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                               <Crown size={10} /> PREMIUM
+                            </span>
+                          )}
+                          {doc.isForSale ? (
+                            <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                              TSh {(doc.price || 0).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                              BURE
                             </span>
                           )}
                         </div>
@@ -1556,6 +1665,10 @@ export default function MitihaniView({
                         <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed mt-1">
                           {doc.description}
                         </p>
+                        <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1">
+                          <User size={10} className="text-slate-400 shrink-0" />
+                          <span className="truncate">Mpakiaji: <span className="text-slate-600 font-extrabold">{doc.uploadedByName || 'Mwanachama'}</span></span>
+                        </div>
                       </div>
                     </div>
 
@@ -1613,6 +1726,88 @@ export default function MitihaniView({
         onClose={() => setIsValidationModalOpen(false)}
         result={selectedResultForModal}
       />
+
+      {/* PAID DOCUMENT PURCHASE MODAL OVERLAY */}
+      {showPurchaseModal && purchasingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="bg-white text-slate-800 w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl relative space-y-6 border border-slate-100">
+            <button 
+              onClick={() => setShowPurchaseModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-all cursor-pointer p-1 rounded-full hover:bg-slate-100"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="text-center space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase tracking-widest border border-amber-200">
+                <Sparkles size={10} /> Nyenzo Inauzwa
+              </span>
+              <h3 className="font-sans font-extrabold text-slate-900 text-base sm:text-lg">
+                Lipia Kupata Nyaraka Hii
+              </h3>
+              <p className="text-slate-500 font-semibold text-xs leading-relaxed max-w-sm mx-auto">
+                Nyaraka <span className="text-emerald-600 font-extrabold">"{purchasingDoc.title}"</span> imeandaliwa na mwandishi <span className="text-slate-700 font-extrabold">{purchasingDoc.uploadedByName || 'Mwanachama'}</span> na inauzwa kwa <span className="text-emerald-600 font-black">TSh {(purchasingDoc.price || 0).toLocaleString()}</span>.
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmPurchase} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Jina Lako Kamili</label>
+                <input 
+                  type="text" 
+                  required
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  placeholder="Mfano: Juma Ally"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Namba yako ya Simu ya Malipo</label>
+                <input 
+                  type="tel" 
+                  required
+                  value={buyerPhone}
+                  onChange={(e) => setBuyerPhone(e.target.value)}
+                  placeholder="Mfano: 0712345678"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mtandao wa Malipo</label>
+                <select 
+                  value={buyerNetwork}
+                  onChange={(e) => setBuyerNetwork(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                >
+                  <option value="M-Pesa">Vodacom M-Pesa</option>
+                  <option value="Tigo Pesa">Tigo Pesa</option>
+                  <option value="Airtel Money">Airtel Money</option>
+                  <option value="Halopesa">Halotel Halopesa</option>
+                </select>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-[10px] text-slate-500 leading-relaxed space-y-1 font-semibold">
+                <p className="font-extrabold text-slate-700">📌 Jinsi ya kukamilisha:</p>
+                <p>1. Bonyeza "Agiza Sasa hapa chini" ili kuhifadhi agizo lako.</p>
+                <p>2. Utaelekezwa moja kwa moja kwenye WhatsApp ya kituo cha huduma Lupanulla.</p>
+                <p>3. Tuma ujumbe huo ili upokee maelekezo ya jinsi ya kulipia kwa urahisi na kupokea nyaraka yako.</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={orderSaving}
+                className="w-full py-3 px-5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {orderSaving ? 'Inatengeneza Agizo...' : `Agiza Sasa hivi (TSh ${(purchasingDoc.price || 0).toLocaleString()})`}
+                <ArrowRight size={14} />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

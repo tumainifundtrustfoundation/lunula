@@ -52,9 +52,12 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Science & Technology');
-  const [year, setYear] = useState('2024');
+  const [year, setYear] = useState('2026');
   const [type, setType] = useState('NECTA');
   const [tagsInput, setTagsInput] = useState('');
+  const [documentType, setDocumentType] = useState<'Notes' | 'Books' | 'Past Papers'>('Notes');
+  const [isForSale, setIsForSale] = useState(false);
+  const [price, setPrice] = useState('0');
   
   // Status states
   const [uploading, setUploading] = useState(false);
@@ -233,6 +236,7 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       tagsArray.push(type);
       tagsArray.push(year);
       tagsArray.push(category);
+      tagsArray.push(documentType);
 
       const docPayload: any = {
         title,
@@ -248,7 +252,10 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         status: 'pending', // Requires admin approval by default as per rules
         year: Number(year) || 2024,
         type: type,
-        sizeKB: sizeKB
+        sizeKB: sizeKB,
+        documentType: documentType,
+        isForSale: isForSale,
+        price: isForSale ? (parseInt(price, 10) || 0) : 0
       };
 
       const docId = await saveDocumentMetadata(docPayload);
@@ -260,6 +267,9 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
       setTitle('');
       setDescription('');
       setTagsInput('');
+      setIsForSale(false);
+      setPrice('0');
+      setDocumentType('Notes');
 
     } catch (err: any) {
       console.error('File upload error:', err);
@@ -350,7 +360,49 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Aina ya Nyenzo (Resource Type)</label>
+                  <select 
+                    value={documentType}
+                    onChange={(e) => {
+                      const val = e.target.value as 'Notes' | 'Books' | 'Past Papers';
+                      setDocumentType(val);
+                      if (val === 'Notes') setType('Notes');
+                      else if (val === 'Books') setType('Books');
+                      else setType('NECTA');
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer"
+                  >
+                    <option value="Notes">Notisi (Study Notes)</option>
+                    <option value="Books">Kitabu (Book / Novel)</option>
+                    <option value="Past Papers">Mtihani (Past Paper)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Aina ya Mtihani (Type)</label>
+                  <select 
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    disabled={documentType !== 'Past Papers'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer disabled:opacity-50"
+                  >
+                    {documentType === 'Past Papers' ? (
+                      <>
+                        <option value="NECTA">NECTA National</option>
+                        <option value="Mock">Mock za Mkoa/Wilaya</option>
+                        <option value="Terminal">Terminal &amp; Midterm</option>
+                        <option value="Majaribio">Majaribio ya Mada</option>
+                      </>
+                    ) : (
+                      <option value={documentType === 'Notes' ? 'Notes' : 'Books'}>{documentType === 'Notes' ? 'Study Notes' : 'Book / Reading Material'}</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mada (Category)</label>
                   <select 
@@ -373,27 +425,56 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
                     onChange={(e) => setYear(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer"
                   >
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                    <option value="2022">2022</option>
-                    <option value="2021">2021</option>
+                    {Array.from({ length: 2026 - 1994 + 1 }, (_, i) => 2026 - i).map(yr => (
+                      <option key={yr} value={yr.toString()}>{yr}</option>
+                    ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 bg-cyan-50/30 border border-cyan-100/50 rounded-2xl p-4 mt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-cyan-800 uppercase tracking-wider block">Njia ya Umiliki (Access Type)</label>
+                  <div className="flex gap-4 pt-1">
+                    <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="isForSale" 
+                        checked={!isForSale} 
+                        onChange={() => { setIsForSale(false); setPrice('0'); }} 
+                        className="text-cyan-600 focus:ring-cyan-500" 
+                      />
+                      Bure (Free Access)
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="isForSale" 
+                        checked={isForSale} 
+                        onChange={() => setIsForSale(true)} 
+                        className="text-cyan-600 focus:ring-cyan-500" 
+                      />
+                      Inauzwa (Paid / Premium)
+                    </label>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Aina ya Mtihani (Type)</label>
-                  <select 
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-700 cursor-pointer"
-                  >
-                    <option value="NECTA">NECTA National</option>
-                    <option value="Mock">Mock za Mkoa/Wilaya</option>
-                    <option value="Terminal">Terminal &amp; Midterm</option>
-                    <option value="Majaribio">Majaribio ya Mada</option>
-                  </select>
-                </div>
+                {isForSale && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-cyan-850 uppercase tracking-wider block">Bei ya Kuuza (TSh)</label>
+                    <input 
+                      type="number" 
+                      min="100"
+                      step="50"
+                      required
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="Mfano: 1500" 
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800"
+                    />
+                    <span className="text-[9px] text-slate-400 font-semibold block">Weka bei kwa TSh. Mfano: 1500</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

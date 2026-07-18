@@ -678,7 +678,12 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       const found = fetched.find(d => d.id === documentId);
       
       if (found) {
-        setDoc(found);
+        const canAccess = !found.isForSale || (userProfile && (found.uploadedBy === userProfile.uid || userProfile.role === 'admin' || userProfile.role === 'super_admin'));
+        if (!canAccess) {
+          setError('Nyaraka hii inauzwa. Tafadhali inunue kwanza ili uweze kuisoma.');
+        } else {
+          setDoc(found);
+        }
       } else {
         // Look in our high-fidelity seeds
         const seed = localSeedDocs.find(d => d.id === documentId);

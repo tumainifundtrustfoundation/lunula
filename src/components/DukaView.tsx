@@ -17,7 +17,10 @@ import {
   Star,
   X,
   Heart,
-  Zap
+  Zap,
+  BookOpen,
+  FileText,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -26,7 +29,8 @@ import {
   addToWishlist, 
   removeFromWishlist, 
   fetchUserWishlist,
-  saveQuickBuyOrder 
+  saveQuickBuyOrder,
+  fetchDocuments
 } from '../firebase';
 import { Product, Order, QuickBuyOrder } from '../types';
 
@@ -154,10 +158,32 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      // 1. Fetch physical/e-book products from products collection
       const fetched = await fetchProducts();
-      // Use Firestore products if present, else fallback to high quality defaults
-      const merged = fetched.length > 0 ? fetched : defaultProducts;
-      setProducts(merged);
+      const baseProducts = fetched.length > 0 ? fetched : defaultProducts;
+
+      // 2. Fetch digital documents (Books or Notes) that are for sale from documents collection
+      let digitalProducts: Product[] = [];
+      try {
+        const docs = await fetchDocuments({ status: 'approved' });
+        const forSaleDocs = docs.filter(d => d.isForSale === true && d.price && d.price > 0);
+        digitalProducts = forSaleDocs.map(d => ({
+          id: d.id,
+          name: d.title,
+          description: d.description || `Notisi/Kitabu kwa ajili ya somo la ${d.subject || d.category || 'Masomo'}. Ngazi: ${(d as any).educationLevel || 'Zote'}`,
+          price: d.price || 0,
+          stockQuantity: 9999, // Digital items have unlimited virtual stock
+          category: d.documentType === 'Books' ? 'Vitabu (PDF)' : 'Notisi (PDF)',
+          imageUrl: (d as any).thumbnailUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1974&auto=format&fit=crop',
+          isDigitalDoc: true,
+          driveUrl: d.driveUrl,
+          uploadedByName: d.uploadedByName || 'Mwanachama'
+        } as any));
+      } catch (err) {
+        console.warn('Failed to load digital documents for bookstore:', err);
+      }
+
+      setProducts([...baseProducts, ...digitalProducts]);
     } catch (e) {
       console.error(e);
       setProducts(defaultProducts);
@@ -294,12 +320,23 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
       waMessage += `*Njia ya Malipo:* ${payMethod}\n`;
       if (notes) waMessage += `*Maelezo ya Ziada:* ${notes}\n`;
       waMessage += `------------------------------------------------\n`;
-      waMessage += `*VITABU VILIVYOAGIZWA:*\n`;
+      waMessage += `*VITABU/NOTISI VILIVYOAGIZWA:*\n`;
       
+      let hasDigital = false;
       cart.forEach((item, index) => {
-        waMessage += `${index + 1}. *${item.product.name}*\n`;
+        const isDigital = (item.product as any).isDigitalDoc;
+        if (isDigital) hasDigital = true;
+        
+        waMessage += `${index + 1}. *${item.product.name}* ${isDigital ? '(PDF/Digital)' : '(Hardcopy)'}\n`;
         waMessage += `   _Idadi:_ ${item.quantity} x TSh ${item.product.price.toLocaleString()} = TSh ${(item.product.price * item.quantity).toLocaleString()}\n`;
+        if (isDigital && (item.product as any).uploadedByName) {
+          waMessage += `   _Mpakiaji/Mwandishi:_ ${(item.product as any).uploadedByName}\n`;
+        }
       });
+      
+      if (hasDigital) {
+        waMessage += `\n💡 _Zingatia: Kwa bidhaa za kidigitali (PDF), nitatumiwa link ya kupakua baada ya kukamilisha malipo._\n`;
+      }
       
       waMessage += `------------------------------------------------\n`;
       waMessage += `💰 *JUMLA KUU:* TSh ${cartTotal.toLocaleString()}\n\n`;
@@ -472,6 +509,14 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
                       <div className="space-y-1.5">
                         <h3 className="font-bold text-slate-950 text-sm sm:text-base leading-snug line-clamp-2">{prod.name}</h3>
                         <p className="text-slate-500 text-xs line-clamp-3 leading-relaxed">{prod.description}</p>
+                        
+                        {/* Jina la aliyepakia / Mwandishi */}
+                        {(prod as any).uploadedByName && (
+                          <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 pt-1.5 border-t border-slate-100/60">
+                            <User size={10} className="text-slate-400 shrink-0" />
+                            <span>Mpakiaji: <span className="text-slate-600 font-extrabold">{(prod as any).uploadedByName}</span></span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-3 pt-2">
@@ -845,6 +890,14 @@ export default function DukaView({ onNavigate, userProfile }: DukaViewProps) {
                     <h2 className="text-xl sm:text-2xl font-display font-extrabold text-slate-950 leading-tight">
                       {selectedProduct.name}
                     </h2>
+                    
+                    {/* Jina la aliyepakia / Mwandishi */}
+                    {(selectedProduct as any).uploadedByName && (
+                      <div className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 mt-2">
+                        <User size={12} className="text-slate-400 shrink-0" />
+                        <span>Mpakiaji / Mwandishi: <span className="text-slate-800 font-extrabold">{(selectedProduct as any).uploadedByName}</span></span>
+                      </div>
+                    )}
                   </div>
                   <button 
                     onClick={() => setSelectedProduct(null)}

@@ -51,6 +51,118 @@ const CATEGORIES_LIST = [
 // Seed resources in case database is initially empty
 const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
   {
+    title: 'Matokeo ya ACSEE (Kidato cha Sita) 2026',
+    description: 'Matokeo rasmi ya mtihani wa utimilifu wa elimu ya sekondari ya juu (ACSEE) kwa mwaka 2026 yaliyotolewa na Baraza la Mitihani la Tanzania (NECTA).',
+    url: 'https://matokeo.necta.go.tz/results/2026/acsee/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 950,
+    recommendationsCount: 380,
+    recommendedByUsers: [],
+    createdAt: Date.now(),
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['ACSEE', 'Form 6', 'Kidato cha Sita', 'Results', 'Matokeo', '2026']
+  },
+  {
+    title: 'Matokeo ya DPEE (Stashahada ya Ualimu Msingi) 2026',
+    description: 'Matokeo rasmi ya mtihani wa stashahada ya ualimu elimu ya msingi (Diploma in Primary Education Examination - DPEE) kwa mwaka 2026.',
+    url: 'https://matokeo.necta.go.tz/results/2026/dpee/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 450,
+    recommendationsCount: 190,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 1000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['DPEE', 'Ualimu', 'Diploma', 'Primary Education', 'Results', 'Matokeo', '2026']
+  },
+  {
+    title: 'Matokeo ya DPPEE (Stashahada ya Ualimu Awali) 2026',
+    description: 'Matokeo rasmi ya mtihani wa stashahada ya ualimu elimu ya awali (Diploma in Pre-Primary Education Examination - DPPEE) kwa mwaka 2026.',
+    url: 'https://matokeo.necta.go.tz/results/2026/dppee/index.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 380,
+    recommendationsCount: 140,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 2000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['DPPEE', 'Ualimu', 'Diploma', 'Pre-Primary', 'Results', 'Matokeo', '2026']
+  },
+  {
+    title: 'Tangazo la NECTA la Matokeo ya Kidato cha Sita na Ualimu 2026',
+    description: 'Taarifa rasmi kwa vyombo vya habari kutoka kwa Katibu Mtendaji wa NECTA kuhusu kutangazwa kwa matokeo ya ACSEE, DPEE, na DPPEE 2026.',
+    url: 'https://necta.go.tz/news/read/71',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 620,
+    recommendationsCount: 220,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 3000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['NECTA News', 'Tangazo', 'Press Release', 'ACSEE', 'DPEE', 'DPPEE', '2026']
+  },
+  {
+    title: 'Matokeo ya CSEE (Kidato cha Nne) - NECTA Portal',
+    description: 'Kiungo rasmi na cha kudumu cha Baraza la Mitihani la Tanzania (NECTA) kwa ajili ya kuangalia matokeo yote ya Kidato cha Nne (CSEE).',
+    url: 'https://necta.go.tz/results/view/csee',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 880,
+    recommendationsCount: 310,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 4000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['CSEE', 'Form 4', 'Kidato cha Nne', 'Results', 'Matokeo', 'NECTA']
+  },
+  {
+    title: 'Matokeo ya PSLE (Darasa la Saba) - NECTA Portal',
+    description: 'Kiungo rasmi na cha kudumu cha Baraza la Mitihani la Tanzania (NECTA) kwa ajili ya kuangalia matokeo ya Mtihani wa Kumaliza Elimu ya Msingi (PSLE).',
+    url: 'https://necta.go.tz/results/view/psle',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 710,
+    recommendationsCount: 250,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 5000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['PSLE', 'Darasa la 7', 'Primary Results', 'Matokeo', 'NECTA']
+  },
+  {
+    title: 'Matokeo ya SFNA (Darasa la Nne) - NECTA Portal',
+    description: 'Kiungo rasmi na cha kudumu cha Baraza la Mitihani la Tanzania (NECTA) kwa ajili ya kuangalia matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA).',
+    url: 'https://necta.go.tz/results/view/sfna',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 520,
+    recommendationsCount: 185,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Baraza la Mitihani la Tanzania (NECTA)',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'National Assessment', 'Matokeo', 'NECTA']
+  },
+  {
     title: 'Maktaba Tetea: Standard 1-4',
     description: 'Nyenzo rasmi za kujifunzia, mitihani ya zamani (Past Papers), na mazoezi kwa wanafunzi wa shule za msingi nchini Tanzania, ngazi ya Darasa la Kwanza hadi la Nne.',
     url: 'https://maktaba.tetea.org/resources/standard-1-4/',
@@ -990,6 +1102,235 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
           <div className="flex items-center gap-1 text-[9px] text-amber-600 font-bold uppercase tracking-wider pt-0.5">
             <ThumbsUp size={10} />
             <span>{topRecommended ? `${topRecommended.recommendationsCount} mapendekezo` : 'Hakuna kura bado'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* NECTA 2026 RESULTS QUICK-ACCESS PORTAL */}
+      <div id="necta-results-2026-portal" className="bg-gradient-to-br from-indigo-50/70 via-white to-sky-50/50 border border-indigo-150 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 text-[10px] font-black uppercase tracking-wider animate-pulse">
+              ● MATOKEO MPYA 2026
+            </span>
+            <h2 className="text-xl sm:text-2xl font-display font-black text-slate-900 tracking-tight">
+              {language === 'sw' ? 'Matokeo ya Mitihani ya Kitaifa NECTA 2026' : 'Official NECTA National Exam Results 2026'}
+            </h2>
+            <p className="text-xs text-slate-500 font-medium max-w-2xl leading-relaxed">
+              {language === 'sw' 
+                ? 'Fuatilia na uangalie matokeo rasmi ya hivi karibuni yaliyotangazwa na Baraza la Mitihani la Tanzania (NECTA) kwa miaka yote.'
+                : 'Access the latest official NECTA results for national assessments, diplomas, secondary education, and primary leaving exams.'}
+            </p>
+          </div>
+          
+          <a
+            href="https://necta.go.tz/news/read/71"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-sm shadow-indigo-950/10 cursor-pointer self-start sm:self-center transition-all duration-200"
+          >
+            <span>{language === 'sw' ? 'Soma Tangazo la Matokeo' : 'Read Release Press'}</span>
+            <ExternalLink size={13} />
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* ACSEE 2026 */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                  Kidato cha 6
+                </span>
+                <span className="text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-100 px-1.5 py-0.5 rounded-full tracking-wide">
+                  Hivi Sasa
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya ACSEE 2026
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya Mtihani wa Utimilifu wa Elimu ya Sekondari ya Juu (ACSEE) kwa mwaka 2026.
+              </p>
+            </div>
+            <a
+              href="https://matokeo.necta.go.tz/results/2026/acsee/index.htm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Angalia Matokeo' : 'View Results'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* DPEE 2026 */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md">
+                  Ualimu Msingi
+                </span>
+                <span className="text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-100 px-1.5 py-0.5 rounded-full tracking-wide">
+                  Mpya 2026
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya DPEE 2026
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya stashahada ya ualimu elimu ya msingi (Diploma in Primary Education).
+              </p>
+            </div>
+            <a
+              href="https://matokeo.necta.go.tz/results/2026/dpee/index.htm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Angalia Matokeo' : 'View Results'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* DPPEE 2026 */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-teal-50 text-teal-700 border border-teal-100 px-2 py-0.5 rounded-md">
+                  Ualimu Awali
+                </span>
+                <span className="text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-100 px-1.5 py-0.5 rounded-full tracking-wide">
+                  Mpya 2026
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya DPPEE 2026
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya stashahada ya ualimu elimu ya awali (Diploma in Pre-Primary Education).
+              </p>
+            </div>
+            <a
+              href="https://matokeo.necta.go.tz/results/2026/dppee/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Angalia Matokeo' : 'View Results'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* CSEE (Kidato cha 4) */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md">
+                  Kidato cha 4
+                </span>
+                <span className="text-[9px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-full">
+                  Kila Mwaka
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya CSEE
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Mkusanyiko rasmi wa matokeo yote ya mitihani ya Kidato cha Nne kutoka NECTA.
+              </p>
+            </div>
+            <a
+              href="https://necta.go.tz/results/view/csee"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* PSLE (Darasa la 7) */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded-md">
+                  Darasa la 7
+                </span>
+                <span className="text-[9px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-full">
+                  Kila Mwaka
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya PSLE
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya Mtihani wa Kumaliza Elimu ya Msingi (Primary School Leaving).
+              </p>
+            </div>
+            <a
+              href="https://necta.go.tz/results/view/psle"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* SFNA (Darasa la 4) */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md">
+                  Darasa la 4
+                </span>
+                <span className="text-[9px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-full">
+                  Upimaji
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya SFNA
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (Standard Four Assessment).
+              </p>
+            </div>
+            <a
+              href="https://necta.go.tz/results/view/sfna"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* Official news portal */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 flex flex-col justify-between gap-3 sm:col-span-2 lg:col-span-3 xl:col-span-2">
+            <div className="space-y-1.5">
+              <span className="text-[9px] font-black uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full w-fit">
+                Tangazo Rasmi #71
+              </span>
+              <h4 className="font-display font-black text-xs sm:text-sm text-slate-900 leading-snug">
+                Taarifa Kuhusu Matokeo ya ACSEE na Ualimu 2026
+              </h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                Soma ripoti kamili ya takwimu, wasichana na wavulana waliofaulu, mabadiliko ya kiwango cha ufaulu, na muhtasari wa usahihishaji kutoka kwa Baraza la Mitihani la Tanzania.
+              </p>
+            </div>
+            <a
+              href="https://necta.go.tz/news/read/71"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2 px-3 text-center text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/50 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Soma Taarifa Rasmi (News 71)</span>
+              <ExternalLink size={11} />
+            </a>
           </div>
         </div>
       </div>
