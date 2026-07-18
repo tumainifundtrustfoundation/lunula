@@ -111,6 +111,7 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
   const [notesInput, setNotesInput] = useState('');
   const [statusInput, setStatusInput] = useState<NectaProgressStatus>('not_started');
   const [randomQuote, setRandomQuote] = useState('');
+  const [archiveTab, setArchiveTab] = useState<'sfna' | 'psle' | 'ftna' | 'csee' | 'acsee' | 'dsee'>('sfna');
 
   // Fetch progress on load
   useEffect(() => {
@@ -400,6 +401,121 @@ export default function NectaProgressView({ userProfile, onNavigate }: NectaProg
             <span>Soma Tangazo la NECTA la Ufaulu (News #71)</span>
             <ExternalLink size={12} className="shrink-0 text-indigo-600" />
           </a>
+        </div>
+      </div>
+
+      {/* Historic Archives from Maktaba Tetea */}
+      <div className="bg-amber-50/20 border border-amber-150/70 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-150/50 pb-3">
+          <div className="flex items-center gap-2">
+            <Book size={16} className="text-amber-700" />
+            <h4 className="font-display font-black text-xs uppercase tracking-tight text-amber-900">
+              Mkusanyiko wa Matokeo ya Kihistoria — Maktaba Tetea Archives
+            </h4>
+          </div>
+          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full w-fit">
+            Kumbukumbu (2008 - 2024)
+          </span>
+        </div>
+
+        <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+          Chagua ngazi hapa chini ili kupata viungo vya haraka vya matokeo ya kitaifa yaliyohifadhiwa na Maktaba Tetea kwa ajili ya uchambuzi wa ufaulu wa shule na wanafunzi miaka ya nyuma.
+        </p>
+
+        {/* Tab Switcher */}
+        <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+          <button
+            onClick={() => setArchiveTab('psle')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'psle'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Darasa la 7 (PSLE)
+          </button>
+          <button
+            onClick={() => setArchiveTab('sfna')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'sfna'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Darasa la 4 (SFNA)
+          </button>
+          <button
+            onClick={() => setArchiveTab('ftna')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'ftna'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Kidato cha 2 (FTNA)
+          </button>
+          <button
+            onClick={() => setArchiveTab('csee')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'csee'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Kidato cha 4 (CSEE)
+          </button>
+          <button
+            onClick={() => setArchiveTab('acsee')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'acsee'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Kidato cha 6 (ACSEE)
+          </button>
+          <button
+            onClick={() => setArchiveTab('dsee')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+              archiveTab === 'dsee'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200'
+                : 'text-slate-650 hover:text-slate-900'
+            }`}
+          >
+            Diploma (DSEE)
+          </button>
+        </div>
+
+        {/* Dynamic Year Buttons Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+          {(archiveTab === 'acsee'
+            ? [2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008]
+            : archiveTab === 'csee'
+            ? [2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010]
+            : archiveTab === 'dsee'
+            ? [2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014]
+            : [2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015]
+          ).map((year) => {
+            let href = '';
+            if (archiveTab === 'sfna') href = `https://maktaba.tetea.org/exam-results/SFNA${year}/sfna.html`;
+            if (archiveTab === 'psle') href = `https://maktaba.tetea.org/exam-results/PSLE${year}/index.htm`;
+            if (archiveTab === 'ftna') href = `https://maktaba.tetea.org/exam-results/FTNA${year}/ftna.htm`;
+            if (archiveTab === 'csee') href = `https://maktaba.tetea.org/exam-results/CSEE${year}/index.htm`;
+            if (archiveTab === 'acsee') href = `https://maktaba.tetea.org/exam-results/ACSEE${year}/index.htm`;
+            if (archiveTab === 'dsee') href = `https://maktaba.tetea.org/exam-results/DSEE${year}/index.htm`;
+
+            return (
+              <a
+                key={year}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2 px-1 text-center text-xs font-bold bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 hover:border-amber-300 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+              >
+                {year}
+              </a>
+            );
+          })}
         </div>
       </div>
 

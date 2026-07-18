@@ -163,6 +163,326 @@ const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
     tags: ['SFNA', 'Darasa la 4', 'National Assessment', 'Matokeo', 'NECTA']
   },
   {
+    title: 'Matokeo ya SFNA 2023 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2023 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2023/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 420,
+    recommendationsCount: 150,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6100,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2023', 'Tetea', 'SFNA 2023']
+  },
+  {
+    title: 'Matokeo ya SFNA 2022 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2022 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2022/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 390,
+    recommendationsCount: 130,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6200,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2022', 'Tetea', 'SFNA 2022']
+  },
+  {
+    title: 'Matokeo ya SFNA 2021 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2021 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2021/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 340,
+    recommendationsCount: 110,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6300,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2021', 'Tetea', 'SFNA 2021']
+  },
+  {
+    title: 'Matokeo ya SFNA 2020 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2020 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2020/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 310,
+    recommendationsCount: 95,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6400,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2020', 'Tetea', 'SFNA 2020']
+  },
+  {
+    title: 'Matokeo ya SFNA 2019 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2019 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2019/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 290,
+    recommendationsCount: 88,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6500,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2019', 'Tetea', 'SFNA 2019']
+  },
+  {
+    title: 'Matokeo ya SFNA 2018 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2018 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2018/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 260,
+    recommendationsCount: 72,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6600,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2018', 'Tetea', 'SFNA 2018']
+  },
+  {
+    title: 'Matokeo ya SFNA 2017 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2017 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2017/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 220,
+    recommendationsCount: 65,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6700,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2017', 'Tetea', 'SFNA 2017']
+  },
+  {
+    title: 'Matokeo ya SFNA 2016 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2016 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2016/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 195,
+    recommendationsCount: 50,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6800,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2016', 'Tetea', 'SFNA 2016']
+  },
+  {
+    title: 'Matokeo ya SFNA 2015 - Maktaba Tetea',
+    description: 'Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (SFNA) ya mwaka 2015 yaliyohifadhiwa na Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/SFNA2015/sfna.html',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 180,
+    recommendationsCount: 45,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 6900,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['SFNA', 'Darasa la 4', 'Matokeo', '2015', 'Tetea', 'SFNA 2015']
+  },
+  {
+    title: 'Matokeo ya DSEE 2024 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2024 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2024/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 210,
+    recommendationsCount: 60,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7100,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2024', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2023 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2023 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2023/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 195,
+    recommendationsCount: 55,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7200,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2023', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2022 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2022 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2022/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 180,
+    recommendationsCount: 50,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7300,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2022', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2021 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2021 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2021/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 165,
+    recommendationsCount: 45,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7400,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2021', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2020 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2020 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2020/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 150,
+    recommendationsCount: 40,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7500,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2020', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2019 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2019 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2019/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 140,
+    recommendationsCount: 38,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7600,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2019', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2018 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2018 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2018/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 130,
+    recommendationsCount: 35,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7700,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2018', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2017 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2017 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2017/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 120,
+    recommendationsCount: 32,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7800,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2017', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2016 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2016 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2016/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 110,
+    recommendationsCount: 30,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 7900,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2016', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2015 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2015 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2015/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 100,
+    recommendationsCount: 28,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2015', 'Tetea']
+  },
+  {
+    title: 'Matokeo ya DSEE 2014 - Maktaba Tetea',
+    description: 'Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education Examination) ya mwaka 2014 kutoka Maktaba Tetea.',
+    url: 'https://maktaba.tetea.org/exam-results/DSEE2014/index.htm',
+    category: 'examinations',
+    isVerified: true,
+    clicksCount: 90,
+    recommendationsCount: 25,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 8100,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['DSEE', 'Ualimu', 'Diploma', 'Matokeo', '2014', 'Tetea']
+  },
+  {
     title: 'Maktaba Tetea: Standard 1-4',
     description: 'Nyenzo rasmi za kujifunzia, mitihani ya zamani (Past Papers), na mazoezi kwa wanafunzi wa shule za msingi nchini Tanzania, ngazi ya Darasa la Kwanza hadi la Nne.',
     url: 'https://maktaba.tetea.org/resources/standard-1-4/',
@@ -209,6 +529,38 @@ const SEED_RESOURCES: Omit<EducationalResource, 'id'>[] = [
     institution: 'Tetea Foundation',
     region: 'Tanzania',
     tags: ['Form 1', 'Form 2', 'FTNA', 'O-Level', 'Notes']
+  },
+  {
+    title: 'Maktaba Tetea: Form 3-4',
+    description: 'Notisi, miongozo ya masomo yote ya sekondari (O-Level) kidato cha tatu na nne, pamoja na mitihani ya kitaifa ya zamani (CSEE) kwa maandalizi ya kutosha ya kitaaluma.',
+    url: 'https://maktaba.tetea.org/resources/form-3-4/',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 390,
+    recommendationsCount: 105,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 160000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['Form 3', 'Form 4', 'CSEE', 'O-Level', 'Notes', 'Past Papers']
+  },
+  {
+    title: 'Maktaba Tetea: Form 5-6 (A-Level)',
+    description: 'Notisi, mitaala, na mitihani ya kitaifa iliyopita (ACSEE) ya Kidato cha Tano na Sita (A-Level). Inajumuisha vitabu na notisi za masomo yote ikiwemo Uhasibu (Accounting/Bookkeeping - #accts) na Hisabati.',
+    url: 'https://maktaba.tetea.org/resources/form-5-6/#accts',
+    category: 'libraries',
+    isVerified: true,
+    clicksCount: 450,
+    recommendationsCount: 120,
+    recommendedByUsers: [],
+    createdAt: Date.now() - 170000,
+    createdBy: 'system',
+    createdByName: 'Lupanulla Admin',
+    institution: 'Tetea Foundation',
+    region: 'Tanzania',
+    tags: ['Form 5', 'Form 6', 'ACSEE', 'A-Level', 'Accounting', 'Bookkeeping', 'Notes', 'Past Papers']
   },
   {
     title: 'Maktaba Tetea Exam Results',
@@ -696,7 +1048,11 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
         // If database is completely empty and currentUser is an admin, offer/automatically load seed resources
         setResources(SEED_RESOURCES.map((r, idx) => ({ ...r, id: `seed-${idx}` }) as EducationalResource));
       } else {
-        setResources(data);
+        // Merge in any static SEED_RESOURCES whose URLs are not present in 'data'
+        const existingUrls = new Set(data.map(d => d.url.toLowerCase().trim()));
+        const missingSeeds = SEED_RESOURCES.filter(r => !existingUrls.has(r.url.toLowerCase().trim()))
+          .map((r, idx) => ({ ...r, id: `seed-missing-${idx}` }) as EducationalResource);
+        setResources([...data, ...missingSeeds]);
       }
     } catch (err: any) {
       console.error('Failed to load educational resources:', err);
@@ -1152,6 +1508,26 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                 Matokeo ya Mtihani wa Utimilifu wa Elimu ya Sekondari ya Juu (ACSEE) kwa mwaka 2026.
               </p>
+
+              {/* Maktaba Tetea ACSEE Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-indigo-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2008 - 2024):
+                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/ACSEE${year}/index.htm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-850 border border-slate-150 hover:border-indigo-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
             <a
               href="https://matokeo.necta.go.tz/results/2026/acsee/index.htm"
@@ -1159,7 +1535,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               rel="noopener noreferrer"
               className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
             >
-              <span>{language === 'sw' ? 'Angalia Matokeo' : 'View Results'}</span>
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
               <ExternalLink size={11} />
             </a>
           </div>
@@ -1222,6 +1598,55 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
             </a>
           </div>
 
+          {/* DSEE (Diploma Secondary) */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-md">
+                  Ualimu Sekondari
+                </span>
+                <span className="text-[9px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-full">
+                  Diploma
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya DSEE (Ualimu)
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya Mtihani wa Stashahada ya Ualimu Ngazi ya Sekondari (Diploma in Secondary Education).
+              </p>
+
+              {/* Maktaba Tetea DSEE Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-violet-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2014 - 2024):
+                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/DSEE${year}/index.htm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-violet-50 text-slate-600 hover:text-violet-855 border border-slate-150 hover:border-violet-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <a
+              href="https://necta.go.tz/results/view/dsee"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
           {/* CSEE (Kidato cha 4) */}
           <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
             <div className="space-y-2">
@@ -1239,6 +1664,26 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                 Mkusanyiko rasmi wa matokeo yote ya mitihani ya Kidato cha Nne kutoka NECTA.
               </p>
+
+              {/* Maktaba Tetea CSEE Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-blue-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2010 - 2023):
+                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/CSEE${year}/index.htm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-0.5 text-center text-[10px] font-bold bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-800 border border-slate-150 hover:border-blue-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
             <a
               href="https://necta.go.tz/results/view/csee"
@@ -1246,7 +1691,56 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               rel="noopener noreferrer"
               className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
             >
-              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
+          {/* FTNA (Kidato cha 2) */}
+          <div className="bg-white border border-slate-150 hover:border-indigo-400 rounded-2xl p-4.5 transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between gap-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md">
+                  Kidato cha 2
+                </span>
+                <span className="text-[9px] font-black uppercase bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-full">
+                  Upimaji
+                </span>
+              </div>
+              <h3 className="font-display font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                Matokeo ya FTNA
+              </h3>
+              <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                Matokeo ya Upimaji wa Kitaifa wa Kidato cha Pili (Form Two National Assessment).
+              </p>
+
+              {/* Maktaba Tetea FTNA Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-emerald-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2015 - 2023):
+                </span>
+                <div className="grid grid-cols-3 gap-1">
+                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/FTNA${year}/ftna.htm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-850 border border-slate-150 hover:border-emerald-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <a
+              href="https://necta.go.tz/results/view/ftna"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
+            >
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
               <ExternalLink size={11} />
             </a>
           </div>
@@ -1268,6 +1762,26 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                 Matokeo ya Mtihani wa Kumaliza Elimu ya Msingi (Primary School Leaving).
               </p>
+
+              {/* Maktaba Tetea PSLE Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-purple-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2015 - 2023):
+                </span>
+                <div className="grid grid-cols-3 gap-1">
+                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/PSLE${year}/index.htm`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-purple-50 text-slate-600 hover:text-purple-800 border border-slate-150 hover:border-purple-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
             <a
               href="https://necta.go.tz/results/view/psle"
@@ -1275,7 +1789,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               rel="noopener noreferrer"
               className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
             >
-              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
               <ExternalLink size={11} />
             </a>
           </div>
@@ -1297,6 +1811,26 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                 Matokeo ya Upimaji wa Kitaifa wa Darasa la Nne (Standard Four Assessment).
               </p>
+
+              {/* Maktaba Tetea SFNA Archives Grid */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2 space-y-1.5">
+                <span className="text-[9px] font-black uppercase text-amber-650 tracking-wider flex items-center gap-1">
+                  📚 Maktaba Tetea Archives (2015 - 2023):
+                </span>
+                <div className="grid grid-cols-3 gap-1">
+                  {[2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((year) => (
+                    <a
+                      key={year}
+                      href={`https://maktaba.tetea.org/exam-results/SFNA${year}/sfna.html`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1 px-1 text-center text-[10px] font-bold bg-slate-50 hover:bg-amber-50 text-slate-600 hover:text-amber-800 border border-slate-150 hover:border-amber-250 rounded-lg transition-all cursor-pointer"
+                    >
+                      {year}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
             <a
               href="https://necta.go.tz/results/view/sfna"
@@ -1304,7 +1838,7 @@ export default function ResourcesView({ language, userProfile }: ResourcesViewPr
               rel="noopener noreferrer"
               className="mt-2 w-full py-2 px-3 text-center text-[11px] font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5 transition-all group-hover:bg-indigo-600 cursor-pointer"
             >
-              <span>{language === 'sw' ? 'Kuhifadhi Matokeo' : 'View NECTA Portal'}</span>
+              <span>{language === 'sw' ? 'Portal Rasmi ya NECTA' : 'Official NECTA Portal'}</span>
               <ExternalLink size={11} />
             </a>
           </div>
