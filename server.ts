@@ -447,7 +447,7 @@ app.post('/api/claude.php', async (req, res) => {
     }
 
     // Map roles & build multimodal/parts structure
-    const contents = messages.map((m: any, idx: number) => {
+    const rawContents = messages.map((m: any, idx: number) => {
       const isLast = idx === messages.length - 1;
       const role = m.role === 'assistant' ? 'model' : 'user';
       
@@ -479,8 +479,30 @@ app.post('/api/claude.php', async (req, res) => {
         return { role, parts };
       }
       
-      return { role, parts: [{ text: m.content || "" }] };
+      const cleanText = m.content && m.content.trim() !== "" ? m.content : "Habari";
+      return { role, parts: [{ text: cleanText }] };
     });
+
+    // Ensure strictly alternating roles (user, model, user, model...) and no adjacent matching roles
+    const contents: any[] = [];
+    rawContents.forEach((msg: any) => {
+      if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+        // Merge parts of consecutive same role
+        contents[contents.length - 1].parts.push(...msg.parts);
+      } else {
+        contents.push(msg);
+      }
+    });
+
+    // Ensure the conversation starts with user role as expected by Gemini
+    while (contents.length > 0 && contents[0].role === 'model') {
+      contents.shift();
+    }
+
+    // In case we ended up with an empty array after dropping model-first messages, ensure we have at least one user part
+    if (contents.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: "Habari" }] });
+    }
 
     // Model selection based on features and user preference
     let selectedModel = 'gemini-3.1-flash-lite';
@@ -1435,10 +1457,31 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    const contents = messages.map((m: any) => ({
+    const rawContents = messages.map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
+      parts: [{ text: m.content && m.content.trim() !== "" ? m.content : "Habari" }]
     }));
+
+    // Ensure strictly alternating roles (user, model, user, model...) and no adjacent matching roles
+    const contents: any[] = [];
+    rawContents.forEach((msg: any) => {
+      if (contents.length > 0 && contents[contents.length - 1].role === msg.role) {
+        // Merge parts of consecutive same role
+        contents[contents.length - 1].parts.push(...msg.parts);
+      } else {
+        contents.push(msg);
+      }
+    });
+
+    // Ensure the conversation starts with user role as expected by Gemini
+    while (contents.length > 0 && contents[0].role === 'model') {
+      contents.shift();
+    }
+
+    // In case we ended up with an empty array after dropping model-first messages, ensure we have at least one user part
+    if (contents.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: "Habari" }] });
+    }
 
     // Use gemini-3.5-flash for general multi-turn chat with fallback to gemini-3.1-flash-lite
     let response;

@@ -55,6 +55,12 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
   
   // Chat State
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Free Messages Limit configurations
+  const userMessagesCount = messages.filter(m => m.role === 'user').length;
+  const freeMessagesLimit = 5;
+  const hasRemainingFreeMessages = userMessagesCount < freeMessagesLimit;
+  const canChat = isPremium || hasRemainingFreeMessages;
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -258,8 +264,8 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
 
   // Send Prompt to Gemini
   const handleSendPrompt = async (promptText: string) => {
-    if (!isPremium) {
-      setError('🔒 Tafadhali jiunge na Premium ili kuweza kuzungumza na Lupanulla AI.');
+    if (!canChat) {
+      setError('🔒 Umefikia kikomo cha maswali ya bure (maswali 5). Tafadhali jiunge na Premium ili kuwasiliana na Lupanulla AI bila kikomo!');
       onNavigate('premium');
       return;
     }
@@ -361,8 +367,8 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
   };
 
   const handleSuggestionClick = (text: string) => {
-    if (!isPremium) {
-      alert('🔒 Kipengele hiki kinahitaji akaunti ya Lupanulla Premium. Tafadhali jiunge ili uweze kutumia Lupanulla AI.');
+    if (!canChat) {
+      alert('🔒 Umefikia kikomo cha maswali ya bure (maswali 5). Tafadhali jiunge na Premium ili kuweza kutumia Lupanulla AI bila kikomo!');
       onNavigate('premium');
       return;
     }
@@ -585,7 +591,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
               )}
 
               {/* Form input bar */}
-              {isPremium ? (
+              {canChat ? (
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -660,7 +666,7 @@ Unajua kikamilifu mtaala wa TIE (Tanzania Institute of Education). `;
                         Lupanulla Premium Inahitajika 🚀
                       </h4>
                       <p className="text-[11px] sm:text-xs text-amber-900/90 font-bold leading-relaxed">
-                        Kipengele cha kuuliza maswali ya AI, kutatua mahesabu, na kupata ufafanuzi wa mtaala wa TIE kipo kwa wanachama wa Premium tu.
+                        Umefikia kikomo cha maswali ya bure (maswali 5). Jiunge na Premium sasa upate majibu yasiyo na kikomo, uchoraji picha kwa AI, na mbinu zote za ufaulu wa NECTA!
                       </p>
                     </div>
                   </div>
