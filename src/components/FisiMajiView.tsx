@@ -122,7 +122,7 @@ export default function FisiMajiView({ onNavigate, userProfile }: FisiMajiViewPr
         }
       ]);
     }
-  }, [userProfile]);
+  }, [userProfile?.uid]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });

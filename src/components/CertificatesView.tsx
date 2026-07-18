@@ -84,10 +84,10 @@ export default function CertificatesView({ language, userProfile }: Certificates
       }
     };
 
-    if (userProfile) {
+    if (userProfile?.uid) {
       loadRealCerts();
     }
-  }, [userProfile]);
+  }, [userProfile?.uid]);
 
   const dict = {
     sw: {

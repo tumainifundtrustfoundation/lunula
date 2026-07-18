@@ -43,7 +43,7 @@ export default function AuthorView({
     } else {
       setLoading(false);
     }
-  }, [userProfile]);
+  }, [userProfile?.uid, userProfile?.role]);
 
   const loadMyDocuments = async () => {
     try {

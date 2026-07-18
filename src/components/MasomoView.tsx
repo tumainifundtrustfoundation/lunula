@@ -517,7 +517,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     } catch (e) {
       console.warn('Could not read completed subtopics', e);
     }
-  }, [userProfile]);
+  }, [userProfile?.uid]);
 
   // Load personal draft for this topic when selectedTopic or userProfile's notes change
   useEffect(() => {
@@ -529,7 +529,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     } catch (e) {
       setNotesDraft('');
     }
-  }, [selectedTopic?.title, userProfile?.personalNotes]);
+  }, [selectedTopic?.title, userProfile?.uid]);
 
   // Reset quiz & flashcard state ONLY when the selected topic's title actually changes
   useEffect(() => {
@@ -583,7 +583,7 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [isTimerActive, userProfile]);
+  }, [isTimerActive, userProfile?.uid]);
 
   // Handle Text-To-Speech (Speech Synthesis) play/pause/cancel
   const handleToggleSpeech = () => {

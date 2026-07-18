@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   FileText, 
@@ -69,6 +69,25 @@ export default function Navbar({
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+
+  const navRef = useRef<HTMLElement>(null);
+
+  // Close menus/dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+        setDropdownOpen(false);
+        setExtraToolsOpen(false);
+        setNotifDropdownOpen(false);
+        setThemeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (!userProfile?.uid) {
@@ -148,7 +167,7 @@ export default function Navbar({
   };
 
   return (
-    <nav id="app-navbar" className="bg-slate-950 text-white sticky top-0 z-50 shadow-md border-b border-cyan-500/10 font-sans">
+    <nav ref={navRef} id="app-navbar" className="bg-slate-950 text-white sticky top-0 z-50 shadow-md border-b border-cyan-500/10 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -570,147 +589,243 @@ export default function Navbar({
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-slate-300 hover:text-white p-2 hover:bg-slate-900 rounded-xl"
+              className="text-slate-300 hover:text-white p-2.5 hover:bg-slate-900 rounded-xl relative transition-all active:scale-95 border border-slate-800/40 bg-slate-900/20 flex items-center justify-center"
+              aria-label="Toggle Menu"
             >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              {mobileMenuOpen ? <X size={20} className="text-cyan-400" /> : <Menu size={20} />}
             </button>
           </div>
 
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-slate-900 border-b border-slate-800 py-3 px-4 space-y-1">
-          {primaryMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
-                  isActive
-                    ? 'bg-cyan-500 text-slate-950'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Icon size={16} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+      {/* Mobile Premium Sidebar Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] lg:hidden"
+            />
 
-          <div className="border-t border-slate-800 pt-2 my-2">
-            <p className="px-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest pb-1">Vifaa vya ziada</p>
-            {toolsMenuItems.map((tool) => {
-              const ToolIcon = tool.icon;
-              const isActive = activeView === tool.id;
-              return (
-                <button
-                  key={tool.id}
-                  onClick={() => handleNavClick(tool.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
-                    isActive ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <ToolIcon size={16} className="text-cyan-400" />
-                  <span>{tool.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-slate-800 pt-3 my-2">
-            <p className="px-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest pb-2">Lugha / Language</p>
-            <div className="px-4 grid grid-cols-2 gap-2">
-              <button
-                onClick={() => onChangeLanguage('sw')}
-                className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
-                  language === 'sw'
-                    ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                }`}
-              >
-                🇹🇿 Kiswahili
-              </button>
-              <button
-                onClick={() => onChangeLanguage('en')}
-                className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
-                  language === 'en'
-                    ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                }`}
-              >
-                🇬🇧 English
-              </button>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-800 pt-3 my-2">
-            <p className="px-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest pb-2">Mada / Theme</p>
-            <div className="px-4 grid grid-cols-3 gap-2">
-              {[
-                { id: 'theme-tanzania-forest', label: 'Forest 🌲' },
-                { id: 'theme-night-mode', label: 'Night 🌙' },
-                { id: 'theme-high-contrast', label: 'Contrast 👁️' }
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => onChangeTheme(t.id as any)}
-                  className={`py-2 px-1 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
-                    theme === t.id
-                      ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-                      : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {userProfile && (
-            <div className="pt-3 mt-3 border-t border-slate-800 space-y-2">
-              <div className="flex items-center gap-2 px-4 py-1.5">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500 text-slate-950 flex items-center justify-center font-bold text-sm">
-                  {userProfile.name.charAt(0)}
+            {/* Side Sheet Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-[350px] bg-slate-950 border-l border-cyan-500/10 shadow-2xl z-[101] p-5 flex flex-col justify-between overflow-y-auto lg:hidden text-white"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800/60">
+                <div className="flex items-center gap-2.5">
+                  <Logo size="sm" />
+                  <div>
+                    <span className="font-display font-black text-sm tracking-tight block uppercase text-white">
+                      Lupanulla
+                    </span>
+                    <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider block">
+                      Elimu Hub 🇹🇿
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-white">{userProfile.name}</p>
-                  <p className="text-[10px] text-slate-400">{userProfile.email}</p>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 hover:bg-slate-900 rounded-lg text-slate-400 hover:text-white border border-slate-800/80 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Navigation Links and Selectors */}
+              <div className="flex-1 py-4 space-y-5 overflow-y-auto pr-1">
+                {/* Main Views */}
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-cyan-500/80 uppercase tracking-widest px-3 mb-1.5">Vipengele Kuu</p>
+                  {primaryMenuItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const isActive = activeView === item.id;
+                    return (
+                      <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03, type: 'spring', stiffness: 200 }}
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-500/5 text-cyan-400 border border-cyan-500/20 font-extrabold'
+                            : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon size={15} className={isActive ? 'text-cyan-400' : 'text-slate-400'} />
+                          <span>{item.label}</span>
+                        </div>
+                        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* Extra Tools Section */}
+                <div className="space-y-1 pt-1">
+                  <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest px-3 mb-1.5">Zana za Masomo (Tools)</p>
+                  {toolsMenuItems.map((tool, index) => {
+                    const ToolIcon = tool.icon;
+                    const isActive = activeView === tool.id;
+                    return (
+                      <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: (primaryMenuItems.length + index) * 0.03, type: 'spring', stiffness: 200 }}
+                        key={tool.id}
+                        onClick={() => handleNavClick(tool.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-r from-purple-500/20 to-purple-500/5 text-purple-300 border border-purple-500/20 font-extrabold'
+                            : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <ToolIcon size={15} className={isActive ? 'text-purple-400' : 'text-cyan-400'} />
+                          <span>{tool.label}</span>
+                        </div>
+                        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc]" />}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* Preferences */}
+                <div className="space-y-3 pt-3 border-t border-slate-900">
+                  {/* Language Switcher */}
+                  <div className="space-y-1.5">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3">Lugha / Language</p>
+                    <div className="grid grid-cols-2 gap-2 px-1">
+                      <button
+                        onClick={() => onChangeLanguage('sw')}
+                        className={`py-2 px-2 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                          language === 'sw'
+                            ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850'
+                        }`}
+                      >
+                        🇹🇿 Kiswahili
+                      </button>
+                      <button
+                        onClick={() => onChangeLanguage('en')}
+                        className={`py-2 px-2 text-[10px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                          language === 'en'
+                            ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850'
+                        }`}
+                      >
+                        🇬🇧 English
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Theme Switcher */}
+                  <div className="space-y-1.5">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3">Mada / Theme</p>
+                    <div className="grid grid-cols-3 gap-1.5 px-1">
+                      {[
+                        { id: 'theme-tanzania-forest', label: '🌲 Forest' },
+                        { id: 'theme-night-mode', label: '🌙 Night' },
+                        { id: 'theme-high-contrast', label: '👁️ Contrast' }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => onChangeTheme(t.id as any)}
+                          className={`py-2 px-1 text-[9px] font-extrabold uppercase rounded-xl border text-center transition-all ${
+                            theme === t.id
+                              ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <button
-                onClick={() => handleNavClick('upload')}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase hover:bg-slate-800 text-slate-300 rounded-lg"
-              >
-                <Upload size={16} /> Pakia karatasi mpya
-              </button>
 
-              {(userProfile.role === 'admin' || userProfile.role === 'super_admin') && (
-                <button
-                  onClick={() => handleNavClick('admin')}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase hover:bg-slate-800 text-rose-400 rounded-lg"
-                >
-                  <ShieldAlert size={16} /> Admin Dashboard
-                </button>
-              )}
+              {/* Bottom Profile Row */}
+              <div className="pt-4 border-t border-slate-900">
+                {userProfile ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 px-2 py-1 bg-slate-900/50 rounded-xl border border-slate-800/40">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500 text-slate-950 flex items-center justify-center font-black text-sm">
+                        {userProfile.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black text-white truncate">{userProfile.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate leading-none mt-0.5">{userProfile.email}</p>
+                      </div>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-extrabold uppercase ${
+                        (userProfile.subscription === 'premium' || userProfile.role === 'admin' || userProfile.role === 'super_admin')
+                          ? 'bg-amber-400 text-amber-950 shadow-[0_0_8px_rgba(251,191,36,0.3)]' 
+                          : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {(userProfile.subscription === 'premium' || userProfile.role === 'admin' || userProfile.role === 'super_admin') ? '★ Premium' : 'Bure'}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-1.5">
+                      <button
+                        onClick={() => handleNavClick('upload')}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase text-slate-300 hover:bg-slate-900 hover:text-white rounded-xl border border-slate-900 transition-all"
+                      >
+                        <Upload size={14} className="text-cyan-400" />
+                        <span>Pakia Faili / Upload</span>
+                      </button>
 
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onSignOut();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase text-red-400 hover:bg-red-950/20 rounded-lg"
-              >
-                <LogOut size={16} /> Ondoka (Sign Out)
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                      {(userProfile.role === 'admin' || userProfile.role === 'super_admin') && (
+                        <button
+                          onClick={() => handleNavClick('admin')}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase text-rose-400 hover:bg-rose-950/20 rounded-xl border border-rose-950/30 transition-all"
+                        >
+                          <ShieldAlert size={14} />
+                          <span>Admin Dashboard</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onSignOut();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase text-red-400 hover:bg-red-950/20 rounded-xl transition-all"
+                      >
+                        <LogOut size={14} />
+                        <span>Ondoka (Sign Out)</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onSignInClick();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all shadow-lg active:scale-95"
+                  >
+                    <LogIn size={14} />
+                    <span>Ingia (Sign In)</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
