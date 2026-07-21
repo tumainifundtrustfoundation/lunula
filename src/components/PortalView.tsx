@@ -31,7 +31,7 @@ import { fetchAnnouncements, fetchVideos } from '../firebase';
 import { Announcement, Video } from '../types';
 import QuoteWidget from './QuoteWidget';
 import AdSenseWidget from './AdSenseWidget';
-import founderImg from '../assets/images/lupanulla_logo_1783623714916.jpg';
+import VisionMission from './VisionMission';
 
 interface PortalViewProps {
   onNavigate: (view: string, id?: string) => void;
@@ -551,70 +551,8 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
         </div>
       </section>
 
-      {/* ── Section: Mwanzilishi (Founder Section) ── */}
-      <section className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-10 text-white border border-slate-800 shadow-xl overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          {/* Picture Container */}
-          <div className="lg:col-span-4 flex justify-center">
-            <div className="relative group">
-              {/* Outer soft glow decoration */}
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
-              
-              <div className="relative bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                <img 
-                  src={founderImg} 
-                  alt="Lupanulla Elimu Hub" 
-                  referrerPolicy="no-referrer"
-                  className="w-full max-w-[280px] h-[340px] object-contain p-6 bg-slate-900 rounded-xl transition-all duration-500 group-hover:scale-[1.02]"
-                />
-                <div className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg text-center">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">LUPANULLA ELIMU HUB</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bio text container */}
-          <div className="lg:col-span-8 space-y-6">
-            <div className="space-y-1">
-              <span className="text-xs text-cyan-400 font-extrabold uppercase tracking-wider block">MWANZILISHI NA MKURUGENZI</span>
-              <h2 className="font-display font-black text-2xl sm:text-4xl uppercase tracking-tight text-white leading-tight">
-                Kutana na Lupanulla
-              </h2>
-            </div>
-            
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed italic border-l-4 border-cyan-500 pl-4 py-1">
-              "Elimu ni ngao yenye nguvu zaidi inayomuwezesha kijana wa Kitanzania kufikia ndoto zake. Lengo la Lupanulla Foundation ni kuhakikisha kuwa kila mwanafunzi nchini Tanzania anapata notisi bora, video za kufundisha, na msaada wa kisasa kabisa wa AI bila vikwazo vya kifedha."
-            </p>
-            
-            <div className="space-y-4 text-slate-300 text-xs sm:text-sm">
-              <p className="leading-relaxed">
-                Lupanulla ni mhandisi wa programu (Software Engineer), mjasiriamali wa kiteknolojia na mwanaharakati wa elimu nchini Tanzania. Akiwa amevalia kofia yake maarufu yenye chapa ya kizalendo ya <span className="text-cyan-400 font-bold">"UOMBON MGONGONI"</span>, alianzisha <strong>Lupanulla Elimu Hub</strong> kuleta mageuzi makubwa ya kidijitali kwenye sekta ya elimu.
-              </p>
-              <p className="leading-relaxed">
-                Kupitia jukwaa hili, mamia ya wanafunzi nchini kote wamefanikiwa kufanya maandalizi thabiti ya mitihani yao ya taifa na kufaulu kwa kiwango cha juu. Lupanulla anaendelea kuongoza mipango ya kiteknolojia kusaidia jamii kufikia malengo yao kupitia nguvu ya maendeleo ya programu huru.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button 
-                onClick={() => onNavigate('workspace')}
-                className="inline-flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/10 uppercase tracking-wider"
-              >
-                Soma Wasifu Kamili
-              </button>
-              <a 
-                href="mailto:lupanulla.co.tz@gmail.com" 
-                className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-5 py-3 rounded-xl transition-all border border-slate-700 uppercase tracking-wider"
-              >
-                Mwandikie Barua Pepe
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── Section: Vision and Mission ── */}
+      <VisionMission />
 
       {/* ── FAQ Systems (Accordion layout) ── */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">

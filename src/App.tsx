@@ -74,6 +74,7 @@ import LeaderboardView from './components/LeaderboardView';
 import ResourcesView from './components/ResourcesView';
 import NectaProgressView from './components/NectaProgressView';
 import RotatingBanner from './components/RotatingBanner';
+import WelcomeNotification from './components/WelcomeNotification';
 
 // Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
 const ViewLoadingSkeleton = () => (
@@ -812,6 +813,9 @@ export default function App() {
         user={user}
         userProfile={userProfile}
       />
+
+      {/* Welcome & Benefits Notification */}
+      <WelcomeNotification onNavigate={navigateTo} />
 
       {/* Navigation Bar */}
       <Navbar 

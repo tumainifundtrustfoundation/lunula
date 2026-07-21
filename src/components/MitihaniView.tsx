@@ -27,9 +27,21 @@ import {
   Atom,
   Compass,
   Scale,
-  GraduationCap
+  GraduationCap,
+  Edit,
+  Trash2
 } from 'lucide-react';
-import { fetchDocuments, fetchExamResultByCode, fetchExamResults, toggleBookmark as toggleBookmarkFirestore, fetchUserBookmarks, saveOrder } from '../firebase';
+import { 
+  fetchDocuments, 
+  fetchExamResultByCode, 
+  fetchExamResults, 
+  toggleBookmark as toggleBookmarkFirestore, 
+  fetchUserBookmarks, 
+  saveOrder,
+  saveDocumentMetadata,
+  updateDocument,
+  deleteDocumentMetadata
+} from '../firebase';
 import { DocumentMetadata, ExamResult, UserBookmark } from '../types';
 import { GoogleAdSenseUnit } from './MatangazoView';
 import ExamTimer from './ExamTimer';
@@ -68,6 +80,133 @@ export default function MitihaniView({
   const [buyerNetwork, setBuyerNetwork] = useState('M-Pesa');
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [orderSaving, setOrderSaving] = useState(false);
+
+  // Admin action states
+  const [isAddExamModalOpen, setIsAddExamModalOpen] = useState(false);
+  const [isEditExamModalOpen, setIsEditExamModalOpen] = useState(false);
+  const [editingExam, setEditingExam] = useState<DocumentMetadata | null>(null);
+  
+  // Admin form fields
+  const [examTitle, setExamTitle] = useState('');
+  const [examDescription, setExamDescription] = useState('');
+  const [examSubject, setExamSubject] = useState('Physics');
+  const [examYear, setExamYear] = useState(new Date().getFullYear());
+  const [examLevel, setExamLevel] = useState('O-Level');
+  const [examClassLevel, setExamClassLevel] = useState('Form 4');
+  const [examDriveUrl, setExamDriveUrl] = useState('');
+  const [examFileId, setExamFileId] = useState('');
+  const [examCategory, setExamCategory] = useState('Past Papers');
+  const [examTagsInput, setExamTagsInput] = useState('');
+  const [examPaperNo, setExamPaperNo] = useState('Paper 1');
+  const [examIsForSale, setExamIsForSale] = useState(false);
+  const [examPrice, setExamPrice] = useState(0);
+  const [isAdminActionLoading, setIsAdminActionLoading] = useState(false);
+
+  const handleOpenAddModal = () => {
+    setEditingExam(null);
+    setExamTitle('');
+    setExamDescription('');
+    setExamSubject('Physics');
+    setExamYear(new Date().getFullYear());
+    setExamLevel('O-Level');
+    setExamClassLevel('Form 4');
+    setExamDriveUrl('');
+    setExamFileId('');
+    setExamCategory('Past Papers');
+    setExamTagsInput('NECTA, Past Paper, Form 4');
+    setExamPaperNo('Paper 1');
+    setExamIsForSale(false);
+    setExamPrice(0);
+    setIsAddExamModalOpen(true);
+  };
+
+  const handleOpenEditModal = (doc: DocumentMetadata) => {
+    setEditingExam(doc);
+    setExamTitle(doc.title || '');
+    setExamDescription(doc.description || '');
+    setExamSubject((doc as any).subject || 'Physics');
+    setExamYear(doc.year || new Date().getFullYear());
+    setExamLevel((doc as any).educationLevel || 'O-Level');
+    setExamClassLevel((doc as any).classLevel || 'Form 4');
+    setExamDriveUrl(doc.driveUrl || '');
+    setExamFileId(doc.fileId || '');
+    setExamCategory(doc.category || 'Past Papers');
+    setExamTagsInput(doc.tags?.join(', ') || '');
+    setExamPaperNo((doc as any).paperNo || 'Paper 1');
+    setExamIsForSale(!!doc.isForSale);
+    setExamPrice(doc.price || 0);
+    setIsEditExamModalOpen(true);
+  };
+
+  const handleSaveExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!examTitle.trim() || !examDriveUrl.trim()) {
+      alert('Tafadhali jaza Jina la Mtihani na Drive URL ya faili la PDF!');
+      return;
+    }
+
+    setIsAdminActionLoading(true);
+    try {
+      const tags = examTagsInput.split(',').map(t => t.trim()).filter(Boolean);
+      if (!tags.some(t => t.toLowerCase() === 'necta') && examCategory.toLowerCase() === 'past papers') {
+        tags.push('NECTA');
+      }
+
+      const payload: any = {
+        title: examTitle.trim(),
+        description: examDescription.trim(),
+        category: examCategory,
+        tags: tags,
+        driveUrl: examDriveUrl.trim(),
+        fileId: examFileId.trim() || `exam-${Date.now()}`,
+        uploadedBy: userProfile?.uid || 'admin',
+        uploadedByName: userProfile?.name || 'Msimamizi Lupanulla',
+        year: Number(examYear) || new Date().getFullYear(),
+        status: 'approved',
+        rating: 5,
+        downloadsCount: editingExam?.downloadsCount || 0,
+        educationLevel: examLevel,
+        classLevel: examClassLevel,
+        subject: examSubject,
+        documentType: examCategory,
+        paperNo: examPaperNo,
+        isForSale: examIsForSale,
+        price: examIsForSale ? Number(examPrice) || 0 : 0,
+        views: editingExam?.views || 0,
+      };
+
+      if (editingExam) {
+        await updateDocument(editingExam.id, payload);
+        alert('Mtihani umerekebishwa kikamilifu!');
+        setIsEditExamModalOpen(false);
+      } else {
+        await saveDocumentMetadata(payload);
+        alert('Mtihani mpya umeongezwa kikamilifu!');
+        setIsAddExamModalOpen(false);
+      }
+      await loadDocs();
+    } catch (err: any) {
+      console.error('Error saving exam:', err);
+      alert('Imeshindikana kuhifadhi mtihani: ' + (err.message || err));
+    } finally {
+      setIsAdminActionLoading(false);
+    }
+  };
+
+  const handleDeleteDoc = async (id: string, title: string) => {
+    if (!window.confirm(`Je, una uhakika unataka kufuta mtihani huu: "${title}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteDocumentMetadata(id);
+      alert('Mtihani umefutwa kikamilifu!');
+      await loadDocs();
+    } catch (err: any) {
+      console.error('Error deleting exam:', err);
+      alert('Imeshindikana kufuta mtihani: ' + (err.message || err));
+    }
+  };
 
   const canAccessDirectly = (doc: DocumentMetadata) => {
     if (!doc.isForSale) return true;
@@ -1083,12 +1222,19 @@ export default function MitihaniView({
               {showTimer ? 'Funga Kipima Muda' : 'Kipima Muda (Timer)'}
             </button>
 
-            <button 
-              onClick={() => onNavigate('upload')}
-              className="bg-white text-slate-900 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 shadow-md"
-            >
-              <Plus size={16} /> Pakia Mtihani Mpya
-            </button>
+            {(userProfile?.role === 'admin' || userProfile?.role === 'super_admin') ? (
+              <button 
+                onClick={handleOpenAddModal}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Plus size={16} /> Ongeza Mtihani Mpya (Admin)
+              </button>
+            ) : (
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1.5 shadow-sm">
+                <BookOpen size={14} className="text-cyan-300 animate-pulse" />
+                <span>Njia ya Usomaji Imewashwa</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -1834,6 +1980,23 @@ export default function MitihaniView({
                                 SOMA &rarr;
                               </span>
                             </div>
+
+                            {(userProfile?.role === 'admin' || userProfile?.role === 'super_admin') && (
+                              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 mt-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => handleOpenEditModal(doc)}
+                                  className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Edit size={10} /> Hariri
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                                  className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Trash2 size={10} /> Futa
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                         </div>
@@ -1912,6 +2075,23 @@ export default function MitihaniView({
                           SOMA &rarr;
                         </span>
                       </div>
+
+                      {(userProfile?.role === 'admin' || userProfile?.role === 'super_admin') && (
+                        <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 mt-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => handleOpenEditModal(doc)}
+                            className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit size={10} /> Hariri
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 size={10} /> Futa
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -2037,6 +2217,235 @@ export default function MitihaniView({
                 {orderSaving ? 'Inatengeneza Agizo...' : `Agiza Sasa hivi (TSh ${(purchasingDoc.price || 0).toLocaleString()})`}
                 <ArrowRight size={14} />
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Admin Add/Edit Exam Modal ── */}
+      {(isAddExamModalOpen || isEditExamModalOpen) && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-100 animate-scale-up">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-950 p-6 text-white flex justify-between items-center flex-shrink-0">
+              <div>
+                <h3 className="font-display font-extrabold text-lg uppercase tracking-tight">
+                  {editingExam ? 'Hariri Mtihani' : 'Ongeza Mtihani Mpya'}
+                </h3>
+                <p className="text-emerald-100 text-xs">Jaza fomu hapa chini ili kuweka mtihani kwenye mfumo</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsAddExamModalOpen(false);
+                  setIsEditExamModalOpen(false);
+                }}
+                className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body / Scrollable Form */}
+            <form onSubmit={handleSaveExam} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                {/* Title */}
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kichwa cha Mtihani (Title) *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={examTitle}
+                    onChange={(e) => setExamTitle(e.target.value)}
+                    placeholder="Mfano: NECTA Physics Form IV 2024"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Maelezo Mafupi (Description)</label>
+                  <textarea 
+                    value={examDescription}
+                    onChange={(e) => setExamDescription(e.target.value)}
+                    placeholder="Maelezo kidogo kuhusu mtihani huu..."
+                    rows={2}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Somo (Subject)</label>
+                  <select 
+                    value={examSubject}
+                    onChange={(e) => setExamSubject(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                  >
+                    <option value="Basic Mathematics">Basic Mathematics</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Biology">Biology</option>
+                    <option value="Geography">Geography</option>
+                    <option value="History">History</option>
+                    <option value="Civics">Civics</option>
+                    <option value="English Language">English Language</option>
+                    <option value="Kiswahili">Kiswahili</option>
+                    <option value="Commerce">Commerce</option>
+                    <option value="Bookkeeping">Bookkeeping</option>
+                    <option value="General Studies">General Studies</option>
+                    <option value="Advanced Mathematics">Advanced Mathematics</option>
+                  </select>
+                </div>
+
+                {/* Year */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mwaka (Year)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={examYear}
+                    onChange={(e) => setExamYear(Number(e.target.value))}
+                    placeholder="2026"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Education Level */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kiwango cha Elimu (Level)</label>
+                  <select 
+                    value={examLevel}
+                    onChange={(e) => setExamLevel(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                  >
+                    <option value="Primary">Primary (Msingi)</option>
+                    <option value="O-Level">O-Level (Sekondari Form 1-4)</option>
+                    <option value="A-Level">A-Level (Sekondari Form 5-6)</option>
+                  </select>
+                </div>
+
+                {/* Class Level */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Darasa (Class Level)</label>
+                  <select 
+                    value={examClassLevel}
+                    onChange={(e) => setExamClassLevel(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                  >
+                    <option value="Form 1">Form 1</option>
+                    <option value="Form 2">Form 2</option>
+                    <option value="Form 3">Form 3</option>
+                    <option value="Form 4">Form 4</option>
+                    <option value="Form 5">Form 5</option>
+                    <option value="Form 6">Form 6</option>
+                    <option value="Standard 7">Standard 7</option>
+                    <option value="Standard 4">Standard 4</option>
+                  </select>
+                </div>
+
+                {/* Google Drive PDF URL */}
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Google Drive au Link ya PDF (URL) *</label>
+                  <input 
+                    type="url" 
+                    required
+                    value={examDriveUrl}
+                    onChange={(e) => setExamDriveUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/.../view"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kundi la Mtihani (Category)</label>
+                  <select 
+                    value={examCategory}
+                    onChange={(e) => setExamCategory(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-700 cursor-pointer"
+                  >
+                    <option value="Past Papers">Past Papers</option>
+                    <option value="Mock Exams">Mock Exams</option>
+                    <option value="Terminal Exams">Terminal Exams</option>
+                    <option value="Mid-Term Exams">Mid-Term Exams</option>
+                    <option value="Monthly Tests">Monthly Tests</option>
+                  </select>
+                </div>
+
+                {/* Paper Number */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Namba ya Karatasi (Paper No)</label>
+                  <input 
+                    type="text" 
+                    value={examPaperNo}
+                    onChange={(e) => setExamPaperNo(e.target.value)}
+                    placeholder="Paper 1, Paper 2, Practical"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Lebo (Tags) - Tenganisha kwa mkato</label>
+                  <input 
+                    type="text" 
+                    value={examTagsInput}
+                    onChange={(e) => setExamTagsInput(e.target.value)}
+                    placeholder="NECTA, Past Paper, Fizikia, 2024"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                  />
+                </div>
+
+                {/* Is For Sale */}
+                <div className="md:col-span-2 flex items-center gap-2 py-2">
+                  <input 
+                    type="checkbox" 
+                    id="examIsForSale"
+                    checked={examIsForSale}
+                    onChange={(e) => setExamIsForSale(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <label htmlFor="examIsForSale" className="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                    Mtihani huu unahitaji malipo ili kuusoma? (Kuuza)
+                  </label>
+                </div>
+
+                {/* Price (if for sale) */}
+                {examIsForSale && (
+                  <div className="md:col-span-2 space-y-1 animate-fade-in">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bei ya Mtihani (TSh) *</label>
+                    <input 
+                      type="number" 
+                      required={examIsForSale}
+                      value={examPrice}
+                      onChange={(e) => setExamPrice(Number(e.target.value))}
+                      placeholder="Bei kwa Shilingi za Kitanzania (Mfano: 500)"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Submit and Cancel Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-slate-100 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddExamModalOpen(false);
+                    setIsEditExamModalOpen(false);
+                  }}
+                  className="flex-1 py-3 px-4 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center"
+                >
+                  Ghairi
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdminActionLoading}
+                  className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isAdminActionLoading ? 'Inahifadhi...' : 'Hifadhi Mtihani'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
