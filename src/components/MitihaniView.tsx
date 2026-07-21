@@ -73,6 +73,10 @@ export default function MitihaniView({
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [showTimer, setShowTimer] = useState(false);
 
+  // Quick View states for PDF Preview Modal
+  const [quickViewDoc, setQuickViewDoc] = useState<DocumentMetadata | null>(null);
+  const [quickViewTab, setQuickViewTab] = useState<'summary' | 'pdf'>('summary');
+
   // Purchase states for Paid Documents
   const [purchasingDoc, setPurchasingDoc] = useState<DocumentMetadata | null>(null);
   const [buyerName, setBuyerName] = useState('');
@@ -215,15 +219,89 @@ export default function MitihaniView({
   };
 
   const handleDocClick = (doc: DocumentMetadata) => {
-    if (!canAccessDirectly(doc)) {
-      setPurchasingDoc(doc);
-      setBuyerName(userProfile?.name || '');
-      setBuyerPhone(userProfile?.phone || '');
-      setBuyerNetwork('M-Pesa');
-      setShowPurchaseModal(true);
-      return;
+    setQuickViewDoc(doc);
+    setQuickViewTab('summary');
+  };
+
+  const extractGoogleDriveId = (url: string): string | null => {
+    if (!url) return null;
+    const regD = /\/d\/([a-zA-Z0-9-_]+)/;
+    const matchD = url.match(regD);
+    if (matchD && matchD[1]) {
+      return matchD[1];
     }
-    onNavigate('reader', doc.id);
+    const regId = /[?&]id=([a-zA-Z0-9-_]+)/;
+    const matchId = url.match(regId);
+    if (matchId && matchId[1]) {
+      return matchId[1];
+    }
+    if (/^[a-zA-Z0-9-_]{20,100}$/.test(url.trim())) {
+      return url.trim();
+    }
+    return null;
+  };
+
+  const getDownloadInfo = (doc: DocumentMetadata) => {
+    if (doc.driveUrl) {
+      return { url: doc.driveUrl, title: doc.title };
+    }
+    
+    // Fallback to Maktaba Tetea URL scheme
+    const tagsStr = doc.tags?.map(t => t.toLowerCase()).join(' ') || '';
+    
+    let level = 'f4';
+    if (tagsStr.includes('psle') || tagsStr.includes('std7') || tagsStr.includes('primary')) level = 'std7';
+    else if (tagsStr.includes('std4')) level = 'std4';
+    else if (tagsStr.includes('ftsee') || tagsStr.includes('f2') || tagsStr.includes('ftna')) level = 'f2';
+    else if (tagsStr.includes('acsee') || tagsStr.includes('f6')) level = 'f6';
+
+    // Find matching subject key
+    let subjectKey = 'physics';
+    const subjects = ['mathematics', 'basic-math', 'adv-math', 'physics', 'chemistry', 'biology', 'geography', 'history', 'civics', 'english', 'kiswahili', 'science', 'social-studies', 'civic-moral', 'commerce', 'bookkeeping'];
+    for (const sub of subjects) {
+      if (tagsStr.includes(sub) || doc.title?.toLowerCase().includes(sub)) {
+        subjectKey = sub;
+        break;
+      }
+    }
+
+    const maktabaLevel = level === 'std7' ? 'psle' :
+                         level === 'std4' ? 'sf' :
+                         level === 'f2' ? 'ftsee' :
+                         level === 'f4' ? 'csee' : 'acsee';
+    
+    const maktabaSubject = subjectKey === 'basic-math' ? 'basic-math' :
+                           subjectKey === 'adv-math' ? 'adv-math' :
+                           subjectKey === 'kiswahili' ? 'kiswahili' :
+                           subjectKey === 'english' ? 'english' : subjectKey;
+
+    let fileSubject = subjectKey === 'basic-math' ? 'Basic-Mathematics' :
+                      subjectKey === 'adv-math' ? 'Advanced-Mathematics' :
+                      subjectKey === 'kiswahili' ? 'Kiswahili' :
+                      subjectKey === 'english' ? 'English-Language' :
+                      subjectKey === 'science' ? 'Science-and-Technology' :
+                      subjectKey === 'social-studies' ? 'Social-Studies' :
+                      subjectKey === 'civic-moral' ? 'Civic-and-Moral-Education' :
+                      subjectKey === 'mathematics' ? 'Mathematics' :
+                      subjectKey.charAt(0).toUpperCase() + subjectKey.slice(1);
+
+    let paperSuffix = '';
+    if (level === 'f4' || level === 'f6') {
+      if (!['basic-math', 'civics', 'kiswahili', 'bookkeeping'].includes(subjectKey)) {
+        paperSuffix = '-1';
+      }
+    }
+
+    const year = doc.year || 2023;
+    const url = `https://maktaba.tetea.org/past-papers/${maktabaLevel}/${maktabaSubject}/${fileSubject}${paperSuffix}-${year}.pdf`;
+    
+    const levelName = level === 'std4' ? 'Darasa la 4' :
+                      level === 'std7' ? 'Darasa la 7' :
+                      level === 'f2' ? 'Kidato cha 2' :
+                      level === 'f4' ? 'Kidato cha 4' : 'Kidato cha 6';
+    const title = `NECTA ${fileSubject.replace(/-/g, ' ')} (${levelName}) - ${year}`;
+
+    return { url, title };
   };
 
   const handleConfirmPurchase = async (e: React.FormEvent) => {
@@ -1636,8 +1714,31 @@ export default function MitihaniView({
                 <button
                   type="button"
                   onClick={() => {
-                    const docId = `necta-${nectaWizardLevel}-${nectaWizardSubject}-${nectaWizardYear}`;
-                    onNavigate('reader', docId);
+                    let docToPreview: DocumentMetadata;
+                    if (matchingDoc) {
+                      docToPreview = matchingDoc;
+                    } else {
+                      const levelName = nectaWizardLevel === 'std4' ? 'Darasa la 4' :
+                                        nectaWizardLevel === 'std7' ? 'Darasa la 7' :
+                                        nectaWizardLevel === 'f2' ? 'Kidato cha 2' :
+                                        nectaWizardLevel === 'f4' ? 'Kidato cha 4' : 'Kidato cha 6';
+                      const label = `NECTA ${currentSubjectLabel} (${levelName}) - ${nectaWizardYear}`;
+                      docToPreview = {
+                        id: `necta-${nectaWizardLevel}-${nectaWizardSubject}-${nectaWizardYear}`,
+                        title: label,
+                        description: `Soma na upakue mtihani rasmi wa kitaifa wa NECTA wa mwaka ${nectaWizardYear} kwa somo la ${currentSubjectLabel}. Karatasi hii ipo kwenye mfumo wa Lupanulla Document Cloud na inakuwezesha kujipima uwezo wako.`,
+                        category: 'NECTA',
+                        type: 'NECTA',
+                        tags: ['NECTA', nectaWizardLevel, nectaWizardSubject, String(nectaWizardYear)],
+                        year: parseInt(nectaWizardYear, 10),
+                        views: 1540,
+                        downloadsCount: 380,
+                        sizeKB: 1250,
+                        createdAt: Date.now(),
+                        status: 'approved'
+                      } as DocumentMetadata;
+                    }
+                    handleDocClick(docToPreview);
                   }}
                   className="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black text-xs px-5 py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
                 >
@@ -1648,8 +1749,11 @@ export default function MitihaniView({
                 <button
                   type="button"
                   onClick={() => {
+                    let downloadUrl = '';
+                    let downloadTitle = '';
                     if (matchingDoc && matchingDoc.driveUrl) {
-                      window.open(matchingDoc.driveUrl, '_blank');
+                      downloadUrl = matchingDoc.driveUrl;
+                      downloadTitle = matchingDoc.title;
                     } else {
                       const maktabaLevel = nectaWizardLevel === 'std7' ? 'psle' :
                                            nectaWizardLevel === 'std4' ? 'sf' :
@@ -1674,10 +1778,20 @@ export default function MitihaniView({
                           paperSuffix = '-1';
                         }
                       }
-                      const directUrl = `https://maktaba.tetea.org/past-papers/${maktabaLevel}/${maktabaSubject}/${fileSubject}${paperSuffix}-${nectaWizardYear}.pdf`;
-                      window.open(directUrl, '_blank');
+                      downloadUrl = `https://maktaba.tetea.org/past-papers/${maktabaLevel}/${maktabaSubject}/${fileSubject}${paperSuffix}-${nectaWizardYear}.pdf`;
+                      const levelName = nectaWizardLevel === 'std4' ? 'Darasa la 4' :
+                                        nectaWizardLevel === 'std7' ? 'Darasa la 7' :
+                                        nectaWizardLevel === 'f2' ? 'Kidato cha 2' :
+                                        nectaWizardLevel === 'f4' ? 'Kidato cha 4' : 'Kidato cha 6';
+                      downloadTitle = `NECTA ${fileSubject.replace(/-/g, ' ')} (${levelName}) - ${nectaWizardYear}`;
                     }
-                    alert('📥 Upakuaji umeanza! Faili linapakuliwa kutoka Lupanulla Document Cloud kwa usalama.');
+
+                    window.dispatchEvent(new CustomEvent('start-pdf-download', {
+                      detail: { 
+                        title: downloadTitle, 
+                        url: downloadUrl 
+                      }
+                    }));
                   }}
                   className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-5 py-3 rounded-2xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01]"
                 >
@@ -1737,7 +1851,7 @@ export default function MitihaniView({
             return (
               <div 
                 key={paper.id}
-                onClick={() => onNavigate('reader', paper.id)}
+                onClick={() => handleDocClick(paper)}
                 className={`bg-white border-l-4 ${docAccent} border border-slate-200 p-4 rounded-3xl shadow-sm hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex gap-4 min-h-[11rem] h-auto group`}
               >
                 {/* Beautiful Book Cover Thumbnail */}
@@ -2447,6 +2561,302 @@ export default function MitihaniView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── QUICK VIEW MODAL OVERLAY ── */}
+      {quickViewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 animate-fade-in animate-duration-150 text-left">
+          <div className="bg-white text-slate-800 w-full max-w-5xl h-[90vh] md:h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative border border-slate-100">
+            {/* Close Button */}
+            <button 
+              type="button"
+              onClick={() => setQuickViewDoc(null)}
+              className="absolute top-4 right-4 z-20 text-slate-400 hover:text-slate-600 transition-all cursor-pointer p-1.5 rounded-full bg-white/90 hover:bg-slate-100 shadow-sm border border-slate-200"
+            >
+              <X size={18} />
+            </button>
+
+            {/* LEFT SIDE: Preview & Tabs */}
+            <div className="w-full md:w-1/2 bg-slate-950 flex flex-col h-[40%] md:h-full border-b md:border-b-0 md:border-r border-slate-800 relative">
+              {/* Tab Selector */}
+              <div className="flex bg-slate-900 p-1.5 border-b border-slate-800 justify-center items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setQuickViewTab('summary')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    quickViewTab === 'summary' 
+                      ? 'bg-cyan-500 text-slate-950 shadow-sm' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <BookOpen size={13} />
+                  Muhtasari wa Maswali
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickViewTab('pdf')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    quickViewTab === 'pdf' 
+                      ? 'bg-cyan-500 text-slate-950 shadow-sm' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <FileText size={13} />
+                  Soma Karatasi (PDF View)
+                </button>
+              </div>
+
+              {/* Tab Contents */}
+              <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-start">
+                {quickViewTab === 'summary' ? (
+                  <div className="space-y-4 max-w-md mx-auto w-full text-slate-200 py-4">
+                    {/* Visual Cover Mini-Preview */}
+                    <div className="flex justify-center items-center gap-6 mb-4">
+                      {renderBookCover(quickViewDoc)}
+                      <div className="space-y-2 text-left">
+                        <span className="bg-cyan-500/10 text-cyan-400 text-[10px] font-black px-2 py-0.5 rounded-md border border-cyan-400/20 uppercase tracking-widest">
+                          Muhtasari wa AI
+                        </span>
+                        <h4 className="font-display font-extrabold text-white text-xs sm:text-sm uppercase tracking-tight leading-tight">
+                          {quickViewDoc.title}
+                        </h4>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <Clock size={12} className="text-cyan-400" />
+                          <span>Masaa 3 ya Mtihani</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Exam Structure Details */}
+                    {(() => {
+                      const subject = getDocSubject(quickViewDoc).toLowerCase();
+                      let isScience = ['physics', 'chemistry', 'biology', 'science', 'mathematics', 'basic-math', 'adv-math'].some(s => subject.includes(s));
+                      let sections = [
+                        { name: 'Sehemu A (Section A)', desc: 'Maswali 10 ya kuchagua (Multiple Choice) na kujaza nafasi zilizo wazi.', weight: 'Alama 15 (15 Marks)' },
+                        { name: 'Sehemu B (Section B)', desc: isScience ? 'Maswali 5 ya kokotoa na majaribio ya kimaabara yenye maelezo mafupi.' : 'Maswali ya insha, uchambuzi wa matukio na ramani za kijiografia.', weight: 'Alama 70 (70 Marks)' },
+                        { name: 'Sehemu C (Section C)', desc: isScience ? 'Swali la 1 la uchambuzi wa kina au practical scenario/titration.' : 'Maswali 2 ya insha ya kina kuchagua moja.', weight: 'Alama 15 (15 Marks)' },
+                      ];
+                      let prepTips = isScience 
+                        ? 'Zingatia kukariri formula muhimu, kuchora michoro safi yenye lebo, na kufuata hatua zote za kokotoa alama kamili.'
+                        : 'Hakikisha unaelewa vizuri mifano ya kijamii, tarehe za kihistoria, mada za insha na jinsi ya kueleza hoja zako kwa mtiririko mzuri.';
+                      
+                      let difficulty = 'Kati / Medium';
+                      let difficultyBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                      if (subject.includes('math') || subject.includes('physics')) {
+                        difficulty = 'Ngumu / Hard';
+                        difficultyBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+                      } else if (subject.includes('kiswahili') || subject.includes('english')) {
+                        difficulty = 'Rahisi / Easy';
+                        difficultyBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Syllabus coverage and difficulty */}
+                          <div className="grid grid-cols-2 gap-3 text-center">
+                            <div className="p-3 bg-slate-900 rounded-2xl border border-slate-800 space-y-1">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kiwango cha Ugumu</span>
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${difficultyBg}`}>
+                                {difficulty}
+                              </span>
+                            </div>
+                            <div className="p-3 bg-slate-900 rounded-2xl border border-slate-800 space-y-1">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Mtaala wa NECTA</span>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-400 bg-cyan-500/10 border border-cyan-400/20 px-2 py-0.5 rounded-md">
+                                <ShieldCheck size={12} /> 100% Sahihi
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Exam sections breakdown */}
+                          <div className="space-y-2.5 text-left">
+                            <h5 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Muundo wa Karatasi</h5>
+                            {sections.map((sec, idx) => (
+                              <div key={idx} className="bg-slate-900/50 p-3 rounded-2xl border border-slate-800/60 flex items-start gap-3">
+                                <span className="bg-cyan-500 text-slate-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <div className="space-y-0.5 min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <h6 className="font-bold text-xs text-white truncate">{sec.name}</h6>
+                                    <span className="text-[10px] font-black text-cyan-400 shrink-0">{sec.weight}</span>
+                                  </div>
+                                  <p className="text-[10.5px] text-slate-400 leading-normal font-medium">{sec.desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Prep Advice */}
+                          <div className="p-3 bg-cyan-500/5 rounded-2xl border border-cyan-500/10 space-y-1 text-left">
+                            <h6 className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-1">
+                              <Sparkles size={11} /> Mwongozo wa Kufaulu (Success Tip)
+                            </h6>
+                            <p className="text-[10.5px] text-slate-300 leading-relaxed font-medium">
+                              {prepTips}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col justify-center items-center py-2">
+                    {/* Render Real PDF iframe preview */}
+                    {(() => {
+                      let embedUrl = '';
+                      if (quickViewDoc.driveUrl) {
+                        const parsedId = extractGoogleDriveId(quickViewDoc.driveUrl);
+                        if (parsedId) {
+                          embedUrl = `https://drive.google.com/file/d/${parsedId}/preview`;
+                        } else {
+                          embedUrl = quickViewDoc.driveUrl;
+                        }
+                      } else {
+                        const downloadInfo = getDownloadInfo(quickViewDoc);
+                        embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(downloadInfo.url)}&embedded=true`;
+                      }
+
+                      return (
+                        <div className="w-full h-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex flex-col relative min-h-[250px] md:min-h-0">
+                          <div className="absolute top-2 left-2 bg-slate-950/80 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] text-slate-300 font-extrabold z-10 flex items-center gap-1 border border-slate-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                            Hakiki PDF ya Mtandaoni
+                          </div>
+                          <iframe 
+                            src={embedUrl} 
+                            className="w-full h-full border-0 rounded-2xl bg-slate-900" 
+                            title="PDF Preview"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT SIDE: Details & Actions */}
+            <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col h-[60%] md:h-full justify-between overflow-y-auto">
+              <div className="space-y-6">
+                {/* Header Badge */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-cyan-200 uppercase tracking-widest">
+                    {quickViewDoc.type || 'NECTA'}
+                  </span>
+                  <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
+                    Mwaka {quickViewDoc.year || 2024}
+                  </span>
+                  {quickViewDoc.tags?.includes('premium') && (
+                    <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-0.5">
+                      <Crown size={11} /> PRO
+                    </span>
+                  )}
+                </div>
+
+                {/* Title */}
+                <div className="space-y-2 text-left">
+                  <h3 className="font-sans font-black text-slate-950 text-base sm:text-lg tracking-tight leading-tight">
+                    {quickViewDoc.title}
+                  </h3>
+                  <p className="text-slate-500 text-xs leading-relaxed font-semibold">
+                    {quickViewDoc.description || `Soma na upakue mtihani rasmi wa kitaifa wa NECTA wa mwaka {quickViewDoc.year} kwa somo hili. Karatasi hii ipo kwenye mfumo wa Lupanulla Document Cloud na inakuwezesha kujipima uwezo wako.`}
+                  </p>
+                </div>
+
+                {/* Stats block with Rating and Views */}
+                <div className="grid grid-cols-3 gap-4 border-y border-slate-100 py-4 text-center">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Watazamaji</span>
+                    <span className="text-slate-900 font-black text-xs sm:text-sm">{quickViewDoc.views?.toLocaleString() || '1,500'}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Ukubwa</span>
+                    <span className="text-slate-900 font-black text-xs sm:text-sm">{(quickViewDoc.sizeKB ? (quickViewDoc.sizeKB / 1024).toFixed(1) : '1.2')} MB</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kiwango</span>
+                    <span className="text-amber-500 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-0.5">
+                      ★ 4.9 <span className="text-slate-400 text-[10px] font-bold">(85)</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Information Grid */}
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-left">
+                  <div className="space-y-1 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Somo</span>
+                    <span className="text-slate-900 text-xs font-extrabold">{getDocSubject(quickViewDoc)}</span>
+                  </div>
+                  <div className="space-y-1 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kundi</span>
+                    <span className="text-slate-900 text-xs font-extrabold">{quickViewDoc.category || 'Past Papers'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons inside footer-like space */}
+              <div className="space-y-3 pt-6 border-t border-slate-100 mt-6 flex-shrink-0">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Primary: Soma kwa Skrini Nzima */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickViewDoc(null); // Close preview modal
+                      // Trigger direct check or navigate
+                      if (!canAccessDirectly(quickViewDoc)) {
+                        setPurchasingDoc(quickViewDoc);
+                        setBuyerName(userProfile?.name || '');
+                        setBuyerPhone(userProfile?.phone || '');
+                        setBuyerNetwork('M-Pesa');
+                        setShowPurchaseModal(true);
+                      } else {
+                        onNavigate('reader', quickViewDoc.id);
+                      }
+                    }}
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black text-xs sm:text-sm px-6 py-4 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01]"
+                  >
+                    <Eye size={16} />
+                    Soma Skrini Nzima
+                  </button>
+
+                  {/* Secondary: Pakua PDF */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const downloadInfo = getDownloadInfo(quickViewDoc);
+                      // Dispatch the actual download event
+                      window.dispatchEvent(new CustomEvent('start-pdf-download', {
+                        detail: { 
+                          title: downloadInfo.title, 
+                          url: downloadInfo.url 
+                        }
+                      }));
+                    }}
+                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm px-6 py-4 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01]"
+                  >
+                    <Download size={16} />
+                    Pakua PDF Bure
+                  </button>
+                </div>
+
+                {/* Additional Option: Zoezi la Saa (Practice Timer) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickViewDoc(null);
+                    setShowTimer(true);
+                  }}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs px-4 py-3 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Clock size={14} className="text-slate-500" />
+                  Anza Zoezi la Saa 3 (Simulated Exam)
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

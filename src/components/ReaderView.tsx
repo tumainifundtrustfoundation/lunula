@@ -787,10 +787,13 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   };
 
   const handleDownload = () => {
-    // If premium, trigger PDF download link directly
-    alert('📥 Upakuaji umeanza! Faili lako la PDF linapakuliwa kutoka Google Drive sasa hivi.');
     const url = doc?.driveUrl || 'https://www.orimi.com/pdf-test.pdf';
-    window.open(url, '_blank');
+    window.dispatchEvent(new CustomEvent('start-pdf-download', {
+      detail: { 
+        title: doc?.title || 'Faili la Lupanulla', 
+        url: url 
+      }
+    }));
   };
 
   const generateOfflinePDF = () => {

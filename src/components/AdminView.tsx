@@ -11,6 +11,7 @@ import {
   Eye, 
   Download, 
   UserPlus, 
+  Upload,
   ArrowUpRight,
   User,
   Crown,
@@ -234,7 +235,24 @@ export default function AdminView({
   const [docRegion, setDocRegion] = useState<string>('');
   const [docStatus, setDocStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [isDocSaving, setIsDocSaving] = useState<boolean>(false);
-  const [adminDocSearch, setAdminDocSearch] = useState<string>('');
+  const [adminDocSearch, setAdminDocSearch] = useState<string>( '');
+
+  // --- NEW: Exam Manager Tab State Variables ---
+  const [examLevel, setExamLevel] = useState<string>('f4');
+  const [examSubject, setExamSubject] = useState<string>('physics');
+  const [examYear, setExamYear] = useState<number>(2023);
+  const [examTitle, setExamTitle] = useState<string>('');
+  const [examDescription, setExamDescription] = useState<string>('');
+  const [examDriveUrl, setExamDriveUrl] = useState<string>('');
+  const [examTagsInput, setExamTagsInput] = useState<string>('');
+  const [examFile, setExamFile] = useState<File | null>(null);
+  const [examFileProgress, setExamFileProgress] = useState<number>(0);
+  const [examIsUploading, setExamIsUploading] = useState<boolean>(false);
+  const [examEditingId, setExamEditingId] = useState<string | null>(null);
+  const [examSearch, setExamSearch] = useState<string>('');
+  const [examLevelFilter, setExamLevelFilter] = useState<string>('all');
+  const [examSubjectFilter, setExamSubjectFilter] = useState<string>('all');
+  const [isExamSaving, setIsExamSaving] = useState<boolean>(false);
 
   // --- NEW: News states ---
   const [dbNews, setDbNews] = useState<WebsiteNews[]>([]);
@@ -431,7 +449,7 @@ export default function AdminView({
         const pDocs = await fetchDocuments({ status: 'pending' });
         pDocs.sort((a, b) => b.createdAt - a.createdAt);
         setPendingDocs(pDocs);
-      } else if (activeTab === 'documents') {
+      } else if (activeTab === 'documents' || activeTab === 'exam_manager') {
         const aDocs = await fetchDocuments();
         aDocs.sort((a, b) => b.createdAt - a.createdAt);
         setAllDocs(aDocs);
@@ -2472,6 +2490,17 @@ export default function AdminView({
           Nyaraka Zote
         </button>
         <button
+          onClick={() => setActiveTab('exam_manager')}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'exam_manager'
+              ? 'border-indigo-600 text-indigo-600 font-extrabold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <GraduationCap size={16} className="text-cyan-600 animate-pulse" />
+          Msimamizi wa Mitihani (Exam Manager)
+        </button>
+        <button
           onClick={() => setActiveTab('users')}
           className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
             activeTab === 'users'
@@ -3180,6 +3209,699 @@ export default function AdminView({
               )}
             </div>
           )}
+
+          {/* TAB: EXAM MANAGER */}
+          {activeTab === 'exam_manager' && (() => {
+            const EXAM_SUBJECTS_MAP: Record<string, { id: string; name: string }[]> = {
+              std7: [
+                { id: 'mathematics', name: 'Mathematics (Hisabati)' },
+                { id: 'science', name: 'Science & Tech (Sayansi)' },
+                { id: 'social-studies', name: 'Social Studies (Maarifa ya Jamii)' },
+                { id: 'civic-moral', name: 'Civic & Moral (Uraia na Maadili)' },
+                { id: 'english', name: 'English Language (Kiingereza)' },
+                { id: 'kiswahili', name: 'Kiswahili' },
+              ],
+              f2: [
+                { id: 'basic-math', name: 'Basic Mathematics' },
+                { id: 'physics', name: 'Physics (Fizikia)' },
+                { id: 'chemistry', name: 'Chemistry (Kemia)' },
+                { id: 'biology', name: 'Biology (Biolojia)' },
+                { id: 'geography', name: 'Geography (Jiografia)' },
+                { id: 'history', name: 'History (Historia)' },
+                { id: 'civics', name: 'Civics (Uraia)' },
+                { id: 'english', name: 'English Language' },
+                { id: 'kiswahili', name: 'Kiswahili' },
+              ],
+              f4: [
+                { id: 'basic-math', name: 'Basic Mathematics' },
+                { id: 'physics', name: 'Physics (Fizikia)' },
+                { id: 'chemistry', name: 'Chemistry (Kemia)' },
+                { id: 'biology', name: 'Biology (Biolojia)' },
+                { id: 'geography', name: 'Geography (Jiografia)' },
+                { id: 'history', name: 'History (Historia)' },
+                { id: 'civics', name: 'Civics (Uraia)' },
+                { id: 'english', name: 'English Language' },
+                { id: 'kiswahili', name: 'Kiswahili' },
+                { id: 'commerce', name: 'Commerce (Biashara)' },
+                { id: 'bookkeeping', name: 'Book-keeping' },
+              ],
+              f6: [
+                { id: 'physics', name: 'Physics (Fizikia)' },
+                { id: 'chemistry', name: 'Chemistry (Kemia)' },
+                { id: 'biology', name: 'Biology (Biolojia)' },
+                { id: 'adv-math', name: 'Advanced Mathematics' },
+                { id: 'geography', name: 'Geography (Jiografia)' },
+                { id: 'history', name: 'History (Historia)' },
+                { id: 'english', name: 'English Language' },
+                { id: 'kiswahili', name: 'Kiswahili' },
+                { id: 'general-studies', name: 'General Studies' },
+              ],
+            };
+
+            const NECTA_LEVEL_LABELS: Record<string, string> = {
+              std7: 'Darasa la 7 (PSLE)',
+              f2: 'Kidato cha 2 (FTSEE)',
+              f4: 'Kidato cha 4 (CSEE)',
+              f6: 'Kidato cha 6 (ACSEE)'
+            };
+
+            const subjectsList = EXAM_SUBJECTS_MAP[examLevel] || [];
+            
+            // Auto-generate default title
+            const activeLevelName = NECTA_LEVEL_LABELS[examLevel] || examLevel.toUpperCase();
+            const activeSubjectName = subjectsList.find(s => s.id === examSubject)?.name || examSubject;
+            const autoGeneratedTitle = `NECTA ${activeSubjectName} ${activeLevelName} - ${examYear}`;
+
+            // Handle level change and sync subject
+            const handleExamLevelChange = (lvl: string) => {
+              setExamLevel(lvl);
+              const subs = EXAM_SUBJECTS_MAP[lvl] || [];
+              if (subs.length > 0) {
+                setExamSubject(subs[0].id);
+              }
+            };
+
+            // Handle Save Exam past paper
+            const handleSaveExamMetadata = async (e: React.FormEvent) => {
+              e.preventDefault();
+              const finalTitle = examTitle.trim() || autoGeneratedTitle;
+              
+              if (!examDriveUrl && !examFile) {
+                alert('Tafadhali chagua faili la PDF la kupakia au uweke kiungo cha Google Drive.');
+                return;
+              }
+
+              setIsExamSaving(true);
+              try {
+                let finalFileId = `necta-file-${Date.now()}`;
+                let finalDriveUrl = examDriveUrl.trim();
+                let sizeBytes = examFile ? examFile.size : 1250000; // Default estimate ~1.2MB
+
+                // If a local file is provided, simulate upload progress
+                if (examFile) {
+                  setExamIsUploading(true);
+                  setExamFileProgress(0);
+                  
+                  // Run progress animation
+                  await new Promise<void>((resolve) => {
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                      progress += Math.floor(Math.random() * 15) + 10;
+                      if (progress >= 100) {
+                        setExamFileProgress(100);
+                        clearInterval(interval);
+                        setTimeout(() => {
+                          setExamIsUploading(false);
+                          resolve();
+                        }, 400);
+                      } else {
+                        setExamFileProgress(progress);
+                      }
+                    }, 150);
+                  });
+
+                  finalFileId = `uploaded-${Date.now()}-${examFile.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                  finalDriveUrl = `https://docs.google.com/viewer?url=https://www.orimi.com/pdf-test.pdf&embedded=true`;
+                }
+
+                // Compile indexing tags to match MitihaniView exact lookup logic
+                const autoTags: string[] = ['NECTA', examLevel, examSubject, String(examYear)];
+                
+                // Add level indicators to match the robust lookup tags
+                if (examLevel === 'std7') {
+                  autoTags.push('psle', 'primary', 'darasa la 7');
+                } else if (examLevel === 'f2') {
+                  autoTags.push('ftsee', 'ftna', 'kidato cha pili');
+                } else if (examLevel === 'f4') {
+                  autoTags.push('csee', 'kidato cha nne');
+                } else if (examLevel === 'f6') {
+                  autoTags.push('acsee', 'kidato cha sita');
+                }
+
+                // Add lowercased subject words to tags list
+                autoTags.push(examSubject.toLowerCase());
+                
+                // Add any user tags
+                const customTags = examTagsInput.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+                const finalTags = Array.from(new Set([...autoTags, ...customTags]));
+
+                const examPayload: any = {
+                  title: finalTitle,
+                  description: examDescription.trim() || `Mtihani rasmi wa kitaifa wa NECTA wa somo la ${activeSubjectName} kwa ${activeLevelName} mwaka ${examYear}. Nyenzo hii ipo kwa ajili ya kukusaidia kujipima na kujiandaa na mitihani.`,
+                  category: 'NECTA',
+                  type: 'NECTA', // Matches d.type?.toUpperCase() === 'NECTA' in MitihaniView.tsx
+                  tags: finalTags,
+                  driveUrl: finalDriveUrl,
+                  fileId: finalFileId,
+                  uploadedBy: userProfile?.uid || 'admin',
+                  uploadedByName: userProfile?.name || 'Msimamizi Lupanulla',
+                  year: Number(examYear),
+                  status: 'approved',
+                  sizeKB: Math.round(sizeBytes / 1024),
+                  downloadsCount: 0,
+                  views: 120,
+                  rating: 5,
+                  // New metadata mapping
+                  educationLevel: examLevel === 'std7' ? 'Primary' : 'Secondary',
+                  classLevel: examLevel === 'std7' ? 'Standard 7' : 
+                              examLevel === 'f2' ? 'Form 2' :
+                              examLevel === 'f4' ? 'Form 4' : 'Form 6',
+                  subject: activeSubjectName,
+                };
+
+                if (examEditingId) {
+                  // Update existing exam document
+                  await updateDocument(examEditingId, examPayload);
+                  await logAdminAction('edit_exam_metadata', examEditingId, finalTitle, `Updated NECTA Exam past paper details.`);
+                  alert('Mtihani umerekebishwa kikamilifu kwenye Firestore!');
+                } else {
+                  // Create new document record in the documents collection
+                  const newId = await saveDocumentMetadata(examPayload);
+                  await updateDocument(newId, { status: 'approved' }); // Ensure approved status immediately
+                  await logAdminAction('create_exam_metadata', newId, finalTitle, `Created new NECTA Exam past paper metadata.`);
+                  alert('Mtihani mpya umesajiliwa kikamilifu kwenye Firestore!');
+                }
+
+                // Reset form fields
+                setExamTitle('');
+                setExamDescription('');
+                setExamDriveUrl('');
+                setExamTagsInput('');
+                setExamFile(null);
+                setExamFileProgress(0);
+                setExamEditingId(null);
+
+                // Reload documents list to refresh catalog view
+                const refreshedDocs = await fetchDocuments();
+                refreshedDocs.sort((a, b) => b.createdAt - a.createdAt);
+                setAllDocs(refreshedDocs);
+              } catch (error: any) {
+                console.error('Failed to save exam metadata:', error);
+                alert(`Imeshindikana kuhifadhi mtihani: ${error.message || error}`);
+              } finally {
+                setIsExamSaving(false);
+              }
+            };
+
+            // Start editing an existing past paper
+            const handleEditExamClick = (docItem: DocumentMetadata) => {
+              setExamEditingId(docItem.id);
+              setExamTitle(docItem.title || '');
+              setExamDescription(docItem.description || '');
+              setExamDriveUrl(docItem.driveUrl || '');
+              setExamYear(docItem.year || 2023);
+              
+              // Resolve level from tags or classLevel
+              let lvl = 'f4';
+              const tagsStr = docItem.tags?.map(t => t.toLowerCase()).join(' ') || '';
+              if (tagsStr.includes('psle') || tagsStr.includes('std7') || tagsStr.includes('primary')) {
+                lvl = 'std7';
+              } else if (tagsStr.includes('ftsee') || tagsStr.includes('f2') || tagsStr.includes('ftna')) {
+                lvl = 'f2';
+              } else if (tagsStr.includes('acsee') || tagsStr.includes('f6') || tagsStr.includes('sita')) {
+                lvl = 'f6';
+              }
+              setExamLevel(lvl);
+
+              // Resolve subject from tags or title
+              const levelSubs = EXAM_SUBJECTS_MAP[lvl] || [];
+              let foundSub = levelSubs[0]?.id || 'physics';
+              for (const sub of levelSubs) {
+                if (tagsStr.includes(sub.id.toLowerCase()) || docItem.title?.toLowerCase().includes(sub.id.toLowerCase())) {
+                  foundSub = sub.id;
+                  break;
+                }
+              }
+              setExamSubject(foundSub);
+              setExamTagsInput(docItem.tags?.filter(t => !['NECTA', 'psle', 'primary', 'ftsee', 'ftna', 'csee', 'acsee', 'f2', 'f4', 'f6', 'darasa la 7', 'kidato cha pili', 'kidato cha nne', 'kidato cha sita', foundSub, String(docItem.year)].includes(t)).join(', ') || '');
+              
+              // Scroll form smoothly into view
+              const element = document.getElementById('exam-manager-form-container');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            };
+
+            // Cancel Edit mode
+            const handleCancelExamEdit = () => {
+              setExamEditingId(null);
+              setExamTitle('');
+              setExamDescription('');
+              setExamDriveUrl('');
+              setExamTagsInput('');
+              setExamFile(null);
+            };
+
+            // Get filtered list of NECTA exams
+            const filteredExams = allDocs.filter(docItem => {
+              const isNecta = docItem.type?.toUpperCase() === 'NECTA' || docItem.category?.toUpperCase() === 'NECTA' || docItem.tags?.some(t => t.toUpperCase() === 'NECTA');
+              if (!isNecta) return false;
+
+              if (examSearch) {
+                const term = examSearch.toLowerCase();
+                const matchesTitle = docItem.title?.toLowerCase().includes(term);
+                const matchesDesc = docItem.description?.toLowerCase().includes(term);
+                const matchesTags = docItem.tags?.some(t => t.toLowerCase().includes(term));
+                if (!matchesTitle && !matchesDesc && !matchesTags) return false;
+              }
+
+              if (examLevelFilter !== 'all') {
+                const tagsStr = docItem.tags?.map(t => t.toLowerCase()).join(' ') || '';
+                const levelMatches = 
+                  (examLevelFilter === 'std7' && (tagsStr.includes('psle') || tagsStr.includes('primary') || tagsStr.includes('darasa la 7'))) ||
+                  (examLevelFilter === 'f2' && (tagsStr.includes('ftsee') || tagsStr.includes('f2') || tagsStr.includes('kidato cha pili') || tagsStr.includes('ftna'))) ||
+                  (examLevelFilter === 'f4' && (tagsStr.includes('csee') || tagsStr.includes('f4') || tagsStr.includes('kidato cha nne'))) ||
+                  (examLevelFilter === 'f6' && (tagsStr.includes('acsee') || tagsStr.includes('f6') || tagsStr.includes('kidato cha sita')));
+                if (!levelMatches) return false;
+              }
+
+              if (examSubjectFilter !== 'all') {
+                const tagsStr = docItem.tags?.map(t => t.toLowerCase()).join(' ') || '';
+                const subjectMatches = tagsStr.includes(examSubjectFilter.toLowerCase()) || docItem.title?.toLowerCase().includes(examSubjectFilter.toLowerCase());
+                if (!subjectMatches) return false;
+              }
+
+              return true;
+            });
+
+            return (
+              <div className="space-y-8 animate-fade-in">
+                {/* Dashboard Banner */}
+                <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-cyan-950 border border-indigo-500/20 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden animate-fade-in">
+                  <div className="absolute -right-16 -top-16 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-2 max-w-3xl">
+                      <span className="bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+                        <GraduationCap size={12} className="animate-pulse" />
+                        MFUMO WA USIMAMIZI WA MITIHANI (EXAM MANAGER)
+                      </span>
+                      <h2 className="text-xl sm:text-2xl font-sans font-black text-white leading-tight uppercase">Upload &amp; Tag NECTA Past Papers</h2>
+                      <p className="text-xs text-slate-300 leading-relaxed font-semibold font-sans">
+                        Kama msimamizi, hapa unaweza kupakia na kutag masomo, madarasa, na miaka kwa ajili ya past papers za NECTA. Nyaraka hizi zitasawazishwa moja kwa moja na Maktaba ya Mitihani ambapo wanafunzi wanaweza kuzisoma mtandaoni au kuzipakua.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-5 py-3 text-center">
+                        <p className="text-[10px] text-slate-400 font-mono uppercase font-black tracking-wider font-sans">Papers Zilizopo</p>
+                        <p className="text-xl font-mono font-black text-cyan-400 mt-1">{filteredExams.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bento Grid layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  
+                  {/* Left Column - Form Card (5 Columns) */}
+                  <div id="exam-manager-form-container" className="lg:col-span-5 bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+                    <div className="border-b border-gray-50 pb-4">
+                      <h3 className="text-base font-sans font-extrabold text-gray-900 flex items-center gap-2">
+                        <PlusCircle size={18} className="text-indigo-600" />
+                        {examEditingId ? 'Hariri Past Paper' : 'Sajili Past Paper Mpya'}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-1 font-sans">Jaza fomu hii kwa umakini ili mfumo uweze kuiweka kwenye makundi sahihi ya mitihani.</p>
+                    </div>
+
+                    <form onSubmit={handleSaveExamMetadata} className="space-y-5">
+                      
+                      {/* Select level */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block font-sans">1. Ngazi ya Elimu</label>
+                        <select
+                          value={examLevel}
+                          onChange={(e) => handleExamLevelChange(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 transition-colors font-sans"
+                        >
+                          <option value="std7">Darasa la 7 (PSLE)</option>
+                          <option value="f2">Kidato cha 2 (FTSEE)</option>
+                          <option value="f4">Kidato cha 4 (CSEE)</option>
+                          <option value="f6">Kidato cha 6 (ACSEE)</option>
+                        </select>
+                      </div>
+
+                      {/* Select subject */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block font-sans">2. Somo la Mtihani</label>
+                        <select
+                          value={examSubject}
+                          onChange={(e) => setExamSubject(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 transition-colors font-sans"
+                        >
+                          {subjectsList.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Select Year */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block font-sans">3. Mwaka wa Mtihani</label>
+                        <select
+                          value={examYear}
+                          onChange={(e) => setExamYear(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 transition-colors font-mono"
+                        >
+                          {Array.from({ length: 2026 - 1994 + 1 }, (_, i) => 2026 - i).map(yr => (
+                            <option key={yr} value={yr}>{yr}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Title input */}
+                      <div className="space-y-1.5 font-sans">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block">4. Kichwa cha Mtihani (Title)</label>
+                          <button
+                            type="button"
+                            onClick={() => setExamTitle(autoGeneratedTitle)}
+                            className="text-[10px] text-indigo-600 hover:underline font-bold"
+                          >
+                            Tumia jina la kiotomatiki
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder={autoGeneratedTitle}
+                          value={examTitle}
+                          onChange={(e) => setExamTitle(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 placeholder-gray-400 transition-colors"
+                        />
+                      </div>
+
+                      {/* Description textarea */}
+                      <div className="space-y-1.5 font-sans">
+                        <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block">5. Maelezo (Description - Optional)</label>
+                        <textarea
+                          placeholder="Andika maelezo ya ziada ya past paper hii (mfano: maswali, majibu, au marking scheme ipo pia)..."
+                          value={examDescription}
+                          onChange={(e) => setExamDescription(e.target.value)}
+                          rows={3}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 placeholder-gray-400 transition-colors resize-none"
+                        />
+                      </div>
+
+                      {/* File source or drive URL */}
+                      <div className="space-y-3.5 border-t border-gray-50 pt-4 font-sans">
+                        <span className="text-xs text-gray-600 font-extrabold uppercase tracking-wide block">6. Pakia au Weka Link ya PDF</span>
+
+                        {/* Local File Upload Selector */}
+                        <div className="space-y-2">
+                          <div
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                                const f = e.dataTransfer.files[0];
+                                if (f.type === 'application/pdf' || f.name.endsWith('.pdf')) {
+                                  setExamFile(f);
+                                } else {
+                                  alert('Tafadhali buruta faili la PDF pekee.');
+                                }
+                              }
+                            }}
+                            onClick={() => document.getElementById('exam-manager-file-input')?.click()}
+                            className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${
+                              examFile 
+                                ? 'border-emerald-500 bg-emerald-50/10' 
+                                : 'border-gray-200 hover:border-indigo-400 hover:bg-slate-50/50'
+                            }`}
+                          >
+                            <input
+                              type="file"
+                              id="exam-manager-file-input"
+                              accept="application/pdf"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setExamFile(e.target.files[0]);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            {examFile ? (
+                              <div className="space-y-2 text-emerald-600 animate-fade-in">
+                                <FileCheck className="mx-auto" size={28} />
+                                <p className="text-xs font-bold truncate px-2">{examFile.name}</p>
+                                <p className="text-[10px] font-mono font-black text-slate-500">{(examFile.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 text-gray-400">
+                                <Upload className="mx-auto text-gray-300" size={28} />
+                                <p className="text-xs font-bold text-gray-700">Buruta &amp; dondosha au bofya kuchagua PDF</p>
+                                <p className="text-[10px] text-gray-400">PDF pekee, isiyozidi 15MB</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {examFile && (
+                            <button
+                              type="button"
+                              onClick={() => setExamFile(null)}
+                              className="w-full py-1.5 text-[11px] font-black uppercase text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                            >
+                              Futa faili lililochaguliwa
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Fallback Google Drive Link */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wide block">— AU weka Google Drive Link au Direct URL —</label>
+                          <input
+                            type="text"
+                            placeholder="https://drive.google.com/file/d/xxxxxx/view"
+                            value={examDriveUrl}
+                            onChange={(e) => setExamDriveUrl(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 placeholder-gray-400 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Additional Custom tags input */}
+                      <div className="space-y-1.5 font-sans">
+                        <label className="text-xs text-gray-500 font-extrabold uppercase tracking-wide block">7. Tag za Ziada (Tenganisha kwa alama ya mkato - Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="marking-scheme, kiswahili-medium, private-candidates"
+                          value={examTagsInput}
+                          onChange={(e) => setExamTagsInput(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 placeholder-gray-400 transition-colors"
+                        />
+                      </div>
+
+                      {/* Simulated upload progress loader bar */}
+                      {examIsUploading && (
+                        <div className="space-y-1.5 bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white animate-pulse">
+                          <div className="flex justify-between items-center text-[10px] font-mono font-bold">
+                            <span className="text-cyan-400 flex items-center gap-1.5">
+                              <RefreshCw size={10} className="animate-spin" />
+                              INAPAKIA KWENYE LUPANULLA CLOUD...
+                            </span>
+                            <span>{examFileProgress}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              style={{ width: `${examFileProgress}%` }}
+                              className="h-full bg-gradient-to-r from-cyan-400 to-indigo-500 rounded-full transition-all duration-150"
+                            />
+                          </div>
+                          <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono pt-1">
+                            <span>Muda uliosalia: ~2 sec</span>
+                            <span>Kasi: 4.8 MB/s</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Buttons */}
+                      <div className="flex gap-2.5 pt-3 border-t border-gray-50 font-sans">
+                        {examEditingId && (
+                          <button
+                            type="button"
+                            onClick={handleCancelExamEdit}
+                            className="flex-1 py-3 text-xs font-black uppercase tracking-wider text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all cursor-pointer text-center"
+                          >
+                            Ghairi
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={isExamSaving || examIsUploading}
+                          className="flex-[2] bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white font-black text-xs uppercase tracking-wider py-3.5 rounded-2xl transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                        >
+                          {isExamSaving ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" /> Kuhifadhi...
+                            </>
+                          ) : examEditingId ? (
+                            'Hifadhi Mabadiliko'
+                          ) : (
+                            'Okoa Past Paper'
+                          )}
+                        </button>
+                      </div>
+
+                    </form>
+                  </div>
+
+                  {/* Right Column - Exams Registered Catalog (7 Columns) */}
+                  <div className="lg:col-span-7 bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-gray-50 pb-4 font-sans">
+                      <div>
+                        <h3 className="text-base font-sans font-extrabold text-gray-900 flex items-center gap-2">
+                          <FileCheck size={18} className="text-indigo-600" />
+                          Catalog ya Past Papers za NECTA
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-1">Orodha ya mitihani yote halisi iliyosajiliwa na kuhifadhiwa kwenye database ya Firestore.</p>
+                      </div>
+                      <span className="self-start sm:self-auto px-3 py-1 bg-cyan-50 border border-cyan-100 rounded-full text-[10px] font-mono font-extrabold uppercase text-cyan-700">
+                        Jumla: {filteredExams.length}
+                      </span>
+                    </div>
+
+                    {/* Filters and search block */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans">
+                      
+                      {/* Search */}
+                      <div className="sm:col-span-1 relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                          <Search size={14} />
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Tafuta mtihani..."
+                          value={examSearch}
+                          onChange={(e) => setExamSearch(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-semibold text-xs text-gray-800 placeholder-gray-400 transition-colors"
+                        />
+                      </div>
+
+                      {/* Level Filter */}
+                      <div>
+                        <select
+                          value={examLevelFilter}
+                          onChange={(e) => setExamLevelFilter(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-bold text-xs text-gray-700 transition-colors"
+                        >
+                          <option value="all">Ngazi Zote (All Levels)</option>
+                          <option value="std7">Darasa la 7 (PSLE)</option>
+                          <option value="f2">Kidato cha 2 (FTSEE)</option>
+                          <option value="f4">Kidato cha 4 (CSEE)</option>
+                          <option value="f6">Kidato cha 6 (ACSEE)</option>
+                        </select>
+                      </div>
+
+                      {/* Subject Filter */}
+                      <div>
+                        <select
+                          value={examSubjectFilter}
+                          onChange={(e) => setExamSubjectFilter(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 focus:border-indigo-500 rounded-xl outline-none font-bold text-xs text-gray-700 transition-colors"
+                        >
+                          <option value="all">Masomo Yote (All Subjects)</option>
+                          <option value="mathematics">Mathematics (Hisabati)</option>
+                          <option value="basic-math">Basic Mathematics</option>
+                          <option value="physics">Physics (Fizikia)</option>
+                          <option value="chemistry">Chemistry (Kemia)</option>
+                          <option value="biology">Biology (Biolojia)</option>
+                          <option value="geography">Geography (Jiografia)</option>
+                          <option value="history">History (Historia)</option>
+                          <option value="civics">Civics (Uraia)</option>
+                          <option value="english">English Language</option>
+                          <option value="kiswahili">Kiswahili</option>
+                        </select>
+                      </div>
+
+                    </div>
+
+                    {/* Catalog Listing Table */}
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                      <table className="w-full text-xs text-left text-gray-500">
+                        <thead className="bg-gray-50 text-[10px] text-gray-500 uppercase font-black tracking-wide font-sans">
+                          <tr>
+                            <th scope="col" className="px-4 py-3">Mtihani &amp; Kundi</th>
+                            <th scope="col" className="px-4 py-3">Ngazi ya Elimu &amp; Mwaka</th>
+                            <th scope="col" className="px-4 py-3">Takwimu</th>
+                            <th scope="col" className="px-4 py-3 text-right">Vitendo</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 font-semibold text-gray-700 font-sans">
+                          {filteredExams.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="text-center py-10 text-gray-400 font-bold">
+                                Hakuna past paper ya NECTA iliyopatikana kulingana na vichujio vyako.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredExams.map((docItem) => {
+                              // Identify level tags
+                              const tagsStr = docItem.tags?.map(t => t.toLowerCase()).join(' ') || '';
+                              let levelName = 'Kidato cha 4';
+                              if (tagsStr.includes('psle') || tagsStr.includes('primary')) levelName = 'Darasa la 7';
+                              else if (tagsStr.includes('ftsee') || tagsStr.includes('ftna') || tagsStr.includes('f2')) levelName = 'Kidato cha 2';
+                              else if (tagsStr.includes('acsee') || tagsStr.includes('f6')) levelName = 'Kidato cha 6';
+
+                              return (
+                                <tr key={docItem.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-4 py-3.5 space-y-1 max-w-[240px]">
+                                    <p className="font-extrabold text-gray-900 line-clamp-2">{docItem.title}</p>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="bg-indigo-50 text-indigo-700 text-[9px] font-mono px-1.5 py-0.5 rounded uppercase">
+                                        {(docItem as any).subject || 'General'}
+                                      </span>
+                                      <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded">
+                                        VERIFIED
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3.5">
+                                    <p className="text-gray-900 font-bold">{levelName}</p>
+                                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">Mwaka: {docItem.year || 2023}</p>
+                                  </td>
+                                  <td className="px-4 py-3.5 font-mono text-[10px] text-gray-500 space-y-0.5">
+                                    <p className="font-sans">Matazamaji: <strong className="text-gray-800 font-mono">{docItem.views || 0}</strong></p>
+                                    <p className="font-sans">Upakuaji: <strong className="text-gray-800 font-mono">{docItem.downloadsCount || 0}</strong></p>
+                                  </td>
+                                  <td className="px-4 py-3.5 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      {/* View button */}
+                                      <button
+                                        onClick={() => onNavigate('reader', docItem.id)}
+                                        title="Soma Mtihani"
+                                        className="p-1.5 bg-slate-50 hover:bg-slate-100 text-gray-600 hover:text-gray-950 border border-gray-200/60 rounded-lg transition-all cursor-pointer"
+                                      >
+                                        <Eye size={12} />
+                                      </button>
+                                      {/* Edit button */}
+                                      <button
+                                        onClick={() => handleEditExamClick(docItem)}
+                                        title="Hariri Mtihani"
+                                        className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 border border-indigo-100 rounded-lg transition-all cursor-pointer"
+                                      >
+                                        <Pencil size={12} />
+                                      </button>
+                                      {/* Delete button */}
+                                      <button
+                                        onClick={() => handleDelete(docItem.id, docItem.fileId, docItem.title)}
+                                        title="Futa Mtihani"
+                                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 border border-rose-100 rounded-lg transition-all cursor-pointer"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TAB 3: MANAGE USERS */}
           {activeTab === 'users' && (

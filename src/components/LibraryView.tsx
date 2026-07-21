@@ -276,10 +276,14 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
       return;
     }
 
-    // Open file link
-    window.open(doc.driveUrl, '_blank');
+    // Dispatch start-pdf-download event with progress
+    window.dispatchEvent(new CustomEvent('start-pdf-download', {
+      detail: { 
+        title: doc.title, 
+        url: doc.driveUrl 
+      }
+    }));
     await incrementDocumentDownloads(doc.id);
-    showToast(`Inapakua "${doc.title}"...`);
     
     // Refresh list view counters silently
     setTimeout(() => {

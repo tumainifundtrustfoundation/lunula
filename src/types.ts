@@ -69,6 +69,10 @@ export interface SystemConfig {
   emailSmtpPort?: number;
   emailSmtpUser?: string;
   emailSmtpPass?: string;
+  smsProvider?: 'simulation' | 'africastalking' | 'infobip';
+  smsApiKey?: string;
+  smsUsername?: string;
+  smsSenderId?: string;
   googleAnalyticsId?: string;
   googleSearchConsoleId?: string;
   clarityId?: string;

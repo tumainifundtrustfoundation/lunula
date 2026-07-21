@@ -30,7 +30,8 @@ import {
   Video,
   Award,
   CheckCircle2,
-  Globe
+  Globe,
+  FileSpreadsheet
 } from 'lucide-react';
 import { UserProfile, AppNotification, AppTheme } from '../types';
 import { subscribeNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../firebase';
@@ -149,6 +150,7 @@ export default function Navbar({
     { id: 'kamusi', label: 'Kamusi', icon: BookOpen },
     { id: 'mikoa', label: 'Viwango vya NECTA', icon: Trophy },
     { id: 'ajira', label: 'Ajira za Walimu', icon: Briefcase },
+    { id: 'mwalimu-hub', label: 'Mifumo ya Walimu', icon: FileSpreadsheet },
     { id: 'matangazo', label: 'Habari & Kuhusu', icon: Megaphone },
     { id: 'feedback', label: 'Toa Maoni', icon: MessageSquare },
   ];

@@ -60,6 +60,7 @@ import KamusiView from './components/KamusiView';
 import MikoaView from './components/MikoaView';
 import AjiraView from './components/AjiraView';
 import MatangazoView from './components/MatangazoView';
+import MwalimuHubView from './components/MwalimuHubView';
 import FeedbackModal from './components/FeedbackModal';
 import WorkspaceView from './components/WorkspaceView';
 import CombinationsView from './components/CombinationsView';
@@ -75,6 +76,7 @@ import ResourcesView from './components/ResourcesView';
 import NectaProgressView from './components/NectaProgressView';
 import RotatingBanner from './components/RotatingBanner';
 import WelcomeNotification from './components/WelcomeNotification';
+import DownloadProgressToast from './components/DownloadProgressToast';
 
 // Shimmer Loading Skeleton Fallback for Smooth Cumulative Layout Shift (CLS) Mitigation
 const ViewLoadingSkeleton = () => (
@@ -444,8 +446,10 @@ export default function App() {
 
   const [otpSkipped, setOtpSkipped] = useState<boolean>(sessionStorage.getItem('lupanulla-otp-skipped') === 'true');
 
-  // Forced verification if user is logged in but not verified
+  // Forced verification if user is logged in but not verified - disabled auto-popup to allow free entry!
   useEffect(() => {
+    // We no longer force pop-up the OTP verify screen on page load, keeping the entrance completely open for everyone.
+    /*
     if (user && userProfile && userProfile.emailVerified === false && !otpSkipped) {
       setShowSignInModal(true);
       setAuthTab('verify');
@@ -454,6 +458,7 @@ export default function App() {
         setSimulatedOtp(userProfile.verificationCode);
       }
     }
+    */
   }, [user, userProfile, otpSkipped]);
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -717,14 +722,12 @@ export default function App() {
         // Mark as pre-verified to avoid any OTP hurdles
         await ensureUserProfile(userCredential.user, fullName.trim(), { emailVerified: true });
         
-        // Sign out immediately so they have to login on the login form
-        await auth.signOut();
-        
-        // Set state to direct user to login
-        setAuthTab('login');
+        // Keep them logged in and refresh the profile
+        await refreshProfile(userCredential.user.uid, fullName.trim());
+        setShowSignInModal(false);
+        setEmail('');
         setPassword('');
         setFullName('');
-        setOtpSuccessMessage('Usajili umekamilika kikamilifu! Akaunti yako imeundwa na mfumo umekutambua. Sasa ingiza nenosiri lako hapa chini ili kuingia kwenye akaunti yako.');
       }
     } catch (err: any) {
       console.error('Email Authentication Error:', err);
@@ -816,6 +819,9 @@ export default function App() {
 
       {/* Welcome & Benefits Notification */}
       <WelcomeNotification onNavigate={navigateTo} />
+
+      {/* Download Progress Toast */}
+      <DownloadProgressToast />
 
       {/* Navigation Bar */}
       <Navbar 
@@ -984,6 +990,10 @@ export default function App() {
 
             {activeView === 'ajira' && (
               <AjiraView />
+            )}
+
+            {activeView === 'mwalimu-hub' && (
+              <MwalimuHubView />
             )}
 
             {activeView === 'matangazo' && (
@@ -1572,10 +1582,13 @@ export default function App() {
                   <button
                     onClick={handleGuestSignIn}
                     disabled={authLoading}
-                    className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 hover:border-emerald-300 rounded-xl py-3 text-xs font-bold text-emerald-800 shadow-sm transition-all hover:scale-[1.01]"
+                    className="w-full flex flex-col items-center justify-center bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-2xl py-3.5 px-4 shadow-lg shadow-emerald-500/10 hover:scale-[1.01] active:scale-95 transition-all gap-0.5 border border-emerald-600/20"
                   >
-                    <UserIcon size={16} className="text-emerald-600" />
-                    <span>Ingia Haraka kama Mgeni (Demo Login)</span>
+                    <div className="flex items-center gap-2 font-extrabold text-xs uppercase tracking-wider">
+                      <UserIcon size={15} className="stroke-[2.5]" />
+                      <span>Ingia Haraka kama Mgeni (Instant Entry)</span>
+                    </div>
+                    <span className="text-[9px] opacity-90 font-semibold tracking-wide">Bofya hapa kuingia kwenye website sasa hivi bila kusubiri</span>
                   </button>
 
                   <div className="flex items-center">
